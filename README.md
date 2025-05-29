@@ -64,5 +64,5 @@ Nossa equipe programou uma releitura do tão famoso Discord!
 
 ## Licença
 
-[MIT](https://github.com/JoaoZanelato/proj-integrador/blob/main/LICENSE)
+[MIT](https://github.com/JoaoZanelato/proj-integrador/blob/main/license)
 
