@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login & Cadastro</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  background: #f4f4f4;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.container {
+  background: white;
+  padding: 30px;
+  border-radius: 10px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+}
+
+.button-box {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 20px;
+}
+
+.button-box button {
+  width: 45%;
+  padding: 10px;
+  font-size: 16px;
+  background-color: #007bff;
+  border: none;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.button-box button:hover {
+  background-color: #0056b3;
+}
+
+.form {
+  display: none;
+  flex-direction: column;
+}
+
+.form.active {
+  display: flex;
+}
+
+.form h2 {
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.form input {
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.form button {
+  padding: 10px;
+  background-color: #28a745;
+  border: none;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.form button:hover {
+  background-color: #218838;
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="form-box" id="form-box">
+      <div class="button-box">
+        <button onclick="showLogin()">Login</button>
+        <button onclick="showRegister()">Cadastro</button>
+      </div>
+
+      <!-- Formulário de Login -->
+      <form id="login-form" class="form active">
+        <h2>Login</h2>
+        <input type="email" placeholder="Email" required />
+        <input type="password" placeholder="Senha" required />
+        <button type="submit">Entrar</button>
+      </form>
+
+      <!-- Formulário de Cadastro -->
+      <form id="register-form" class="form">
+        <h2>Cadastro</h2>
+        <input type="text" placeholder="Nome" required />
+        <input type="email" placeholder="Email" required />
+        <input type="password" placeholder="Senha" required />
+        <input type="password" placeholder="Confirmar Senha" required />
+        <button type="submit">Cadastrar</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="script.js">
+    function showLogin() {
+  document.getElementById('login-form').classList.add('active');
+  document.getElementById('register-form').classList.remove('active');
+}
+
+function showRegister() {
+  document.getElementById('register-form').classList.add('active');
+  document.getElementById('login-form').classList.remove('active');
+}
+  </script>
+</body>
+</html>
