@@ -9,4 +9,12 @@ router.get('/login', function(req, res, next) {
   res.render('Login');
 });
 
+router.get('/cadastro', function(req, res, next) {
+  res.render('Cadastro');
+});
+
+router.get('/dashboard', function(req, res, next) {
+  res.render('Dashboard');
+});
+
 module.exports = router;
