@@ -1,79 +1,133 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cadastro</title>
-  <link rel="stylesheet" href="cadastro.css" />
-  <style>
-    body {
-        margin: 0;
-        padding: 0;
-        font-family: Arial, sans-serif;
-        background: #f0f2f5;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-    }
-    .cadastro-container {
-        background-color: #fff;
-        padding: 30px 40px;
-        border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        width: 100%;
-        max-width: 400px;
-    }
-    h2 {
-        text-align: center;
-        margin-bottom: 20px;
-    }
-    form {
-        display: flex;
-        flex-direction: column;
-    }
-    label {
-        margin-bottom: 5px;
-        font-weight: bold;
-    }
-    input {
-        padding: 10px;
-        margin-bottom: 15px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-    }
-    button {
-        padding: 12px;
-        background-color: #28a745;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        font-size: 16px;
-        cursor: pointer;
-    }
-    button:hover {
-        background-color: #218838;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - EsquizoCord</title>
+    <style>
+        /* Estilos gerais */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            
+            /* Define a mesma imagem de fundo da home */
+            background-image: url('/images/background.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        /* Container principal */
+        .cadastro-container {
+            text-align: left;
+            /* Fundo roxo semi-transparente */
+            background-color: rgba(84, 11, 112, 0.95); 
+            color: #fff1f1;
+            padding: 40px 50px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        /* Título */
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        
+        /* Formulário */
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #e0c8e6;
+        }
+
+        input {
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #955ca3;
+            border-radius: 8px;
+            background-color: rgba(0, 0, 0, 0.2);
+            color: white;
+            font-size: 16px;
+        }
+
+        input::placeholder {
+            color: #b3a1b8;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #cc00ff;
+            box-shadow: 0 0 5px rgba(204, 0, 255, 0.5);
+        }
+
+        /* Botão de cadastrar */
+        button {
+            padding: 12px;
+            margin-top: 10px; /* Espaço extra antes do botão */
+            background-color: #660080;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #572364;
+            transform: translateY(-2px);
+        }
+
+        /* Link para voltar */
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #e0c8e6;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
-  <div class="cadastro-container">
-    <h2>Criar Conta</h2>
-    <form>
-      <label for="nome">Nome:</label>
-      <input type="text" id="nome" placeholder="Digite seu nome" required />
 
-      <label for="email">Email:</label>
-      <input type="email" id="email" placeholder="Digite seu email" required />
+    <div class="cadastro-container">
+        <h2>Criar Conta</h2>
+        <form>
+            <label for="nome">Nome:</label>
+            <input type="text" id="nome" placeholder="Digite seu nome" required />
 
-      <label for="senha">Senha:</label>
-      <input type="password" id="senha" placeholder="Digite sua senha" required />
+            <label for="email">Email:</label>
+            <input type="email" id="email" placeholder="Digite seu email" required />
 
-      <label for="confirmar-senha">Confirmar Senha:</label>
-      <input type="password" id="confirmar-senha" placeholder="Confirme sua senha" required />
+            <label for="senha">Senha:</label>
+            <input type="password" id="senha" placeholder="Crie uma senha" required />
 
-      <button type="submit">Cadastrar</button>
-    </form>
-  </div>
+            <label for="confirmar-senha">Confirmar Senha:</label>
+            <input type="password" id="confirmar-senha" placeholder="Confirme sua senha" required />
+
+            <button type="submit">Cadastrar</button>
+        </form>
+        <a href="/login" class="back-link">Já tem uma conta? Faça o Login</a>
+    </div>
+
 </body>
 </html>
