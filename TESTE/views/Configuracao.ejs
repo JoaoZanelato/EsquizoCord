@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações - EsquizoCord</title>
+    <link rel="icon" type="image/png" href="/images/logo.png">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px 0;
+            margin: 0;
+            background-image: url('/images/background.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        .config-container {
+            text-align: left;
+            background-color: rgba(84, 11, 112, 0.95); 
+            color: #fff1f1;
+            padding: 40px 50px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 90%;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #e0c8e6;
+        }
+        input, textarea, select {
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #955ca3;
+            border-radius: 8px;
+            background-color: rgba(0, 0, 0, 0.2);
+            color: white;
+            font-size: 16px;
+            font-family: inherit;
+        }
+        input::placeholder, textarea::placeholder {
+            color: #b3a1b8;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #cc00ff;
+            box-shadow: 0 0 5px rgba(204, 0, 255, 0.5);
+        }
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        button {
+            padding: 12px;
+            background-color: #cc00ff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background-color: #955ca3;
+            transform: translateY(-2px);
+        }
+        .profile-pic-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        #profilePicPreview {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #955ca3;
+            margin-bottom: 10px;
+            background-color: #333; /* Cor de fundo para o caso de não haver imagem */
+        }
+        /* Estilo para o botão de upload de arquivo */
+        .file-upload-label {
+            display: inline-block;
+            padding: 8px 15px;
+            background-color: #660080;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: normal;
+            font-size: 14px;
+            margin-bottom: 20px; /* Adicionado para separar do campo de nome */
+        }
+        .file-upload-label:hover {
+            background-color: #572364;
+        }
+        /* Esconde o input de arquivo padrão */
+        #fotoPerfil {
+            display: none;
+        }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #e0c8e6;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="config-container">
+        <!-- Verifica se o usuário existe antes de tentar aceder às suas propriedades -->
+        <% if (user) { %>
+            <h2>Configurações de <%= user.Nome %></h2>
+
+            <form method="POST" action="/configuracao" enctype="multipart/form-data">
+                <div class="profile-pic-section">
+                    <!-- Mostra a foto do usuário ou uma padrão -->
+                    <img src="<%= user.FotoPerfil || '/images/logo.png' %>" alt="Foto de Perfil" id="profilePicPreview">
+                    
+                    <label for="fotoPerfil" class="file-upload-label">Alterar Foto</label>
+                    <input type="file" id="fotoPerfil" name="fotoPerfil" accept="image/png, image/jpeg" onchange="previewImage(event)">
+                </div>
+
+                <label for="nome">Nome:</label>
+                <input type="text" id="nome" name="nome" value="<%= user.Nome %>" required>
+
+                <label for="biografia">Biografia:</label>
+                <textarea id="biografia" name="biografia" placeholder="Fale um pouco sobre você..."><%= user.Biografia || '' %></textarea>
+
+                <label for="tema">Tema:</label>
+                <select id="tema" name="id_tema">
+                    <option value="null">Padrão do Sistema</option>
+                    <!-- Popula dinamicamente os temas do banco de dados -->
+                    <% themes.forEach(theme => { %>
+                        <option value="<%= theme.id_tema %>" <%= (user.id_tema == theme.id_tema) ? 'selected' : '' %>>
+                            <%= theme.nome_tema %>
+                        </option>
+                    <% }); %>
+                </select>
+
+                <button type="submit">Salvar Alterações</button>
+            </form>
+            <a href="/sair" class="back-link">Sair</a>
+        <% } else { %>
+            <h2>Utilizador não encontrado.</h2>
+            <a href="/login" class="back-link">Voltar ao Login</a>
+        <% } %>
+    </div>
+
+    <script>
+        // Função para mostrar a pré-visualização da imagem selecionada
+        const previewImage = event => {
+            const imageFiles = event.target.files;
+            const imageFilesLength = imageFiles.length;
+            if (imageFilesLength > 0) {
+                const imageSrc = URL.createObjectURL(imageFiles[0]);
+                const imagePreviewElement = document.querySelector("#profilePicPreview");
+                imagePreviewElement.src = imageSrc;
+            }
+        };
+    </script>
+</body>
+</html>

@@ -25,6 +25,17 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
+// ... outras configurações do app.js ...
+const session = require('express-session');
+
+// ... depois de app.use(express.static(...))
+app.use(session({
+  secret: 'notachanurl', // Mude isto para uma frase aleatória
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false } // Para desenvolvimento. Em produção (HTTPS), mude para true.
+}));
+
 // Middleware para disponibilizar o pool de conexões para todas as rotas
 app.use((req, res, next) => {
   req.db = pool;
