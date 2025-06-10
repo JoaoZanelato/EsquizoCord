@@ -65,6 +65,28 @@ router.get('/configuracao', requireLogin, async (req, res, next) => {
     }
 });
 
+// ROTA GET PARA O DASHBOARD (PROTEGIDA)
+router.get('/dashboard', requireLogin, async (req, res, next) => {
+    try {
+        const pool = req.db;
+        const userId = req.session.userId;
+
+        // Busca apenas os dados essenciais para o dashboard
+        const [userResult] = await pool.query("SELECT Nome FROM Usuarios WHERE id_usuario = ?", [userId]);
+        const user = userResult[0];
+
+        if (!user) {
+            req.session.destroy();
+            return res.redirect('/login');
+        }
+
+        res.render('Dashboard', { user: user });
+    } catch (error) {
+        console.error("Erro ao carregar o dashboard:", error);
+        next(error);
+    }
+});
+
 // ROTA PARA FAZER LOGOUT (SAIR)
 router.get('/sair', (req, res) => {
     req.session.destroy(err => {
@@ -119,7 +141,8 @@ router.post('/login', async (req, res, next) => {
     } else {
       res.status(401).send("Erro: Email ou senha inválidos.");
     }
-  } catch (error) {
+  } catch (error)
+    {
     next(error);
   }
 });

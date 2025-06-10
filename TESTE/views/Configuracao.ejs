@@ -96,7 +96,7 @@
             margin-bottom: 10px;
             background-color: #333; /* Cor de fundo para o caso de não haver imagem */
         }
-        /* Estilo para o botão de upload de arquivo */
+        /* Estilo para o botão de upload de ficheiro */
         .file-upload-label {
             display: inline-block;
             padding: 8px 15px;
@@ -111,32 +111,35 @@
         .file-upload-label:hover {
             background-color: #572364;
         }
-        /* Esconde o input de arquivo padrão */
+        /* Esconde o input de ficheiro padrão */
         #fotoPerfil {
             display: none;
         }
-        .back-link {
-            display: block;
-            text-align: center;
+        .actions-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-top: 20px;
+        }
+        .actions-container a {
             color: #e0c8e6;
             text-decoration: none;
             font-size: 14px;
         }
-        .back-link:hover {
+        .actions-container a:hover {
             text-decoration: underline;
         }
     </style>
 </head>
 <body>
     <div class="config-container">
-        <!-- Verifica se o usuário existe antes de tentar aceder às suas propriedades -->
+        <!-- Verifica se o utilizador existe antes de tentar aceder às suas propriedades -->
         <% if (user) { %>
             <h2>Configurações de <%= user.Nome %></h2>
 
             <form method="POST" action="/configuracao" enctype="multipart/form-data">
                 <div class="profile-pic-section">
-                    <!-- Mostra a foto do usuário ou uma padrão -->
+                    <!-- Mostra a foto do utilizador ou uma padrão -->
                     <img src="<%= user.FotoPerfil || '/images/logo.png' %>" alt="Foto de Perfil" id="profilePicPreview">
                     
                     <label for="fotoPerfil" class="file-upload-label">Alterar Foto</label>
@@ -162,7 +165,10 @@
 
                 <button type="submit">Salvar Alterações</button>
             </form>
-            <a href="/sair" class="back-link">Sair</a>
+            <div class="actions-container">
+                <a href="/dashboard">Ir para o Dashboard</a>
+                <a href="/sair">Sair</a>
+            </div>
         <% } else { %>
             <h2>Utilizador não encontrado.</h2>
             <a href="/login" class="back-link">Voltar ao Login</a>
