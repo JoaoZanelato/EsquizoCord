@@ -5,25 +5,34 @@ const multer = require('multer');
 const path = require('path');
 const saltRounds = 10;
 
-// Configuração do Multer para upload de imagens de perfil
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    // Certifique-se de que esta pasta existe no seu projeto: public/images/uploads
-    cb(null, 'public/images/uploads/'); 
-  },
-  filename: function (req, file, cb) {
-    // Garante um nome de ficheiro único adicionando a data e o ID do utilizador
-    const userId = req.session.userId;
-    cb(null, `user-${userId}-${Date.now()}${path.extname(file.originalname)}`);
-  }
+// --- Configuração do Cloudinary ---
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+// Esta configuração usa as variáveis de ambiente que você colocou no Render e no seu .env
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
+// Configura o multer para fazer o upload diretamente para o Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'esquizocord_profiles', // Nome da pasta no Cloudinary para organizar os uploads
+    format: async (req, file) => 'png', // Converte as imagens para png
+    public_id: (req, file) => `user-${req.session.userId}-${Date.now()}`, // Cria um nome de arquivo único
+  },
+});
+
 const upload = multer({ storage: storage });
 
 
 // Middleware para proteger rotas que exigem login
 function requireLogin(req, res, next) {
     if (req.session && req.session.userId) {
-        return next(); // Se o utilizador está na sessão, continua
+        return next(); // Se o usuário está na sessão, continua
     } else {
         return res.redirect('/login'); // Se não, redireciona para a página de login
     }
@@ -42,7 +51,7 @@ router.get('/configuracao', requireLogin, async (req, res, next) => {
         const pool = req.db;
         const userId = req.session.userId;
 
-        // Busca os dados do utilizador logado e os temas disponíveis em paralelo
+        // Busca os dados do usuário logado e os temas disponíveis em paralelo
         const [userResult, themesResult] = await Promise.all([
             pool.query("SELECT id_usuario, Nome, Email, Biografia, FotoPerfil, id_tema FROM Usuarios WHERE id_usuario = ?", [userId]),
             pool.query("SELECT * FROM Temas")
@@ -56,6 +65,7 @@ router.get('/configuracao', requireLogin, async (req, res, next) => {
             return res.redirect('/login');
         }
 
+        // Renderiza a página passando os dados do usuário e os temas
         res.render('Configuracao', { user: user, themes: themes });
     } catch (error) {
         console.error("Erro ao carregar a página de configurações:", error);
@@ -69,7 +79,7 @@ router.get('/dashboard', requireLogin, async (req, res, next) => {
         const pool = req.db;
         const userId = req.session.userId;
 
-        // Busca os dados do utilizador e os grupos a que pertence
+        // Busca os dados do usuário e os grupos a que pertence
         const [userResult] = await pool.query("SELECT id_usuario, Nome, FotoPerfil FROM Usuarios WHERE id_usuario = ?", [userId]);
         const [groupsResult] = await pool.query(
             "SELECT g.id_grupo, g.Nome, g.Foto FROM Grupos g " +
@@ -86,11 +96,8 @@ router.get('/dashboard', requireLogin, async (req, res, next) => {
             return res.redirect('/login');
         }
 
-        // Dados de exemplo para a lista de amigos
-        const friends = [
-            { id: 1, nome: 'Amigo Exemplo 1', status: 'online', foto: '/images/logo.png' },
-            { id: 2, nome: 'Amigo Exemplo 2', status: 'offline', foto: '/images/logo.png' }
-        ];
+        // Dados de exemplo para a lista de amigos (você irá desenvolver a lógica para isto)
+        const friends = [];
 
         res.render('Dashboard', { user: user, groups: groups, friends: friends });
     } catch (error) {
@@ -105,13 +112,15 @@ router.get('/sair', (req, res) => {
         if (err) {
             return res.redirect('/configuracao');
         }
-        res.clearCookie('connect.sid');
-        res.redirect('/');
+        res.clearCookie('connect.sid'); // Limpa o cookie da sessão
+        res.redirect('/'); // Redireciona para a página inicial
     });
 });
 
 
 /* --- ROTAS POST PARA PROCESSAR DADOS --- */
+
+// ROTA POST PARA O FORMULÁRIO DE CADASTRO
 router.post('/cadastro', async (req, res, next) => {
   const { nome, email, senha, confirmar_senha } = req.body;
   if (senha !== confirmar_senha) {
@@ -128,6 +137,7 @@ router.post('/cadastro', async (req, res, next) => {
   }
 });
 
+// ROTA POST PARA O FORMULÁRIO DE LOGIN
 router.post('/login', async (req, res, next) => {
   const { email, senha } = req.body;
   try {
@@ -143,8 +153,9 @@ router.post('/login', async (req, res, next) => {
     const match = await bcrypt.compare(senha, user.Senha);
 
     if (match) {
+      // Login bem-sucedido: armazena o ID do usuário na sessão
       req.session.userId = user.id_usuario;
-      res.redirect('/dashboard'); // Redireciona para o novo dashboard
+      res.redirect('/dashboard');
     } else {
       res.status(401).send("Erro: Email ou senha inválidos.");
     }
@@ -153,28 +164,38 @@ router.post('/login', async (req, res, next) => {
   }
 });
 
+// ROTA POST PARA SALVAR AS CONFIGURAÇÕES DO PERFIL USANDO CLOUDINARY
 router.post('/configuracao', requireLogin, upload.single('fotoPerfil'), async (req, res, next) => {
     try {
         const { nome, biografia, id_tema } = req.body;
         const userId = req.session.userId;
         const pool = req.db;
-        let fotoPath = null;
-        if (req.file) {
-            fotoPath = `/images/uploads/${req.file.filename}`;
-        }
+
+        // O multer-storage-cloudinary já fez o upload. O URL está em req.file.path.
+        const fotoUrl = req.file ? req.file.path : null;
+        
         let sql = "UPDATE Usuarios SET Nome = ?, Biografia = ?, id_tema = ?";
         const params = [nome, biografia, id_tema === 'null' ? null : id_tema];
-        if (fotoPath) {
+
+        if (fotoUrl) {
+            // Se uma nova foto foi enviada, guarda o URL seguro do Cloudinary
             sql += ", FotoPerfil = ?";
-            params.push(fotoPath);
+            params.push(fotoUrl);
         }
+
         sql += " WHERE id_usuario = ?";
         params.push(userId);
+        
         await pool.query(sql, params);
+
+        console.log(`Perfil do usuário ${userId} atualizado com sucesso.`);
         res.redirect('/configuracao');
+
     } catch (error) {
+        console.error("Erro ao salvar as configurações:", error);
         next(error);
     }
 });
+
 
 module.exports = router;
