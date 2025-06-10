@@ -52,12 +52,10 @@ router.get('/configuracao', requireLogin, async (req, res, next) => {
         const themes = themesResult[0];
 
         if (!user) {
-            // Se o utilizador da sessão não for encontrado no banco, destrói a sessão
             req.session.destroy();
             return res.redirect('/login');
         }
 
-        // Renderiza a página passando os dados do utilizador e os temas
         res.render('Configuracao', { user: user, themes: themes });
     } catch (error) {
         console.error("Erro ao carregar a página de configurações:", error);
@@ -71,16 +69,30 @@ router.get('/dashboard', requireLogin, async (req, res, next) => {
         const pool = req.db;
         const userId = req.session.userId;
 
-        // Busca apenas os dados essenciais para o dashboard
-        const [userResult] = await pool.query("SELECT Nome FROM Usuarios WHERE id_usuario = ?", [userId]);
+        // Busca os dados do utilizador e os grupos a que pertence
+        const [userResult] = await pool.query("SELECT id_usuario, Nome, FotoPerfil FROM Usuarios WHERE id_usuario = ?", [userId]);
+        const [groupsResult] = await pool.query(
+            "SELECT g.id_grupo, g.Nome, g.Foto FROM Grupos g " +
+            "JOIN ParticipantesGrupo pg ON g.id_grupo = pg.id_grupo " +
+            "WHERE pg.id_usuario = ?",
+            [userId]
+        );
+
         const user = userResult[0];
+        const groups = groupsResult;
 
         if (!user) {
             req.session.destroy();
             return res.redirect('/login');
         }
 
-        res.render('Dashboard', { user: user });
+        // Dados de exemplo para a lista de amigos
+        const friends = [
+            { id: 1, nome: 'Amigo Exemplo 1', status: 'online', foto: '/images/logo.png' },
+            { id: 2, nome: 'Amigo Exemplo 2', status: 'offline', foto: '/images/logo.png' }
+        ];
+
+        res.render('Dashboard', { user: user, groups: groups, friends: friends });
     } catch (error) {
         console.error("Erro ao carregar o dashboard:", error);
         next(error);
@@ -91,18 +103,15 @@ router.get('/dashboard', requireLogin, async (req, res, next) => {
 router.get('/sair', (req, res) => {
     req.session.destroy(err => {
         if (err) {
-            // Se houver um erro ao destruir a sessão, não faz nada drástico
             return res.redirect('/configuracao');
         }
-        res.clearCookie('connect.sid'); // Limpa o cookie da sessão
-        res.redirect('/'); // Redireciona para a página inicial
+        res.clearCookie('connect.sid');
+        res.redirect('/');
     });
 });
 
 
 /* --- ROTAS POST PARA PROCESSAR DADOS --- */
-
-// ROTA POST PARA O FORMULÁRIO DE CADASTRO
 router.post('/cadastro', async (req, res, next) => {
   const { nome, email, senha, confirmar_senha } = req.body;
   if (senha !== confirmar_senha) {
@@ -119,7 +128,6 @@ router.post('/cadastro', async (req, res, next) => {
   }
 });
 
-// ROTA POST PARA O FORMULÁRIO DE LOGIN
 router.post('/login', async (req, res, next) => {
   const { email, senha } = req.body;
   try {
@@ -135,53 +143,38 @@ router.post('/login', async (req, res, next) => {
     const match = await bcrypt.compare(senha, user.Senha);
 
     if (match) {
-      // Login bem-sucedido: armazena o ID do utilizador na sessão
       req.session.userId = user.id_usuario;
-      res.redirect('/configuracao');
+      res.redirect('/dashboard'); // Redireciona para o novo dashboard
     } else {
       res.status(401).send("Erro: Email ou senha inválidos.");
     }
-  } catch (error)
-    {
+  } catch (error) {
     next(error);
   }
 });
 
-// ROTA POST PARA SALVAR AS CONFIGURAÇÕES DO PERFIL
 router.post('/configuracao', requireLogin, upload.single('fotoPerfil'), async (req, res, next) => {
     try {
         const { nome, biografia, id_tema } = req.body;
         const userId = req.session.userId;
         const pool = req.db;
-
         let fotoPath = null;
         if (req.file) {
-            // Se um novo ficheiro foi enviado, guarda o caminho relativo da imagem
             fotoPath = `/images/uploads/${req.file.filename}`;
         }
-        
         let sql = "UPDATE Usuarios SET Nome = ?, Biografia = ?, id_tema = ?";
         const params = [nome, biografia, id_tema === 'null' ? null : id_tema];
-
         if (fotoPath) {
-            // Se uma nova foto foi enviada, adiciona a atualização da foto ao comando SQL
             sql += ", FotoPerfil = ?";
             params.push(fotoPath);
         }
-
         sql += " WHERE id_usuario = ?";
         params.push(userId);
-        
         await pool.query(sql, params);
-
-        console.log(`Perfil do utilizador ${userId} atualizado com sucesso.`);
         res.redirect('/configuracao');
-
     } catch (error) {
-        console.error("Erro ao salvar as configurações:", error);
         next(error);
     }
 });
-
 
 module.exports = router;

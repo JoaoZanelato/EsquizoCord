@@ -5,81 +5,233 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - EsquizoCord</title>
     <link rel="icon" type="image/png" href="/images/logo.png">
+    <!-- Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* Estilos gerais */
+        :root {
+            --background-primary: #36393f;
+            --background-secondary: #2f3136;
+            --background-tertiary: #202225;
+            --header-primary: #fff;
+            --text-normal: #dcddde;
+            --text-muted: #72767d;
+            --brand-experiment: #660080;
+            --brand-hover: #572364;
+            --purple-accent: #cc00ff;
+        }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            overflow: hidden;
+            color: var(--text-normal);
+        }
+
+        .dashboard-layout {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* --- Coluna 1: Lista de Servidores --- */
+        .server-list {
+            width: 72px;
+            background-color: var(--background-tertiary);
+            padding: 12px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .server-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background-color: var(--background-primary);
+            margin-bottom: 8px;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
-            
-            /* Define a mesma imagem de fundo */
-            background-image: url('/images/background.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }
-
-        /* Container principal */
-        .dashboard-container {
-            text-align: center;
-            /* Fundo roxo semi-transparente */
-            background-color: rgba(84, 11, 112, 0.95); 
-            color: #fff1f1;
-            padding: 50px 60px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            max-width: 500px;
-            width: 90%;
-        }
-
-        /* Título de boas-vindas */
-        h1 {
-            margin-bottom: 15px;
-            font-size: 32px;
-            font-weight: 600;
-        }
-        
-        /* Parágrafo */
-        p {
-            margin-bottom: 30px;
-            color: #e0c8e6;
-            font-size: 18px;
-        }
-
-        /* Botão de Sair */
-        .btn-logout {
-            display: inline-block;
-            text-decoration: none;
-            font-size: 16px;
-            font-weight: 600;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            background-color: #cc00ff;
-            color: white;
+            transition: border-radius 0.3s, background-color 0.3s;
+        }
+        .server-icon:hover {
+            border-radius: 16px;
+            background-color: var(--brand-experiment);
+        }
+        .server-icon img {
+            width: 100%;
+            height: 100%;
+            border-radius: inherit;
+            object-fit: cover;
+        }
+        .profile-icon-container {
+            margin-top: auto; /* Empurra para o fundo */
+        }
+        .profile-icon {
+            border: 2px solid var(--text-muted);
+        }
+        .profile-icon:hover {
+             border-color: var(--purple-accent);
         }
 
-        .btn-logout:hover {
-            background-color: #955ca3;
-            transform: translateY(-2px);
+
+        /* --- Coluna 2: Canais e Amigos --- */
+        .channel-list {
+            width: 240px;
+            background-color: var(--background-secondary);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        .channel-header {
+            padding: 12px;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+        }
+        .channel-header input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: none;
+            background-color: var(--background-tertiary);
+            color: var(--text-normal);
+            box-sizing: border-box;
+        }
+        .friends-list {
+            padding: 12px;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        .friends-list-header {
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .friend-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .friend-item:hover {
+            background-color: rgba(255,255,255,0.04);
+        }
+        .friend-item img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-right: 12px;
+        }
+        .user-panel {
+            background-color: #292b2f;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+        }
+        .user-panel img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .user-panel .username {
+            font-weight: bold;
+        }
+
+        /* --- Coluna 3: Área de Chat Principal --- */
+        .chat-area {
+            flex-grow: 1;
+            background-color: var(--background-primary);
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            padding: 12px 16px;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+            font-weight: bold;
+            color: var(--header-primary);
+        }
+        .chat-messages {
+            flex-grow: 1;
+            padding: 16px;
+            overflow-y: auto;
+        }
+        .chat-input-bar {
+            padding: 0 16px 24px 16px;
+        }
+        .chat-input-bar input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            background-color: #40444b;
+            color: var(--text-normal);
+            box-sizing: border-box;
+        }
+        .chat-input-bar input::placeholder {
+            color: var(--text-muted);
         }
     </style>
 </head>
 <body>
+    <div class="dashboard-layout">
+        <!-- Coluna 1: Lista de Servidores -->
+        <nav class="server-list">
+            <% if (groups && groups.length > 0) { %>
+                <% groups.forEach(group => { %>
+                    <div class="server-icon" title="<%= group.Nome %>">
+                        <img src="<%= group.Foto || '/images/default-group-icon.png' %>" alt="<%= group.Nome %>">
+                    </div>
+                <% }); %>
+            <% } %>
 
-    <div class="dashboard-container">
-        <!-- Futuramente, você pode personalizar esta mensagem com o nome do usuário -->
-        <h1>Bem-vindo!</h1>
-        <p>Você está logado no EsquizoCord.</p>
-        
-        <!-- O link de logout irá para a rota de login por enquanto -->
-        <a href="/login" class="btn-logout">Sair</a>
+            <div class="server-icon" title="Adicionar um servidor">
+                <i class="fas fa-plus" style="color: #43B581;"></i>
+            </div>
+            
+            <div class="profile-icon-container">
+                 <a href="/configuracao">
+                    <img src="<%= user.FotoPerfil || '/images/logo.png' %>" alt="Perfil" class="server-icon profile-icon">
+                 </a>
+            </div>
+        </nav>
+
+        <!-- Coluna 2: Canais e Amigos -->
+        <aside class="channel-list">
+            <div class="channel-header">
+                <input type="text" placeholder="Encontrar ou começar uma conversa">
+            </div>
+            <div class="friends-list">
+                <div class="friends-list-header">MENSAGENS DIRETAS</div>
+                <% if (friends && friends.length > 0) { %>
+                    <% friends.forEach(friend => { %>
+                        <div class="friend-item">
+                            <img src="<%= friend.foto %>" alt="<%= friend.nome %>">
+                            <span><%= friend.nome %></span>
+                        </div>
+                    <% }); %>
+                <% } %>
+            </div>
+            <div class="user-panel">
+                 <img src="<%= user.FotoPerfil || '/images/logo.png' %>" alt="Perfil">
+                 <span class="username"><%= user.Nome %></span>
+            </div>
+        </aside>
+
+        <!-- Coluna 3: Área de Chat Principal -->
+        <main class="chat-area">
+            <div class="chat-header">
+                <h3># geral</h3>
+            </div>
+            <div class="chat-messages">
+                <!-- As mensagens do chat aparecerão aqui -->
+                <p>Bem-vindo ao EsquizoCord! Selecione um grupo ou amigo para começar a conversar.</p>
+            </div>
+            <div class="chat-input-bar">
+                <input type="text" placeholder="Conversar em #geral">
+            </div>
+        </main>
     </div>
-
 </body>
 </html>
