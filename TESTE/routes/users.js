@@ -1,26 +1,23 @@
-var express = require('express');
-var router = express.Router();
-
-/* GET users listing. */
-router.get('/', function(req, res, next) {
-  res.send('respond with a resource');
-});
-
-// adicionado do chat
 const express = require('express');
 const router = express.Router();
-const pool = require('../banco/db');
 
-outer.get('/', async (req, res) => {
-  let conn;
+/* GET Rota para listar os usuários. */
+router.get('/', async function(req, res, next) {
   try {
-    conn = await pool.getConnection();
-    const rows = await conn.query('SELECT * FROM usuarios'); // ou outro nome de tabela
-    res.render('Dashboard', { usuarios: rows });
+    // Acessa o pool de conexões que o app.js nos deu via `req.db`.
+    const pool = req.db;
+
+    // Faz a consulta para buscar os usuários.
+    const [rows] = await pool.query('SELECT * FROM usuarios');
+
+    // Responde com os dados dos usuários em formato JSON.
+    // Ou, se preferir renderizar uma página: res.render('uma-view', { usuarios: rows });
+    res.json(rows);
+
   } catch (err) {
-    res.status(500).send(err.message);
-  } finally {
-    if (conn) conn.release();
+    // Se algo der errado, passa o erro para o handler central do Express.
+    console.error('Erro ao buscar a lista de usuários:', err);
+    next(err);
   }
 });
 
