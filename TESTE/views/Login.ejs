@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login - EsquizoCord</title>
-    <link rel="icon" type="image/png" href="/images/logo.png">
+    <link rel="icon" type="image/png" href="/images/logo.png" />
     <style>
       /* Estilos gerais */
       body {
@@ -111,11 +111,13 @@
   <body>
     <div class="login-container">
       <h2>Login</h2>
-      <form>
+      <!-- Formulário atualizado para enviar dados para o servidor -->
+      <form method="POST" action="/login">
         <label for="email">Email:</label>
         <input
           type="email"
           id="email"
+          name="email"
           placeholder="Digite seu email"
           required
         />
@@ -124,6 +126,7 @@
         <input
           type="password"
           id="password"
+          name="senha"
           placeholder="Digite sua senha"
           required
         />
