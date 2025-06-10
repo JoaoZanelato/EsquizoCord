@@ -5,8 +5,8 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 
-// 1. Importa o pool de conexões do seu arquivo db.js
-const pool = require('../banco/db'); // Garanta que este caminho está correto
+
+const pool = require('./db');
 
 // Importação das rotas
 const indexRouter = require('./routes/index');
@@ -50,6 +50,5 @@ app.use(function(err, req, res, next) {
   res.render('error');
 });
 
-// 2. Exporta a aplicação para que o bin/www possa usá-la
+// Exporta a aplicação para que o bin/www possa usá-la
 module.exports = app;
-

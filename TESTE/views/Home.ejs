@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bem-vindo ao EsquizoCord</title>
+    <style>
+        /* Estilos gerais */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            
+            /* --- Alteração aqui --- */
+            /* Define a imagem de fundo */
+            background-image: url('/images/background.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        /* Container principal */
+        .container {
+            text-align: center;
+            /* Fundo branco semi-transparente para garantir a leitura */
+            background-color: rgba(84, 11, 112, 0.952); 
+            color: #fff1f1;
+            padding: 40px 50px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        /* Espaço para a logo */
+        .logo-placeholder {
+            width: 120px;
+            height: 120px;
+            background-color: #e9ecef;
+            border-radius: 50%;
+            margin: 0 auto 25px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            color: #6c757d;
+            border: 2px dashed #ced4da;
+            object-fit: cover; /* Garante que a logo se ajuste bem no círculo */
+        }
+
+        /* Título */
+        h1 {
+            margin-bottom: 10px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        
+        /* Parágrafo de descrição */
+        p {
+            margin-bottom: 30px;
+            color: #9757a7;
+            font-size: 16px;
+        }
+
+        /* Container dos botões */
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Estilo base dos botões */
+        .btn {
+            display: inline-block;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        /* Botão principal (Login) */
+        .btn-primary {
+            background-color: #cc00ff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #955ca3;
+            transform: translateY(-2px);
+        }
+
+        /* Botão secundário (Cadastro) */
+        .btn-secondary {
+            background-color: #660080;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color:#572364;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Alterado para exibir a sua logo -->
+        <img src="/images/logo.png" alt="Logo do EsquizoCord" class="logo-placeholder">
+
+        <h1>Bem-vindo ao EsquizoCord</h1>
+        
+        <!-- Frase sem o efeito glitch -->
+        <p>Sua nova plataforma de comunicação. Conecte-se agora!</p>
+
+        <div class="button-group">
+            <a href="/login" class="btn btn-primary">Login</a>
+            <a href="/cadastro" class="btn btn-secondary">Cadastre-se</a>
+        </div>
+    </div>
+
+</body>
+</html>
