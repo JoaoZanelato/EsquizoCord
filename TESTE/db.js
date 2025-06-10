@@ -15,10 +15,8 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   ssl: {
-    rejectUnauthorized: true
-  }
+    rejectUnauthorized: true,
+  },
 });
-
-
 // 3. Exporta o pool para ser usado em outros arquivos
 module.exports = pool;
