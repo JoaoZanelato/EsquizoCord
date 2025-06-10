@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - EsquizoCord</title>
+    <link rel="icon" type="image/png" href="/images/logo.png">
+    <style>
+        /* Estilos gerais */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            
+            /* Define a mesma imagem de fundo */
+            background-image: url('/images/background.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        /* Container principal */
+        .dashboard-container {
+            text-align: center;
+            /* Fundo roxo semi-transparente */
+            background-color: rgba(84, 11, 112, 0.95); 
+            color: #fff1f1;
+            padding: 50px 60px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        /* Título de boas-vindas */
+        h1 {
+            margin-bottom: 15px;
+            font-size: 32px;
+            font-weight: 600;
+        }
+        
+        /* Parágrafo */
+        p {
+            margin-bottom: 30px;
+            color: #e0c8e6;
+            font-size: 18px;
+        }
+
+        /* Botão de Sair */
+        .btn-logout {
+            display: inline-block;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #cc00ff;
+            color: white;
+        }
+
+        .btn-logout:hover {
+            background-color: #955ca3;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <!-- Futuramente, você pode personalizar esta mensagem com o nome do usuário -->
+        <h1>Bem-vindo!</h1>
+        <p>Você está logado no EsquizoCord.</p>
+        
+        <!-- O link de logout irá para a rota de login por enquanto -->
+        <a href="/login" class="btn-logout">Sair</a>
+    </div>
+
+</body>
+</html>
