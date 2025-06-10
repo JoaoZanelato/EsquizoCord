@@ -9,6 +9,35 @@ var usersRouter = require('./routes/users');
 
 var app = express();
 
+//banco de dados chat
+DB_HOST=localhost
+DB_USER=seu_usuario
+DB_PASS=sua_senha
+DB_NAME=nome_do_banco
+
+// banco do chat tbm
+require('dotenv').config();
+const express = require('express');
+const path = require('path');
+const app = express();
+
+const usersRouter = require('./routes/users');
+
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'ejs');
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.use('/users', usersRouter); // acessível via /users
+
+app.listen(3000, () => {
+  console.log('Servidor rodando na porta 3000');
+});
+
+
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
