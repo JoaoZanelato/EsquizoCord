@@ -1,70 +1,60 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
-
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
-
-var app = express();
-
-//banco de dados chat
-DB_HOST=localhost
-DB_USER=seu_usuario
-DB_PASS=sua_senha
-DB_NAME=nome_do_banco
-
-// banco do chat tbm
-require('dotenv').config();
+// Importações principais
+const createError = require('http-errors');
 const express = require('express');
 const path = require('path');
-const app = express();
+const cookieParser = require('cookie-parser');
+const logger = require('morgan');
 
+// 1. Importa o pool de conexões do seu arquivo db.js
+const pool = require('./db');
+
+// Importação das rotas
+const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
 
+// Inicia a aplicação Express
+const app = express();
+const port = 3000;
+
+// Configuração da View Engine (EJS)
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.use('/users', usersRouter); // acessível via /users
-
-app.listen(3000, () => {
-  console.log('Servidor rodando na porta 3000');
-});
-
-
-
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'ejs');
-
+// Configuração dos Middlewares
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// 2. Middleware para disponibilizar o pool de conexões para todas as rotas
+//    Qualquer rota agora pode acessar o banco de dados através de `req.db`
+app.use((req, res, next) => {
+  req.db = pool;
+  next();
+});
+
+// Definição das Rotas
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
-// catch 404 and forward to error handler
+// Middleware para tratar erro 404 (Not Found)
 app.use(function(req, res, next) {
   next(createError(404));
 });
 
-// error handler
+// Middleware para tratar outros erros
 app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
+  // Define informações do erro para o template de erro
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-  // render the error page
+  // Renderiza a página de erro
   res.status(err.status || 500);
   res.render('error');
 });
 
-module.exports = app;
+// Inicia o servidor
+app.listen(port, () => {
+  console.log(`Servidor rodando na porta ${port}`);
+});
