@@ -1,126 +1,136 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login - EsquizoCord</title>
+    <link rel="icon" type="image/png" href="/images/logo.png">
     <style>
-        /* Estilos gerais */
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            
-            /* Define a mesma imagem de fundo da home */
-            background-image: url('/images/background.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }
+      /* Estilos gerais */
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
 
-        /* Container principal */
-        .login-container {
-            text-align: left;
-            /* Fundo roxo semi-transparente */
-            background-color: rgba(84, 11, 112, 0.95); 
-            color: #fff1f1;
-            padding: 40px 50px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            max-width: 400px;
-            width: 90%;
-        }
+        /* Define a mesma imagem de fundo da home */
+        background-image: url("/images/background.png");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
 
-        /* Título */
-        h2 {
-            text-align: center;
-            margin-bottom: 25px;
-            font-size: 28px;
-            font-weight: 600;
-        }
-        
-        /* Formulário */
-        form {
-            display: flex;
-            flex-direction: column;
-        }
+      /* Container principal */
+      .login-container {
+        text-align: left;
+        /* Fundo roxo semi-transparente */
+        background-color: rgba(84, 11, 112, 0.95);
+        color: #fff1f1;
+        padding: 40px 50px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        max-width: 400px;
+        width: 90%;
+      }
 
-        label {
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #e0c8e6;
-        }
+      /* Título */
+      h2 {
+        text-align: center;
+        margin-bottom: 25px;
+        font-size: 28px;
+        font-weight: 600;
+      }
 
-        input {
-            padding: 12px;
-            margin-bottom: 20px;
-            border: 1px solid #955ca3;
-            border-radius: 8px;
-            background-color: rgba(0, 0, 0, 0.2);
-            color: white;
-            font-size: 16px;
-        }
+      /* Formulário */
+      form {
+        display: flex;
+        flex-direction: column;
+      }
 
-        input::placeholder {
-            color: #b3a1b8;
-        }
+      label {
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #e0c8e6;
+      }
 
-        input:focus {
-            outline: none;
-            border-color: #cc00ff;
-            box-shadow: 0 0 5px rgba(204, 0, 255, 0.5);
-        }
+      input {
+        padding: 12px;
+        margin-bottom: 20px;
+        border: 1px solid #955ca3;
+        border-radius: 8px;
+        background-color: rgba(0, 0, 0, 0.2);
+        color: white;
+        font-size: 16px;
+      }
 
-        /* Botão de entrar */
-        button {
-            padding: 12px;
-            background-color: #cc00ff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
+      input::placeholder {
+        color: #b3a1b8;
+      }
 
-        button:hover {
-            background-color: #955ca3;
-            transform: translateY(-2px);
-        }
+      input:focus {
+        outline: none;
+        border-color: #cc00ff;
+        box-shadow: 0 0 5px rgba(204, 0, 255, 0.5);
+      }
 
-        /* Link para voltar */
-        .back-link {
-            display: block;
-            text-align: center;
-            margin-top: 20px;
-            color: #e0c8e6;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .back-link:hover {
-            text-decoration: underline;
-        }
+      /* Botão de entrar */
+      button {
+        padding: 12px;
+        background-color: #cc00ff;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+      }
+
+      button:hover {
+        background-color: #955ca3;
+        transform: translateY(-2px);
+      }
+
+      /* Link para voltar */
+      .back-link {
+        display: block;
+        text-align: center;
+        margin-top: 20px;
+        color: #e0c8e6;
+        text-decoration: none;
+        font-size: 14px;
+      }
+      .back-link:hover {
+        text-decoration: underline;
+      }
     </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <div class="login-container">
-        <h2>Login</h2>
-        <form>
-            <label for="email">Email:</label>
-            <input type="email" id="email" placeholder="Digite seu email" required />
+      <h2>Login</h2>
+      <form>
+        <label for="email">Email:</label>
+        <input
+          type="email"
+          id="email"
+          placeholder="Digite seu email"
+          required
+        />
 
-            <label for="password">Senha:</label>
-            <input type="password" id="password" placeholder="Digite sua senha" required />
+        <label for="password">Senha:</label>
+        <input
+          type="password"
+          id="password"
+          placeholder="Digite sua senha"
+          required
+        />
 
-            <button type="submit">Entrar</button>
-        </form>
-        <a href="/" class="back-link">Voltar para a Home</a>
+        <button type="submit">Entrar</button>
+      </form>
+      <a href="/" class="back-link">Voltar para a Home</a>
     </div>
-
-</body>
+  </body>
 </html>
