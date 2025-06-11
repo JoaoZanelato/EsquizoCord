@@ -128,7 +128,14 @@ router.post('/login', async (req, res, next) => {
     if (match) {
       // Login bem-sucedido: armazena o objeto completo do utilizador na sessão
       req.session.user = user;
-      res.redirect('/dashboard');
+      
+      // Salva a sessão manualmente antes de redirecionar para evitar race conditions
+      req.session.save(err => {
+        if (err) {
+          return next(err);
+        }
+        res.redirect('/dashboard');
+      });
     } else {
       res.status(401).send("Erro: Email ou senha inválidos.");
     }
@@ -162,7 +169,12 @@ router.post('/configuracao', requireLogin, upload.single('fotoPerfil'), async (r
         const [updatedUser] = await pool.query("SELECT * FROM Usuarios WHERE id_usuario = ?", [userId]);
         req.session.user = updatedUser[0];
 
-        res.redirect('/configuracao');
+        req.session.save(err => {
+            if (err) {
+                return next(err);
+            }
+            res.redirect('/configuracao');
+        });
     } catch (error) {
         next(error);
     }
