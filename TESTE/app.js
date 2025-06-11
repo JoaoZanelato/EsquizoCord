@@ -2,11 +2,8 @@ const createError = require('http-errors');
 const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
-const logger = require('morgan');
+const logger = 'morgan';
 const session = require('express-session');
-
-// 1. Importa a conexão com a base de dados
-const pool = require('./db'); 
 
 // Importação das rotas
 const indexRouter = require('./routes/index');
@@ -15,27 +12,37 @@ const groupsRouter = require('./routes/groups');
 
 const app = express();
 
+// --- CORREÇÃO PARA O RENDER ---
+// Diz ao Express para confiar no reverse proxy do Render.
+// Isto é essencial para que as sessões e os cookies seguros funcionem corretamente.
+app.set('trust proxy', 1); 
+
 // Configuração da View Engine
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
 // Configuração dos Middlewares
-app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configuração da Sessão
+// Configuração da Sessão Atualizada para Produção
 app.use(session({
   secret: 'a_frase_mais_secreta_do_esquizocord', // Mude isto para uma frase aleatória
   resave: false,
-  saveUninitialized: true,
-  cookie: { secure: process.env.NODE_ENV === 'production' }
+  saveUninitialized: false, // Alterado para false, boa prática
+  cookie: { 
+      secure: process.env.NODE_ENV === 'production', // Cookie seguro apenas em produção (HTTPS)
+      httpOnly: true, // Protege contra ataques XSS
+      sameSite: 'lax' // Proteção contra ataques CSRF
+    } 
 }));
 
-// 2. Middleware para disponibilizar a conexão da DB para todas as rotas
-//    Esta era a parte que estava em falta.
+
+// Middleware para disponibilizar a conexão da DB para todas as rotas
+// (Certifique-se de que a importação do 'pool' está no seu ficheiro real)
+const pool = require('./db'); 
 app.use((req, res, next) => {
   req.db = pool;
   next();

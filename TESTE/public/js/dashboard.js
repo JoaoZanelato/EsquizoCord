@@ -22,13 +22,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Elementos dos Modais
     const createGroupModal = document.getElementById('create-group-modal');
     const editGroupModal = document.getElementById('edit-group-modal');
+    const searchGroupModal = document.getElementById('search-group-modal');
     
-    // Formulários
+    // Formulários e Inputs
     const createGroupForm = document.getElementById('create-group-form');
     const editGroupForm = document.getElementById('edit-group-form');
+    const searchGroupInput = document.getElementById('search-group-input');
+    const searchResultsContainer = document.getElementById('search-results');
 
     // Botões de Ação
     const addServerButton = document.getElementById('add-server-button');
+    const searchServerButton = document.getElementById('search-server-button');
     const groupSettingsIcon = document.getElementById('group-settings-icon');
 
     // Listagem
@@ -45,22 +49,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if(modal) modal.style.display = 'flex';
     }
 
-    // Eventos para abrir e fechar modais
-    if(addServerButton) {
-        addServerButton.addEventListener('click', () => openModal(createGroupModal));
-    }
-    if(groupSettingsIcon) {
-        groupSettingsIcon.addEventListener('click', () => {
-            if (currentGroupData) {
-                document.getElementById('edit-group-id').value = currentGroupData.details.id_grupo;
-                document.getElementById('edit-group-name').value = currentGroupData.details.Nome;
-                document.getElementById('edit-group-private').checked = currentGroupData.details.IsPrivate;
-                openModal(editGroupModal);
-            }
-        });
-    }
+    // --- Event Listeners ---
 
-    [createGroupModal, editGroupModal].forEach(modal => {
+    // Abrir Modais
+    addServerButton.addEventListener('click', () => openModal(createGroupModal));
+    searchServerButton.addEventListener('click', () => openModal(searchGroupModal));
+    groupSettingsIcon.addEventListener('click', () => {
+        if (currentGroupData) {
+            document.getElementById('edit-group-id').value = currentGroupData.details.id_grupo;
+            document.getElementById('edit-group-name').value = currentGroupData.details.Nome;
+            document.getElementById('edit-group-private').checked = currentGroupData.details.IsPrivate;
+            openModal(editGroupModal);
+        }
+    });
+
+    // Fechar Modais
+    [createGroupModal, editGroupModal, searchGroupModal].forEach(modal => {
         if (!modal) return;
         modal.querySelector('.cancel-btn').addEventListener('click', () => closeModal(modal));
         modal.addEventListener('click', (e) => {
@@ -68,65 +72,108 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Submeter formulário de CRIAR grupo
-    if(createGroupForm) {
-        createGroupForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(createGroupForm);
-            
+    // Submeter Formulários
+    createGroupForm.addEventListener('submit', handleFormSubmit('/groups/criar', 'Erro ao criar grupo.'));
+    editGroupForm.addEventListener('submit', e => {
+        const groupId = editGroupForm.querySelector('#edit-group-id').value;
+        handleFormSubmit(`/groups/${groupId}/settings`, 'Erro ao atualizar grupo.')(e);
+    });
+
+    async function handleFormSubmit(url, errorMessage) {
+        return async function(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
             try {
-                const response = await fetch('/groups/criar', { method: 'POST', body: formData });
-                if (response.ok) {
-                    window.location.reload();
-                } else {
-                    const errorData = await response.json();
-                    alert('Erro ao criar grupo: ' + (errorData.message || 'Erro desconhecido'));
-                }
+                const response = await fetch(url, { method: 'POST', body: formData });
+                if (response.ok) window.location.reload();
+                else alert(`${errorMessage}: ${(await response.json()).message}`);
             } catch (err) {
                 alert('Ocorreu um erro de rede. Tente novamente.');
             }
-        });
+        }
     }
 
-    // Submeter formulário de EDITAR grupo
-    if(editGroupForm) {
-        editGroupForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(editGroupForm);
-            const groupId = formData.get('groupId');
-            
+    // Lógica da Pesquisa
+    let searchTimeout;
+    searchGroupInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        const query = e.target.value;
+        if (query.length < 1) {
+            searchResultsContainer.innerHTML = '';
+            return;
+        }
+        searchTimeout = setTimeout(async () => {
             try {
-                const response = await fetch(`/groups/${groupId}/settings`, { method: 'POST', body: formData });
-                if (response.ok) window.location.reload();
-                else alert('Erro ao atualizar grupo: ' + (await response.json()).message);
+                const response = await fetch(`/groups/search?q=${encodeURIComponent(query)}`);
+                const groups = await response.json();
+                renderSearchResults(groups);
             } catch (err) {
-                 alert('Ocorreu um erro de rede. Tente novamente.');
+                searchResultsContainer.innerHTML = '<p>Erro ao pesquisar.</p>';
             }
+        }, 300); // Debounce de 300ms
+    });
+
+    function renderSearchResults(groups) {
+        searchResultsContainer.innerHTML = '';
+        if (groups.length === 0) {
+            searchResultsContainer.innerHTML = '<p>Nenhum grupo encontrado.</p>';
+            return;
+        }
+        groups.forEach(group => {
+            const item = document.createElement('div');
+            item.className = 'search-result-item';
+            item.innerHTML = `
+                <div class="search-result-info">
+                    <img src="${group.Foto || '/images/default-group-icon.png'}" alt="${group.Nome}">
+                    <div class="search-result-name">
+                        <span>${group.Nome}</span>
+                        <span class="group-id-search">#${group.id_grupo}</span>
+                    </div>
+                </div>
+                <button class="join-btn" data-group-id="${group.id_grupo}">Entrar</button>
+            `;
+            searchResultsContainer.appendChild(item);
         });
     }
+    
+    // Entrar num grupo
+    searchResultsContainer.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('join-btn')) {
+            const groupId = e.target.dataset.groupId;
+            e.target.disabled = true;
+            e.target.textContent = 'Entrando...';
+            try {
+                const response = await fetch(`/groups/${groupId}/join`, { method: 'POST' });
+                if (response.ok) window.location.reload();
+                else {
+                    alert(`Erro ao entrar no grupo: ${(await response.json()).message}`);
+                    e.target.disabled = false;
+                    e.target.textContent = 'Entrar';
+                }
+            } catch (err) {
+                 alert('Ocorreu um erro de rede.');
+                 e.target.disabled = false;
+                 e.target.textContent = 'Entrar';
+            }
+        }
+    });
 
     // Listar canais ao clicar num grupo
     serverIcons.forEach(icon => {
         icon.addEventListener('click', async () => {
             serverIcons.forEach(i => i.classList.remove('active'));
             icon.classList.add('active');
-
             const groupId = icon.dataset.groupId;
             
             try {
                 const response = await fetch(`/groups/${groupId}/details`);
                 const data = await response.json();
                 currentGroupData = data;
-
-                // Atualiza os cabeçalhos
+                
                 groupNameHeader.textContent = data.details.Nome;
                 chatHeader.innerHTML = `<h3># ${data.channels[0]?.Nome || 'geral'}</h3><span class="group-id">#${data.details.id_grupo}</span>`;
+                groupSettingsIcon.style.display = (currentUserId === data.details.id_criador) ? 'block' : 'none';
                 
-                if (groupSettingsIcon) {
-                    groupSettingsIcon.style.display = (currentUserId === data.details.id_criador) ? 'block' : 'none';
-                }
-
-                // Limpa e popula a lista de canais
                 channelListContent.innerHTML = '';
                 const channelHeaderEl = document.createElement('div');
                 channelHeaderEl.className = 'channel-list-header';
@@ -139,7 +186,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     channelListContent.appendChild(channelDiv);
                 });
 
-                // Limpa e popula a lista de membros
                 const memberHeader = document.createElement('div');
                 memberHeader.className = 'channel-list-header';
                 memberHeader.style.marginTop = '20px';
@@ -155,7 +201,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     memberDiv.innerHTML = memberHTML;
                     channelListContent.appendChild(memberDiv);
                 });
-
             } catch (err) {
                 if(channelListContent) channelListContent.innerHTML = '<p>Erro ao carregar canais.</p>';
             }
