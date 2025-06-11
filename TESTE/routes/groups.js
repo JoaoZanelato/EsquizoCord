@@ -77,10 +77,15 @@ router.post('/:id/join', requireLogin, async (req, res, next) => {
     }
 });
 
-// ROTA POST PARA CRIAR UM NOVO GRUPO (COM CORREÇÃO)
+// ROTA POST PARA CRIAR UM NOVO GRUPO (COM MELHOR DIAGNÓSTICO)
 router.post('/criar', requireLogin, upload.single('foto'), async (req, res, next) => {
+    // Verificação de diagnóstico para a sessão
+    if (!req.session.user || !req.session.user.id_usuario) {
+        console.error("ERRO: Tentativa de criar grupo sem uma sessão de utilizador válida.");
+        return res.status(401).json({ message: "Sessão inválida. Por favor, faça login novamente." });
+    }
+
     const { nome, isPrivate } = req.body;
-    // CORREÇÃO AQUI: Obter o ID do objeto 'user' na sessão
     const id_criador = req.session.user.id_usuario; 
     const fotoUrl = req.file ? req.file.path : null;
     const isPrivateBool = isPrivate === 'on';
@@ -103,7 +108,10 @@ router.post('/criar', requireLogin, upload.single('foto'), async (req, res, next
         res.status(201).json({ message: 'Grupo criado com sucesso!', groupId: newGroupId });
     } catch (error) {
         await connection.rollback();
-        next(error);
+        // Log detalhado no servidor (visível nos logs do Render)
+        console.error("ERRO DETALHADO AO CRIAR GRUPO:", error);
+        // Envia uma mensagem de erro específica para o frontend
+        res.status(500).json({ message: "Ocorreu um erro no servidor ao criar o grupo. Verifique os logs para mais detalhes." });
     } finally {
         connection.release();
     }
