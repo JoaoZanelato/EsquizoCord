@@ -8,33 +8,29 @@ const saltRounds = 10;
 // --- Configuração do Cloudinary ---
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
-
-// Esta configuração usa as variáveis de ambiente que você colocou no Render e no seu .env
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-
-// Configura o multer para fazer o upload diretamente para o Cloudinary
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'esquizocord_profiles', // Nome da pasta no Cloudinary para organizar os uploads
-    format: async (req, file) => 'png', // Converte as imagens para png
-    public_id: (req, file) => `user-${req.session.userId}-${Date.now()}`, // Cria um nome de arquivo único
+    folder: 'esquizocord_profiles',
+    format: 'png',
+    public_id: (req, file) => `user-${req.session.user.id_usuario}-${Date.now()}`,
   },
 });
-
 const upload = multer({ storage: storage });
 
 
-// Middleware para proteger rotas que exigem login
+// --- Middleware de Autenticação Atualizado ---
 function requireLogin(req, res, next) {
-    if (req.session && req.session.userId) {
-        return next(); // Se o usuário está na sessão, continua
+    // Agora verifica se o objeto 'user' existe na sessão
+    if (req.session && req.session.user) {
+        return next();
     } else {
-        return res.redirect('/login'); // Se não, redireciona para a página de login
+        return res.redirect('/login');
     }
 }
 
@@ -49,23 +45,12 @@ router.get('/cadastro', (req, res) => res.render('Cadastro'));
 router.get('/configuracao', requireLogin, async (req, res, next) => {
     try {
         const pool = req.db;
-        const userId = req.session.userId;
+        // Usa o utilizador guardado na sessão, não precisa de nova consulta
+        const user = req.session.user;
 
-        // Busca os dados do usuário logado e os temas disponíveis em paralelo
-        const [userResult, themesResult] = await Promise.all([
-            pool.query("SELECT id_usuario, Nome, Email, Biografia, FotoPerfil, id_tema FROM Usuarios WHERE id_usuario = ?", [userId]),
-            pool.query("SELECT * FROM Temas")
-        ]);
+        const [themesResult] = await pool.query("SELECT * FROM Temas");
+        const themes = themesResult;
 
-        const user = userResult[0][0];
-        const themes = themesResult[0];
-
-        if (!user) {
-            req.session.destroy();
-            return res.redirect('/login');
-        }
-
-        // Renderiza a página passando os dados do usuário e os temas
         res.render('Configuracao', { user: user, themes: themes });
     } catch (error) {
         console.error("Erro ao carregar a página de configurações:", error);
@@ -77,28 +62,17 @@ router.get('/configuracao', requireLogin, async (req, res, next) => {
 router.get('/dashboard', requireLogin, async (req, res, next) => {
     try {
         const pool = req.db;
-        const userId = req.session.userId;
+        const user = req.session.user; // Usa o utilizador da sessão
 
-        // Busca os dados do usuário e os grupos a que pertence
-        const [userResult] = await pool.query("SELECT id_usuario, Nome, FotoPerfil FROM Usuarios WHERE id_usuario = ?", [userId]);
         const [groupsResult] = await pool.query(
             "SELECT g.id_grupo, g.Nome, g.Foto FROM Grupos g " +
             "JOIN ParticipantesGrupo pg ON g.id_grupo = pg.id_grupo " +
             "WHERE pg.id_usuario = ?",
-            [userId]
+            [user.id_usuario]
         );
-
-        const user = userResult[0];
         const groups = groupsResult;
 
-        if (!user) {
-            req.session.destroy();
-            return res.redirect('/login');
-        }
-
-        // Dados de exemplo para a lista de amigos (você irá desenvolver a lógica para isto)
-        const friends = [];
-
+        const friends = []; // Placeholder para amigos
         res.render('Dashboard', { user: user, groups: groups, friends: friends });
     } catch (error) {
         console.error("Erro ao carregar o dashboard:", error);
@@ -112,15 +86,14 @@ router.get('/sair', (req, res) => {
         if (err) {
             return res.redirect('/configuracao');
         }
-        res.clearCookie('connect.sid'); // Limpa o cookie da sessão
-        res.redirect('/'); // Redireciona para a página inicial
+        res.clearCookie('connect.sid');
+        res.redirect('/');
     });
 });
 
 
 /* --- ROTAS POST PARA PROCESSAR DADOS --- */
 
-// ROTA POST PARA O FORMULÁRIO DE CADASTRO
 router.post('/cadastro', async (req, res, next) => {
   const { nome, email, senha, confirmar_senha } = req.body;
   if (senha !== confirmar_senha) {
@@ -137,7 +110,7 @@ router.post('/cadastro', async (req, res, next) => {
   }
 });
 
-// ROTA POST PARA O FORMULÁRIO DE LOGIN
+// ROTA DE LOGIN ATUALIZADA
 router.post('/login', async (req, res, next) => {
   const { email, senha } = req.body;
   try {
@@ -153,8 +126,8 @@ router.post('/login', async (req, res, next) => {
     const match = await bcrypt.compare(senha, user.Senha);
 
     if (match) {
-      // Login bem-sucedido: armazena o ID do usuário na sessão
-      req.session.userId = user.id_usuario;
+      // Login bem-sucedido: armazena o objeto completo do utilizador na sessão
+      req.session.user = user;
       res.redirect('/dashboard');
     } else {
       res.status(401).send("Erro: Email ou senha inválidos.");
@@ -164,35 +137,33 @@ router.post('/login', async (req, res, next) => {
   }
 });
 
-// ROTA POST PARA SALVAR AS CONFIGURAÇÕES DO PERFIL USANDO CLOUDINARY
+// ROTA POST PARA SALVAR AS CONFIGURAÇÕES DO PERFIL
 router.post('/configuracao', requireLogin, upload.single('fotoPerfil'), async (req, res, next) => {
     try {
         const { nome, biografia, id_tema } = req.body;
-        const userId = req.session.userId;
+        const userId = req.session.user.id_usuario;
         const pool = req.db;
 
-        // O multer-storage-cloudinary já fez o upload. O URL está em req.file.path.
         const fotoUrl = req.file ? req.file.path : null;
         
         let sql = "UPDATE Usuarios SET Nome = ?, Biografia = ?, id_tema = ?";
         const params = [nome, biografia, id_tema === 'null' ? null : id_tema];
 
         if (fotoUrl) {
-            // Se uma nova foto foi enviada, guarda o URL seguro do Cloudinary
             sql += ", FotoPerfil = ?";
             params.push(fotoUrl);
         }
-
         sql += " WHERE id_usuario = ?";
         params.push(userId);
         
         await pool.query(sql, params);
 
-        console.log(`Perfil do usuário ${userId} atualizado com sucesso.`);
-        res.redirect('/configuracao');
+        // Atualiza os dados do utilizador na sessão após a alteração
+        const [updatedUser] = await pool.query("SELECT * FROM Usuarios WHERE id_usuario = ?", [userId]);
+        req.session.user = updatedUser[0];
 
+        res.redirect('/configuracao');
     } catch (error) {
-        console.error("Erro ao salvar as configurações:", error);
         next(error);
     }
 });
