@@ -5,17 +5,25 @@ const multer = require('multer');
 // --- Configuração do Cloudinary (reutilizada) ---
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
+// Configuração de armazenamento ATUALIZADA para aceder à sessão de forma segura
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
-    folder: 'esquizocord_groups',
-    format: 'png',
-    public_id: (req, file) => `group-${req.session.user.id_usuario}-${Date.now()}`,
+  params: (req, file) => {
+    // A lógica para gerar o public_id é movida para dentro de uma função
+    // para garantir que 'req.session.user' já existe quando for acedido.
+    const userId = req.session.user ? req.session.user.id_usuario : 'unknown_user';
+    return {
+      folder: 'esquizocord_groups',
+      format: 'png',
+      public_id: `group-${userId}-${Date.now()}`,
+    };
   },
 });
 const upload = multer({ storage: storage });
@@ -79,10 +87,12 @@ router.post('/:id/join', requireLogin, async (req, res, next) => {
 
 // ROTA POST PARA CRIAR UM NOVO GRUPO (COM MELHOR DIAGNÓSTICO)
 router.post('/criar', requireLogin, upload.single('foto'), async (req, res, next) => {
-    // Verificação de diagnóstico para a sessão
+    // Log de diagnóstico para verificar se a rota está a ser alcançada
+    console.log("Recebido pedido para /groups/criar. Corpo do pedido:", req.body);
+
     if (!req.session.user || !req.session.user.id_usuario) {
-        console.error("ERRO: Tentativa de criar grupo sem uma sessão de utilizador válida.");
-        return res.status(401).json({ message: "Sessão inválida. Por favor, faça login novamente." });
+        console.error("ERRO CRÍTICO: Tentativa de criar grupo sem uma sessão de utilizador válida na rota.");
+        return res.status(401).json({ message: "Sessão inválida ou expirada. Por favor, faça login novamente." });
     }
 
     const { nome, isPrivate } = req.body;
@@ -105,12 +115,11 @@ router.post('/criar', requireLogin, upload.single('foto'), async (req, res, next
         await connection.query("INSERT INTO Administradores (id_usuario, id_grupo) VALUES (?, ?)", [id_criador, newGroupId]);
         await connection.query("INSERT INTO Chats (id_grupo, Nome) VALUES (?, 'geral')", [newGroupId]);
         await connection.commit();
+        console.log(`Grupo ${newGroupId} criado com sucesso pelo utilizador ${id_criador}.`);
         res.status(201).json({ message: 'Grupo criado com sucesso!', groupId: newGroupId });
     } catch (error) {
         await connection.rollback();
-        // Log detalhado no servidor (visível nos logs do Render)
         console.error("ERRO DETALHADO AO CRIAR GRUPO:", error);
-        // Envia uma mensagem de erro específica para o frontend
         res.status(500).json({ message: "Ocorreu um erro no servidor ao criar o grupo. Verifique os logs para mais detalhes." });
     } finally {
         connection.release();
