@@ -41,6 +41,7 @@
             flex-direction: column;
             align-items: center;
             flex-shrink: 0;
+            overflow-y: auto;
         }
         .server-icon {
             width: 48px;
@@ -54,7 +55,7 @@
             cursor: pointer;
             transition: border-radius 0.3s, background-color 0.3s;
         }
-        .server-icon:hover {
+        .server-icon:hover, .server-icon.active {
             border-radius: 16px;
             background-color: var(--brand-experiment);
         }
@@ -86,43 +87,42 @@
         .channel-header {
             padding: 12px;
             box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+            font-weight: bold;
+            color: var(--header-primary);
         }
-        .channel-header input {
-            width: 100%;
-            padding: 8px;
-            border-radius: 4px;
-            border: none;
-            background-color: var(--background-tertiary);
-            color: var(--text-normal);
-            box-sizing: border-box;
-        }
-        .friends-list {
+        .channel-list-content {
             padding: 12px;
             flex-grow: 1;
             overflow-y: auto;
         }
-        .friends-list-header {
+        .channel-list-header {
             color: var(--text-muted);
             font-size: 12px;
             font-weight: bold;
             margin-bottom: 10px;
         }
-        .friend-item {
+        .channel-item, .friend-item {
             display: flex;
             align-items: center;
             padding: 8px;
             border-radius: 4px;
             cursor: pointer;
+            gap: 8px;
         }
-        .friend-item:hover {
+        .channel-item:hover, .friend-item:hover {
             background-color: rgba(255,255,255,0.04);
         }
         .friend-item img {
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            margin-right: 12px;
         }
+        .admin-icon {
+            color: #f1c40f; /* Cor de coroa/estrela para admins */
+            font-size: 10px;
+            margin-left: auto;
+        }
+
         .user-panel {
             background-color: #292b2f;
             padding: 12px;
@@ -172,6 +172,67 @@
         .chat-input-bar input::placeholder {
             color: var(--text-muted);
         }
+        
+        /* Modal para criar grupo */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: none; /* Escondido por defeito */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: var(--background-secondary);
+            padding: 24px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 440px;
+        }
+        .modal-content h3 {
+            text-align: center;
+            margin-top: 0;
+        }
+        .modal-content label {
+            font-weight: bold;
+            color: var(--text-muted);
+            font-size: 12px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .modal-content input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid var(--background-tertiary);
+            background-color: var(--background-tertiary);
+            color: var(--text-normal);
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: space-between;
+        }
+         .modal-actions button {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+         }
+         #cancel-create-group {
+            background: none;
+            color: var(--header-primary);
+         }
+         #submit-create-group {
+            background-color: var(--brand-experiment);
+            color: white;
+         }
     </style>
 </head>
 <body>
@@ -180,13 +241,13 @@
         <nav class="server-list">
             <% if (groups && groups.length > 0) { %>
                 <% groups.forEach(group => { %>
-                    <div class="server-icon" title="<%= group.Nome %>">
+                    <div class="server-icon" title="<%= group.Nome %>" data-group-id="<%= group.id_grupo %>">
                         <img src="<%= group.Foto || '/images/default-group-icon.png' %>" alt="<%= group.Nome %>">
                     </div>
                 <% }); %>
             <% } %>
 
-            <div class="server-icon" title="Adicionar um servidor">
+            <div class="server-icon" id="add-server-button" title="Adicionar um servidor">
                 <i class="fas fa-plus" style="color: #43B581;"></i>
             </div>
             
@@ -199,16 +260,20 @@
 
         <!-- Coluna 2: Canais e Amigos -->
         <aside class="channel-list">
-            <div class="channel-header">
-                <input type="text" placeholder="Encontrar ou começar uma conversa">
+            <div class="channel-header" id="group-name-header">
+                Mensagens Diretas
             </div>
-            <div class="friends-list">
-                <div class="friends-list-header">MENSAGENS DIRETAS</div>
+            <div class="channel-list-content" id="channel-list-content">
+                <div class="channel-list-header">MENSAGENS DIRETAS</div>
                 <% if (friends && friends.length > 0) { %>
                     <% friends.forEach(friend => { %>
                         <div class="friend-item">
                             <img src="<%= friend.foto %>" alt="<%= friend.nome %>">
                             <span><%= friend.nome %></span>
+                            <!-- Exemplo de como identificar um admin -->
+                            <% if (friend.isAdmin) { %>
+                                <i class="fas fa-crown admin-icon"></i>
+                            <% } %>
                         </div>
                     <% }); %>
                 <% } %>
@@ -222,10 +287,9 @@
         <!-- Coluna 3: Área de Chat Principal -->
         <main class="chat-area">
             <div class="chat-header">
-                <h3># geral</h3>
+                <h3 id="chat-title"># geral</h3>
             </div>
-            <div class="chat-messages">
-                <!-- As mensagens do chat aparecerão aqui -->
+            <div class="chat-messages" id="chat-messages-container">
                 <p>Bem-vindo ao EsquizoCord! Selecione um grupo ou amigo para começar a conversar.</p>
             </div>
             <div class="chat-input-bar">
@@ -233,5 +297,136 @@
             </div>
         </main>
     </div>
+
+    <!-- Modal para Criar Grupo -->
+    <div class="modal-overlay" id="create-group-modal">
+        <div class="modal-content">
+            <h3>Crie o seu servidor</h3>
+            <form id="create-group-form">
+                <label for="group-name">NOME DO SERVIDOR</label>
+                <input type="text" id="group-name" name="nome" required>
+                
+                <label for="group-photo">FOTO DO SERVIDOR (Opcional)</label>
+                <input type="file" id="group-photo" name="foto" accept="image/*">
+                
+                <div class="modal-actions">
+                    <button type="button" id="cancel-create-group">Cancelar</button>
+                    <button type="submit" id="submit-create-group">Criar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const addServerButton = document.getElementById('add-server-button');
+            const createGroupModal = document.getElementById('create-group-modal');
+            const cancelCreateGroupButton = document.getElementById('cancel-create-group');
+            const createGroupForm = document.getElementById('create-group-form');
+            const serverIcons = document.querySelectorAll('.server-icon[data-group-id]');
+            
+            const groupNameHeader = document.getElementById('group-name-header');
+            const channelListContent = document.getElementById('channel-list-content');
+
+            // Abrir e fechar o modal
+            addServerButton.addEventListener('click', () => {
+                createGroupModal.style.display = 'flex';
+            });
+            cancelCreateGroupButton.addEventListener('click', () => {
+                createGroupModal.style.display = 'none';
+            });
+            createGroupModal.addEventListener('click', (e) => {
+                if (e.target === createGroupModal) {
+                    createGroupModal.style.display = 'none';
+                }
+            });
+
+            // Submeter o formulário de criação de grupo
+            createGroupForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(createGroupForm);
+                
+                try {
+                    const response = await fetch('/groups/criar', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        window.location.reload(); // Recarrega a página para ver o novo grupo
+                    } else {
+                        const error = await response.json();
+                        alert('Erro ao criar grupo: ' + error.message);
+                    }
+                } catch (err) {
+                    console.error('Erro de rede:', err);
+                    alert('Ocorreu um erro de rede. Tente novamente.');
+                }
+            });
+
+            // Listar canais ao clicar num grupo
+            serverIcons.forEach(icon => {
+                icon.addEventListener('click', async () => {
+                    // Remove a classe 'active' de todos os ícones
+                    serverIcons.forEach(i => i.classList.remove('active'));
+                    // Adiciona a classe 'active' ao ícone clicado
+                    icon.classList.add('active');
+
+                    const groupId = icon.dataset.groupId;
+                    const groupName = icon.getAttribute('title');
+                    groupNameHeader.textContent = groupName;
+                    
+                    try {
+                        const response = await fetch(`/groups/${groupId}/canais`);
+                        const { channels, members } = await response.json();
+
+                        // Limpa a lista de canais/amigos
+                        channelListContent.innerHTML = '';
+                        
+                        // Adiciona cabeçalho de canais
+                        const channelHeader = document.createElement('div');
+                        channelHeader.className = 'channel-list-header';
+                        channelHeader.textContent = 'CANAIS DE TEXTO';
+                        channelListContent.appendChild(channelHeader);
+                        
+                        // Popula com os canais do grupo
+                        channels.forEach(channel => {
+                            const channelDiv = document.createElement('div');
+                            channelDiv.className = 'channel-item';
+                            channelDiv.innerHTML = `<i class="fas fa-hashtag" style="color: var(--text-muted);"></i> <span>${channel.Nome}</span>`;
+                            channelListContent.appendChild(channelDiv);
+                        });
+
+                        // Adiciona cabeçalho de membros
+                        const memberHeader = document.createElement('div');
+                        memberHeader.className = 'channel-list-header';
+                        memberHeader.style.marginTop = '20px';
+                        memberHeader.textContent = `MEMBROS - ${members.length}`;
+                        channelListContent.appendChild(memberHeader);
+
+                        // Popula com os membros do grupo
+                        members.forEach(member => {
+                            const memberDiv = document.createElement('div');
+                            memberDiv.className = 'friend-item'; // Reutilizando a classe de amigo
+                            let memberHTML = `
+                                <img src="${member.FotoPerfil || '/images/logo.png'}" alt="${member.Nome}">
+                                <span>${member.Nome}</span>
+                            `;
+                            // Adiciona ícone se for admin
+                            if (member.isAdmin) {
+                                memberHTML += `<i class="fas fa-crown admin-icon" title="Administrador"></i>`;
+                            }
+                            memberDiv.innerHTML = memberHTML;
+                            channelListContent.appendChild(memberDiv);
+                        });
+
+                    } catch (err) {
+                        console.error('Erro ao buscar canais:', err);
+                        channelListContent.innerHTML = '<p>Erro ao carregar canais.</p>';
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

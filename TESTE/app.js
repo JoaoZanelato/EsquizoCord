@@ -1,64 +1,64 @@
-// Importações principais
-const createError = require("http-errors");
-const express = require("express");
-const path = require("path");
-const cookieParser = require("cookie-parser");
-const logger = require("morgan");
-
-const pool = require("./db");
+const createError = require('http-errors');
+const express = require('express');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const logger = require('morgan');
+const session = require('express-session');
 
 // Importação das rotas
-const indexRouter = require("./routes/index");
-const usersRouter = require("./routes/users");
+const indexRouter = require('./routes/index');
+const usersRouter = require('./routes/users');
+const groupsRouter = require('./routes/groups'); // <-- Rota de grupos adicionada
 
-// Inicia a aplicação Express
 const app = express();
 
-// Configuração da View Engine (EJS)
-app.set("views", path.join(__dirname, "views"));
-app.set("view engine", "ejs");
+// Configuração da View Engine
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'ejs');
 
 // Configuração dos Middlewares
-app.use(logger("dev"));
+app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// ... outras configurações do app.js ...
-const session = require('express-session');
-
-// ... depois de app.use(express.static(...))
+// Configuração da Sessão
 app.use(session({
-  secret: 'notachanurl', // Mude isto para uma frase aleatória
+  secret: 'a_frase_mais_secreta_do_esquizocord', // Mude isto para uma frase aleatória
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: false } // Para desenvolvimento. Em produção (HTTPS), mude para true.
+  cookie: { secure: process.env.NODE_ENV === 'production' } // 'true' em produção (HTTPS)
 }));
 
-// Middleware para disponibilizar o pool de conexões para todas as rotas
+
+// Middleware para disponibilizar dados da sessão para as views
 app.use((req, res, next) => {
-  req.db = pool;
+  // Disponibiliza o utilizador da sessão para todas as views
+  res.locals.user = req.session.user; 
   next();
 });
 
 // Definição das Rotas
-app.use("/", indexRouter);
-app.use("/users", usersRouter);
+app.use('/', indexRouter);
+app.use('/users', usersRouter);
+app.use('/groups', groupsRouter); // <-- Rota de grupos utilizada
 
-// Middleware para tratar erro 404 (Not Found)
-app.use(function (req, res, next) {
+// catch 404 and forward to error handler
+app.use(function(req, res, next) {
   next(createError(404));
 });
 
-// Middleware para tratar outros erros
-app.use(function (err, req, res, next) {
+// error handler
+app.use(function(err, req, res, next) {
+  // set locals, only providing error in development
   res.locals.message = err.message;
-  res.locals.error = req.app.get("env") === "development" ? err : {};
+  res.locals.error = req.app.get('env') === 'development' ? err : {};
 
+  // render the error page
   res.status(err.status || 500);
-  res.render("error");
+  res.render('error');
 });
 
-// Exporta a aplicação para que o bin/www possa usá-la
 module.exports = app;
+
