@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer'); // CORRIGIDO: Agora importa a biblioteca corretamente.
+const multer = require('multer');
 
 // --- Configuração do Cloudinary (reutilizada) ---
 const cloudinary = require('cloudinary').v2;
@@ -12,12 +12,9 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Configuração de armazenamento ATUALIZADA para aceder à sessão de forma segura
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: (req, file) => {
-    // A lógica para gerar o public_id é movida para dentro de uma função
-    // para garantir que 'req.session.user' já existe quando for acedido.
     const userId = req.session.user ? req.session.user.id_usuario : 'unknown_user';
     return {
       folder: 'esquizocord_groups',
@@ -31,6 +28,7 @@ const upload = multer({ storage: storage });
 
 // --- Middlewares ---
 function requireLogin(req, res, next) {
+    console.log("[DIAGNÓSTICO] Middleware 'requireLogin' alcançado.");
     if (req.session && req.session.user) return next();
     return res.status(401).json({ message: 'Acesso não autorizado' });
 }
@@ -85,18 +83,17 @@ router.post('/:id/join', requireLogin, async (req, res, next) => {
     }
 });
 
-// ROTA POST PARA CRIAR UM NOVO GRUPO (COM DIAGNÓSTICO MELHORADO)
-router.post('/criar', requireLogin, upload.single('foto'), async (req, res, next) => {
+// ROTA POST PARA CRIAR UM NOVO GRUPO (COM MIDDLEWARES DESATIVADOS PARA TESTE)
+router.post('/criar', /* requireLogin, upload.single('foto'), */ async (req, res, next) => {
     console.log('[LOG 1] Rota /groups/criar alcançada.');
     
-    if (!req.session.user || !req.session.user.id_usuario) {
-        console.error("[ERRO LOG] Sessão de utilizador inválida na rota de criação de grupo.");
-        return res.status(401).json({ message: "Sessão inválida. Por favor, faça login novamente." });
-    }
+    // Simulação temporária do utilizador e do ficheiro para teste
+    const id_criador_teste = 1; // Coloque aqui um ID de utilizador que exista na sua base de dados para teste
+    const fotoUrl_teste = null; // Simula que não há upload de ficheiro
 
     const { nome, isPrivate } = req.body;
-    const id_criador = req.session.user.id_usuario; 
-    const fotoUrl = req.file ? req.file.path : null;
+    const id_criador = id_criador_teste; 
+    const fotoUrl = fotoUrl_teste;
     const isPrivateBool = isPrivate === 'on';
     
     console.log(`[LOG 2] Dados recebidos: Nome=${nome}, Privado=${isPrivateBool}, Criador=${id_criador}`);
