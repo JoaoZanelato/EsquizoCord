@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
+const multer = 'multer';
 
 // --- Configuração do Cloudinary (reutilizada) ---
 const cloudinary = require('cloudinary').v2;
@@ -85,14 +85,13 @@ router.post('/:id/join', requireLogin, async (req, res, next) => {
     }
 });
 
-// ROTA POST PARA CRIAR UM NOVO GRUPO (COM MELHOR DIAGNÓSTICO)
+// ROTA POST PARA CRIAR UM NOVO GRUPO (COM DIAGNÓSTICO MELHORADO)
 router.post('/criar', requireLogin, upload.single('foto'), async (req, res, next) => {
-    // Log de diagnóstico para verificar se a rota está a ser alcançada
-    console.log("Recebido pedido para /groups/criar. Corpo do pedido:", req.body);
-
+    console.log('[LOG 1] Rota /groups/criar alcançada.');
+    
     if (!req.session.user || !req.session.user.id_usuario) {
-        console.error("ERRO CRÍTICO: Tentativa de criar grupo sem uma sessão de utilizador válida na rota.");
-        return res.status(401).json({ message: "Sessão inválida ou expirada. Por favor, faça login novamente." });
+        console.error("[ERRO LOG] Sessão de utilizador inválida na rota de criação de grupo.");
+        return res.status(401).json({ message: "Sessão inválida. Por favor, faça login novamente." });
     }
 
     const { nome, isPrivate } = req.body;
@@ -100,31 +99,48 @@ router.post('/criar', requireLogin, upload.single('foto'), async (req, res, next
     const fotoUrl = req.file ? req.file.path : null;
     const isPrivateBool = isPrivate === 'on';
     
+    console.log(`[LOG 2] Dados recebidos: Nome=${nome}, Privado=${isPrivateBool}, Criador=${id_criador}`);
+
     if (!nome) return res.status(400).json({ message: 'O nome do grupo é obrigatório.' });
 
     const pool = req.db;
     const connection = await pool.getConnection();
+    console.log('[LOG 3] Conexão com a base de dados obtida.');
+
     try {
         await connection.beginTransaction();
+        console.log('[LOG 4] Transação iniciada.');
+
         const [groupResult] = await connection.query(
             "INSERT INTO Grupos (Nome, Foto, IsPrivate, id_criador) VALUES (?, ?, ?, ?)",
             [nome, fotoUrl, isPrivateBool, id_criador]
         );
         const newGroupId = groupResult.insertId;
+        console.log(`[LOG 5] Grupo ${newGroupId} inserido na tabela Grupos.`);
+
         await connection.query("INSERT INTO ParticipantesGrupo (id_usuario, id_grupo) VALUES (?, ?)", [id_criador, newGroupId]);
+        console.log(`[LOG 6] Criador ${id_criador} inserido como participante.`);
+
         await connection.query("INSERT INTO Administradores (id_usuario, id_grupo) VALUES (?, ?)", [id_criador, newGroupId]);
+        console.log(`[LOG 7] Criador ${id_criador} inserido como administrador.`);
+
         await connection.query("INSERT INTO Chats (id_grupo, Nome) VALUES (?, 'geral')", [newGroupId]);
+        console.log(`[LOG 8] Canal #geral criado para o grupo ${newGroupId}.`);
+        
         await connection.commit();
-        console.log(`Grupo ${newGroupId} criado com sucesso pelo utilizador ${id_criador}.`);
+        console.log('[LOG 9] Transação concluída com sucesso (commit).');
+
         res.status(201).json({ message: 'Grupo criado com sucesso!', groupId: newGroupId });
     } catch (error) {
         await connection.rollback();
-        console.error("ERRO DETALHADO AO CRIAR GRUPO:", error);
-        res.status(500).json({ message: "Ocorreu um erro no servidor ao criar o grupo. Verifique os logs para mais detalhes." });
+        console.error("[ERRO DETALHADO NO CATCH]", error);
+        res.status(500).json({ message: "Ocorreu um erro no servidor ao criar o grupo.", error: error.message });
     } finally {
+        console.log('[LOG 10] Libertando conexão com a base de dados.');
         connection.release();
     }
 });
+
 
 // ROTA GET PARA BUSCAR OS DETALHES DE UM GRUPO
 router.get('/:id/details', requireLogin, async (req, res, next) => {
