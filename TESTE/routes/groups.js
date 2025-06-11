@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const multer = 'multer';
+const multer = require('multer'); // CORRIGIDO: Agora importa a biblioteca corretamente.
 
 // --- Configuração do Cloudinary (reutilizada) ---
 const cloudinary = require('cloudinary').v2;
