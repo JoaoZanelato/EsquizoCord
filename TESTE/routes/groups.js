@@ -12,6 +12,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Configuração de armazenamento ATUALIZADA para aceder à sessão de forma segura
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: (req, file) => {
@@ -28,7 +29,6 @@ const upload = multer({ storage: storage });
 
 // --- Middlewares ---
 function requireLogin(req, res, next) {
-    console.log("[DIAGNÓSTICO] Middleware 'requireLogin' alcançado.");
     if (req.session && req.session.user) return next();
     return res.status(401).json({ message: 'Acesso não autorizado' });
 }
@@ -83,57 +83,39 @@ router.post('/:id/join', requireLogin, async (req, res, next) => {
     }
 });
 
-// ROTA POST PARA CRIAR UM NOVO GRUPO (COM MIDDLEWARES DESATIVADOS PARA TESTE)
-router.post('/criar', /* requireLogin, upload.single('foto'), */ async (req, res, next) => {
-    console.log('[LOG 1] Rota /groups/criar alcançada.');
-    
-    // Simulação temporária do utilizador e do ficheiro para teste
-    const id_criador_teste = 1; // Coloque aqui um ID de utilizador que exista na sua base de dados para teste
-    const fotoUrl_teste = null; // Simula que não há upload de ficheiro
+// ROTA POST PARA CRIAR UM NOVO GRUPO (VERSÃO FINAL)
+router.post('/criar', requireLogin, upload.single('foto'), async (req, res, next) => {
+    if (!req.session.user || !req.session.user.id_usuario) {
+        return res.status(401).json({ message: "Sessão inválida. Por favor, faça login novamente." });
+    }
 
     const { nome, isPrivate } = req.body;
-    const id_criador = id_criador_teste; 
-    const fotoUrl = fotoUrl_teste;
+    const id_criador = req.session.user.id_usuario; 
+    const fotoUrl = req.file ? req.file.path : null;
     const isPrivateBool = isPrivate === 'on';
     
-    console.log(`[LOG 2] Dados recebidos: Nome=${nome}, Privado=${isPrivateBool}, Criador=${id_criador}`);
-
     if (!nome) return res.status(400).json({ message: 'O nome do grupo é obrigatório.' });
 
     const pool = req.db;
     const connection = await pool.getConnection();
-    console.log('[LOG 3] Conexão com a base de dados obtida.');
 
     try {
         await connection.beginTransaction();
-        console.log('[LOG 4] Transação iniciada.');
-
         const [groupResult] = await connection.query(
             "INSERT INTO Grupos (Nome, Foto, IsPrivate, id_criador) VALUES (?, ?, ?, ?)",
             [nome, fotoUrl, isPrivateBool, id_criador]
         );
         const newGroupId = groupResult.insertId;
-        console.log(`[LOG 5] Grupo ${newGroupId} inserido na tabela Grupos.`);
-
         await connection.query("INSERT INTO ParticipantesGrupo (id_usuario, id_grupo) VALUES (?, ?)", [id_criador, newGroupId]);
-        console.log(`[LOG 6] Criador ${id_criador} inserido como participante.`);
-
         await connection.query("INSERT INTO Administradores (id_usuario, id_grupo) VALUES (?, ?)", [id_criador, newGroupId]);
-        console.log(`[LOG 7] Criador ${id_criador} inserido como administrador.`);
-
         await connection.query("INSERT INTO Chats (id_grupo, Nome) VALUES (?, 'geral')", [newGroupId]);
-        console.log(`[LOG 8] Canal #geral criado para o grupo ${newGroupId}.`);
-        
         await connection.commit();
-        console.log('[LOG 9] Transação concluída com sucesso (commit).');
-
         res.status(201).json({ message: 'Grupo criado com sucesso!', groupId: newGroupId });
     } catch (error) {
         await connection.rollback();
         console.error("[ERRO DETALHADO NO CATCH]", error);
         res.status(500).json({ message: "Ocorreu um erro no servidor ao criar o grupo.", error: error.message });
     } finally {
-        console.log('[LOG 10] Libertando conexão com a base de dados.');
         connection.release();
     }
 });
