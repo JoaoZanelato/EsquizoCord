@@ -89,6 +89,17 @@
             box-shadow: 0 1px 0 rgba(0,0,0,0.2);
             font-weight: bold;
             color: var(--header-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #group-settings-icon {
+            color: var(--text-muted);
+            cursor: pointer;
+            display: none; /* Escondido por defeito */
+        }
+        #group-settings-icon:hover {
+            color: var(--header-primary);
         }
         .channel-list-content {
             padding: 12px;
@@ -100,6 +111,7 @@
             font-size: 12px;
             font-weight: bold;
             margin-bottom: 10px;
+            text-transform: uppercase;
         }
         .channel-item, .friend-item {
             display: flex;
@@ -152,6 +164,15 @@
             font-weight: bold;
             color: var(--header-primary);
         }
+        .chat-header h3 {
+            margin: 0;
+            font-size: 16px;
+        }
+        .chat-header .group-id {
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-left: 4px;
+        }
         .chat-messages {
             flex-grow: 1;
             padding: 16px;
@@ -173,7 +194,7 @@
             color: var(--text-muted);
         }
         
-        /* Modal para criar grupo */
+        /* Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -181,7 +202,7 @@
             width: 100%;
             height: 100%;
             background-color: rgba(0,0,0,0.7);
-            display: none; /* Escondido por defeito */
+            display: none;
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -204,7 +225,7 @@
             display: block;
             margin-bottom: 8px;
         }
-        .modal-content input {
+        .modal-content input[type="text"], .modal-content input[type="file"] {
             width: 100%;
             padding: 10px;
             border-radius: 4px;
@@ -213,6 +234,17 @@
             color: var(--text-normal);
             box-sizing: border-box;
             margin-bottom: 20px;
+        }
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .checkbox-container label {
+             margin: 0;
+             font-size: 14px;
+             color: var(--text-normal);
         }
         .modal-actions {
             display: flex;
@@ -225,17 +257,17 @@
             cursor: pointer;
             font-weight: bold;
          }
-         #cancel-create-group {
+         .cancel-btn {
             background: none;
             color: var(--header-primary);
          }
-         #submit-create-group {
+         .submit-btn {
             background-color: var(--brand-experiment);
             color: white;
          }
     </style>
 </head>
-<body>
+<body data-user='<%- JSON.stringify(user || null) %>'>
     <div class="dashboard-layout">
         <!-- Coluna 1: Lista de Servidores -->
         <nav class="server-list">
@@ -253,15 +285,20 @@
             
             <div class="profile-icon-container">
                  <a href="/configuracao">
-                    <img src="<%= user.FotoPerfil || '/images/logo.png' %>" alt="Perfil" class="server-icon profile-icon">
+                    <% if (user && user.FotoPerfil) { %>
+                        <img src="<%= user.FotoPerfil %>" alt="Perfil" class="server-icon profile-icon">
+                    <% } else { %>
+                        <img src="/images/logo.png" alt="Perfil" class="server-icon profile-icon">
+                    <% } %>
                  </a>
             </div>
         </nav>
 
         <!-- Coluna 2: Canais e Amigos -->
         <aside class="channel-list">
-            <div class="channel-header" id="group-name-header">
-                Mensagens Diretas
+            <div class="channel-header">
+                <span id="group-name-header">Mensagens Diretas</span>
+                <i class="fas fa-cog" id="group-settings-icon" title="Configurações do Grupo"></i>
             </div>
             <div class="channel-list-content" id="channel-list-content">
                 <div class="channel-list-header">MENSAGENS DIRETAS</div>
@@ -270,24 +307,22 @@
                         <div class="friend-item">
                             <img src="<%= friend.foto %>" alt="<%= friend.nome %>">
                             <span><%= friend.nome %></span>
-                            <!-- Exemplo de como identificar um admin -->
-                            <% if (friend.isAdmin) { %>
-                                <i class="fas fa-crown admin-icon"></i>
-                            <% } %>
                         </div>
                     <% }); %>
                 <% } %>
             </div>
             <div class="user-panel">
-                 <img src="<%= user.FotoPerfil || '/images/logo.png' %>" alt="Perfil">
-                 <span class="username"><%= user.Nome %></span>
+                 <% if (user) { %>
+                     <img src="<%= user.FotoPerfil || '/images/logo.png' %>" alt="Perfil">
+                     <span class="username"><%= user.Nome %></span>
+                 <% } %>
             </div>
         </aside>
 
         <!-- Coluna 3: Área de Chat Principal -->
         <main class="chat-area">
-            <div class="chat-header">
-                <h3 id="chat-title"># geral</h3>
+            <div class="chat-header" id="chat-header">
+                <h3></h3>
             </div>
             <div class="chat-messages" id="chat-messages-container">
                 <p>Bem-vindo ao EsquizoCord! Selecione um grupo ou amigo para começar a conversar.</p>
@@ -305,128 +340,43 @@
             <form id="create-group-form">
                 <label for="group-name">NOME DO SERVIDOR</label>
                 <input type="text" id="group-name" name="nome" required>
-                
                 <label for="group-photo">FOTO DO SERVIDOR (Opcional)</label>
                 <input type="file" id="group-photo" name="foto" accept="image/*">
-                
+                <div class="checkbox-container">
+                    <input type="checkbox" id="group-private-create" name="isPrivate">
+                    <label for="group-private-create">Grupo Privado</label>
+                </div>
                 <div class="modal-actions">
-                    <button type="button" id="cancel-create-group">Cancelar</button>
-                    <button type="submit" id="submit-create-group">Criar</button>
+                    <button type="button" class="cancel-btn">Cancelar</button>
+                    <button type="submit" class="submit-btn">Criar</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const addServerButton = document.getElementById('add-server-button');
-            const createGroupModal = document.getElementById('create-group-modal');
-            const cancelCreateGroupButton = document.getElementById('cancel-create-group');
-            const createGroupForm = document.getElementById('create-group-form');
-            const serverIcons = document.querySelectorAll('.server-icon[data-group-id]');
-            
-            const groupNameHeader = document.getElementById('group-name-header');
-            const channelListContent = document.getElementById('channel-list-content');
+    <!-- Modal para Editar Grupo -->
+    <div class="modal-overlay" id="edit-group-modal">
+        <div class="modal-content">
+            <h3>Configurações do Grupo</h3>
+            <form id="edit-group-form">
+                <input type="hidden" id="edit-group-id" name="groupId">
+                <label for="edit-group-name">NOME DO SERVIDOR</label>
+                <input type="text" id="edit-group-name" name="nome" required>
+                <label for="edit-group-photo">FOTO DO SERVIDOR</label>
+                <input type="file" id="edit-group-photo" name="foto" accept="image/*">
+                <div class="checkbox-container">
+                    <input type="checkbox" id="edit-group-private" name="isPrivate">
+                    <label for="edit-group-private">Grupo Privado</label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="cancel-btn">Cancelar</button>
+                    <button type="submit" class="submit-btn">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-            // Abrir e fechar o modal
-            addServerButton.addEventListener('click', () => {
-                createGroupModal.style.display = 'flex';
-            });
-            cancelCreateGroupButton.addEventListener('click', () => {
-                createGroupModal.style.display = 'none';
-            });
-            createGroupModal.addEventListener('click', (e) => {
-                if (e.target === createGroupModal) {
-                    createGroupModal.style.display = 'none';
-                }
-            });
-
-            // Submeter o formulário de criação de grupo
-            createGroupForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(createGroupForm);
-                
-                try {
-                    const response = await fetch('/groups/criar', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    if (response.ok) {
-                        window.location.reload(); // Recarrega a página para ver o novo grupo
-                    } else {
-                        const error = await response.json();
-                        alert('Erro ao criar grupo: ' + error.message);
-                    }
-                } catch (err) {
-                    console.error('Erro de rede:', err);
-                    alert('Ocorreu um erro de rede. Tente novamente.');
-                }
-            });
-
-            // Listar canais ao clicar num grupo
-            serverIcons.forEach(icon => {
-                icon.addEventListener('click', async () => {
-                    // Remove a classe 'active' de todos os ícones
-                    serverIcons.forEach(i => i.classList.remove('active'));
-                    // Adiciona a classe 'active' ao ícone clicado
-                    icon.classList.add('active');
-
-                    const groupId = icon.dataset.groupId;
-                    const groupName = icon.getAttribute('title');
-                    groupNameHeader.textContent = groupName;
-                    
-                    try {
-                        const response = await fetch(`/groups/${groupId}/canais`);
-                        const { channels, members } = await response.json();
-
-                        // Limpa a lista de canais/amigos
-                        channelListContent.innerHTML = '';
-                        
-                        // Adiciona cabeçalho de canais
-                        const channelHeader = document.createElement('div');
-                        channelHeader.className = 'channel-list-header';
-                        channelHeader.textContent = 'CANAIS DE TEXTO';
-                        channelListContent.appendChild(channelHeader);
-                        
-                        // Popula com os canais do grupo
-                        channels.forEach(channel => {
-                            const channelDiv = document.createElement('div');
-                            channelDiv.className = 'channel-item';
-                            channelDiv.innerHTML = `<i class="fas fa-hashtag" style="color: var(--text-muted);"></i> <span>${channel.Nome}</span>`;
-                            channelListContent.appendChild(channelDiv);
-                        });
-
-                        // Adiciona cabeçalho de membros
-                        const memberHeader = document.createElement('div');
-                        memberHeader.className = 'channel-list-header';
-                        memberHeader.style.marginTop = '20px';
-                        memberHeader.textContent = `MEMBROS - ${members.length}`;
-                        channelListContent.appendChild(memberHeader);
-
-                        // Popula com os membros do grupo
-                        members.forEach(member => {
-                            const memberDiv = document.createElement('div');
-                            memberDiv.className = 'friend-item'; // Reutilizando a classe de amigo
-                            let memberHTML = `
-                                <img src="${member.FotoPerfil || '/images/logo.png'}" alt="${member.Nome}">
-                                <span>${member.Nome}</span>
-                            `;
-                            // Adiciona ícone se for admin
-                            if (member.isAdmin) {
-                                memberHTML += `<i class="fas fa-crown admin-icon" title="Administrador"></i>`;
-                            }
-                            memberDiv.innerHTML = memberHTML;
-                            channelListContent.appendChild(memberDiv);
-                        });
-
-                    } catch (err) {
-                        console.error('Erro ao buscar canais:', err);
-                        channelListContent.innerHTML = '<p>Erro ao carregar canais.</p>';
-                    }
-                });
-            });
-        });
-    </script>
+    <!-- Carrega o script principal do dashboard, que agora contém toda a lógica -->
+    <script src="/js/dashboard.js"></script>
 </body>
 </html>
