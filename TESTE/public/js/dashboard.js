@@ -73,14 +73,15 @@ document.addEventListener('DOMContentLoaded', () => {
         createGroupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(createGroupForm);
-            if (!document.getElementById('group-private-create').checked) {
-                formData.delete('isPrivate');
-            }
             
             try {
                 const response = await fetch('/groups/criar', { method: 'POST', body: formData });
-                if (response.ok) window.location.reload();
-                else alert('Erro ao criar grupo: ' + (await response.json()).message);
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const errorData = await response.json();
+                    alert('Erro ao criar grupo: ' + (errorData.message || 'Erro desconhecido'));
+                }
             } catch (err) {
                 alert('Ocorreu um erro de rede. Tente novamente.');
             }
@@ -115,21 +116,18 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch(`/groups/${groupId}/details`);
                 const data = await response.json();
-                currentGroupData = data; // Armazena os dados do grupo atual
+                currentGroupData = data;
 
                 // Atualiza os cabeçalhos
                 groupNameHeader.textContent = data.details.Nome;
                 chatHeader.innerHTML = `<h3># ${data.channels[0]?.Nome || 'geral'}</h3><span class="group-id">#${data.details.id_grupo}</span>`;
                 
-                // Mostra ou esconde o botão de configurações
                 if (groupSettingsIcon) {
                     groupSettingsIcon.style.display = (currentUserId === data.details.id_criador) ? 'block' : 'none';
                 }
 
-                // Limpa a lista
+                // Limpa e popula a lista de canais
                 channelListContent.innerHTML = '';
-                
-                // Popula com canais
                 const channelHeaderEl = document.createElement('div');
                 channelHeaderEl.className = 'channel-list-header';
                 channelHeaderEl.textContent = 'CANAIS DE TEXTO';
@@ -141,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     channelListContent.appendChild(channelDiv);
                 });
 
-                // Popula com membros
+                // Limpa e popula a lista de membros
                 const memberHeader = document.createElement('div');
                 memberHeader.className = 'channel-list-header';
                 memberHeader.style.marginTop = '20px';
@@ -150,10 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 data.members.forEach(member => {
                     const memberDiv = document.createElement('div');
                     memberDiv.className = 'friend-item';
-                    let memberHTML = `
-                        <img src="${member.FotoPerfil || '/images/logo.png'}" alt="${member.Nome}">
-                        <span>${member.Nome}</span>
-                    `;
+                    let memberHTML = `<img src="${member.FotoPerfil || '/images/logo.png'}" alt="${member.Nome}"><span>${member.Nome}</span>`;
                     if (member.isAdmin) {
                         memberHTML += `<i class="fas fa-crown admin-icon" title="Administrador"></i>`;
                     }

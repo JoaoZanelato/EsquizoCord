@@ -25,246 +25,53 @@
             margin: 0;
             overflow: hidden;
             color: var(--text-normal);
-        }
-
-        .dashboard-layout {
-            display: flex;
-            height: 100vh;
-        }
-
-        /* --- Coluna 1: Lista de Servidores --- */
-        .server-list {
-            width: 72px;
             background-color: var(--background-tertiary);
-            padding: 12px 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            flex-shrink: 0;
-            overflow-y: auto;
-        }
-        .server-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background-color: var(--background-primary);
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            transition: border-radius 0.3s, background-color 0.3s;
-        }
-        .server-icon:hover, .server-icon.active {
-            border-radius: 16px;
-            background-color: var(--brand-experiment);
-        }
-        .server-icon img {
-            width: 100%;
-            height: 100%;
-            border-radius: inherit;
-            object-fit: cover;
-        }
-        .profile-icon-container {
-            margin-top: auto; /* Empurra para o fundo */
-        }
-        .profile-icon {
-            border: 2px solid var(--text-muted);
-        }
-        .profile-icon:hover {
-             border-color: var(--purple-accent);
         }
 
-
-        /* --- Coluna 2: Canais e Amigos --- */
-        .channel-list {
-            width: 240px;
-            background-color: var(--background-secondary);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-        }
-        .channel-header {
-            padding: 12px;
-            box-shadow: 0 1px 0 rgba(0,0,0,0.2);
-            font-weight: bold;
-            color: var(--header-primary);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        #group-settings-icon {
-            color: var(--text-muted);
-            cursor: pointer;
-            display: none; /* Escondido por defeito */
-        }
-        #group-settings-icon:hover {
-            color: var(--header-primary);
-        }
-        .channel-list-content {
-            padding: 12px;
-            flex-grow: 1;
-            overflow-y: auto;
-        }
-        .channel-list-header {
-            color: var(--text-muted);
-            font-size: 12px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-        }
-        .channel-item, .friend-item {
-            display: flex;
-            align-items: center;
-            padding: 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            gap: 8px;
-        }
-        .channel-item:hover, .friend-item:hover {
-            background-color: rgba(255,255,255,0.04);
-        }
-        .friend-item img {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-        }
-        .admin-icon {
-            color: #f1c40f; /* Cor de coroa/estrela para admins */
-            font-size: 10px;
-            margin-left: auto;
-        }
-
-        .user-panel {
-            background-color: #292b2f;
-            padding: 12px;
-            display: flex;
-            align-items: center;
-        }
-        .user-panel img {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-        .user-panel .username {
-            font-weight: bold;
-        }
-
-        /* --- Coluna 3: Área de Chat Principal --- */
-        .chat-area {
-            flex-grow: 1;
-            background-color: var(--background-primary);
-            display: flex;
-            flex-direction: column;
-        }
-        .chat-header {
-            padding: 12px 16px;
-            box-shadow: 0 1px 0 rgba(0,0,0,0.2);
-            font-weight: bold;
-            color: var(--header-primary);
-        }
-        .chat-header h3 {
-            margin: 0;
-            font-size: 16px;
-        }
-        .chat-header .group-id {
-            color: var(--text-muted);
-            font-size: 12px;
-            margin-left: 4px;
-        }
-        .chat-messages {
-            flex-grow: 1;
-            padding: 16px;
-            overflow-y: auto;
-        }
-        .chat-input-bar {
-            padding: 0 16px 24px 16px;
-        }
-        .chat-input-bar input {
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            border: none;
-            background-color: #40444b;
-            color: var(--text-normal);
-            box-sizing: border-box;
-        }
-        .chat-input-bar input::placeholder {
-            color: var(--text-muted);
-        }
+        .dashboard-layout { display: flex; height: 100vh; }
+        .server-list { width: 72px; background-color: var(--background-tertiary); padding: 12px 0; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; overflow-y: auto; }
+        .server-icon { width: 48px; height: 48px; border-radius: 50%; background-color: var(--background-primary); margin-bottom: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: border-radius 0.3s, background-color 0.3s; }
+        .server-icon:hover, .server-icon.active { border-radius: 16px; background-color: var(--brand-experiment); }
+        .server-icon img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+        .profile-icon-container { margin-top: auto; }
+        .profile-icon { border: 2px solid var(--text-muted); }
+        .profile-icon:hover { border-color: var(--purple-accent); }
         
-        /* Modal */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.7);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .modal-content {
-            background-color: var(--background-secondary);
-            padding: 24px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 440px;
-        }
-        .modal-content h3 {
-            text-align: center;
-            margin-top: 0;
-        }
-        .modal-content label {
-            font-weight: bold;
-            color: var(--text-muted);
-            font-size: 12px;
-            display: block;
-            margin-bottom: 8px;
-        }
-        .modal-content input[type="text"], .modal-content input[type="file"] {
-            width: 100%;
-            padding: 10px;
-            border-radius: 4px;
-            border: 1px solid var(--background-tertiary);
-            background-color: var(--background-tertiary);
-            color: var(--text-normal);
-            box-sizing: border-box;
-            margin-bottom: 20px;
-        }
-        .checkbox-container {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 20px;
-        }
-        .checkbox-container label {
-             margin: 0;
-             font-size: 14px;
-             color: var(--text-normal);
-        }
-        .modal-actions {
-            display: flex;
-            justify-content: space-between;
-        }
-         .modal-actions button {
-            padding: 10px 24px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-         }
-         .cancel-btn {
-            background: none;
-            color: var(--header-primary);
-         }
-         .submit-btn {
-            background-color: var(--brand-experiment);
-            color: white;
-         }
+        .channel-list { width: 240px; background-color: var(--background-secondary); display: flex; flex-direction: column; flex-shrink: 0; }
+        .channel-header { padding: 12px; box-shadow: 0 1px 0 rgba(0,0,0,0.2); font-weight: bold; color: var(--header-primary); display: flex; justify-content: space-between; align-items: center; }
+        #group-settings-icon { color: var(--text-muted); cursor: pointer; display: none; }
+        #group-settings-icon:hover { color: var(--header-primary); }
+        .channel-list-content { padding: 12px; flex-grow: 1; overflow-y: auto; }
+        .channel-list-header { color: var(--text-muted); font-size: 12px; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; }
+        .channel-item, .friend-item { display: flex; align-items: center; padding: 8px; border-radius: 4px; cursor: pointer; gap: 8px; }
+        .channel-item:hover, .friend-item:hover { background-color: rgba(255,255,255,0.04); }
+        .friend-item img { width: 32px; height: 32px; border-radius: 50%; }
+        .admin-icon { color: #f1c40f; font-size: 10px; margin-left: auto; }
+
+        .user-panel { background-color: #292b2f; padding: 12px; display: flex; align-items: center; }
+        .user-panel img { width: 32px; height: 32px; border-radius: 50%; margin-right: 8px; }
+        .user-panel .username { font-weight: bold; }
+
+        .chat-area { flex-grow: 1; background-color: var(--background-primary); display: flex; flex-direction: column; }
+        .chat-header { padding: 12px 16px; box-shadow: 0 1px 0 rgba(0,0,0,0.2); font-weight: bold; color: var(--header-primary); }
+        .chat-header h3 { margin: 0; font-size: 16px; display: inline; }
+        .chat-header .group-id { color: var(--text-muted); font-size: 12px; margin-left: 4px; }
+        .chat-messages { flex-grow: 1; padding: 16px; overflow-y: auto; }
+        .chat-input-bar { padding: 0 16px 24px 16px; }
+        .chat-input-bar input { width: 100%; padding: 12px; border-radius: 8px; border: none; background-color: #40444b; color: var(--text-normal); box-sizing: border-box; }
+        .chat-input-bar input::placeholder { color: var(--text-muted); }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background-color: var(--background-secondary); padding: 24px; border-radius: 8px; width: 90%; max-width: 440px; }
+        .modal-content h3 { text-align: center; margin-top: 0; }
+        .modal-content label { font-weight: bold; color: var(--text-muted); font-size: 12px; display: block; margin-bottom: 8px; }
+        .modal-content input[type="text"], .modal-content input[type="file"] { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--background-tertiary); background-color: var(--background-tertiary); color: var(--text-normal); box-sizing: border-box; margin-bottom: 20px; }
+        .checkbox-container { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+        .checkbox-container label { margin: 0; font-size: 14px; color: var(--text-normal); }
+        .modal-actions { display: flex; justify-content: space-between; }
+        .modal-actions button { padding: 10px 24px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .cancel-btn { background: none; color: var(--header-primary); }
+        .submit-btn { background-color: var(--brand-experiment); color: white; }
     </style>
 </head>
 <body data-user='<%- JSON.stringify(user || null) %>'>
@@ -278,11 +85,9 @@
                     </div>
                 <% }); %>
             <% } %>
-
             <div class="server-icon" id="add-server-button" title="Adicionar um servidor">
                 <i class="fas fa-plus" style="color: #43B581;"></i>
             </div>
-            
             <div class="profile-icon-container">
                  <a href="/configuracao">
                     <% if (user && user.FotoPerfil) { %>
@@ -344,7 +149,7 @@
                 <input type="file" id="group-photo" name="foto" accept="image/*">
                 <div class="checkbox-container">
                     <input type="checkbox" id="group-private-create" name="isPrivate">
-                    <label for="group-private-create">Grupo Privado</label>
+                    <label for="group-private-create">Grupo Privado (só pode ser acedido por convite)</label>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="cancel-btn">Cancelar</button>
@@ -376,7 +181,6 @@
         </div>
     </div>
 
-    <!-- Carrega o script principal do dashboard, que agora contém toda a lógica -->
     <script src="/js/dashboard.js"></script>
 </body>
 </html>
