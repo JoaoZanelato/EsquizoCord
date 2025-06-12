@@ -33,6 +33,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const editGroupForm = document.getElementById('edit-group-form');
     const searchInput = document.getElementById('search-input');
     const searchResultsContainer = document.getElementById('search-results');
+    const searchGroupInput = document.getElementById('search-group-input');
+    const searchUserInput = document.getElementById('search-user-input');
+    const searchGroupResults = document.getElementById('search-group-results');
+    const searchUserResults = document.getElementById('search-user-results');
+
 
     // Botões de Ação
     const addServerButton = document.getElementById('add-server-button');
@@ -47,6 +52,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const groupNameHeader = document.getElementById('group-name-header');
     const channelListContent = document.getElementById('channel-list-content');
     const chatHeader = document.getElementById('chat-header');
+    const pendingRequestsList = document.getElementById('pending-requests-list');
+    const sentRequestsList = document.getElementById('sent-requests-list');
 
     // --- FUNÇÕES UTILITÁRIAS ---
     
@@ -66,7 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (exploreButton) {
         exploreButton.addEventListener('click', () => {
             openModal(exploreModal);
-            searchInput.dispatchEvent(new Event('input')); // Inicia a pesquisa ao abrir
+            // Simula um evento de input para carregar a lista inicial da aba ativa
+            document.querySelector(`#search-${activeSearchTab}-input`)?.dispatchEvent(new Event('input'));
         });
     }
 
@@ -110,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const groupName = document.getElementById('edit-group-name').value;
             
             if (confirm(`Tem a certeza de que deseja excluir o grupo "${groupName}"? Esta ação é irreversível.`)) {
-                handleAction(deleteGroupButton, `/groups/${groupId}`, 'Excluindo...', 'Excluir Grupo', null, 'DELETE');
+                handleAction(deleteGroupButton, `/groups/${groupId}`, 'Excluindo...', 'Excluir Grupo', null, 'DELETE', true);
             }
         });
     }
@@ -119,63 +127,83 @@ document.addEventListener('DOMContentLoaded', () => {
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
             tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
             button.classList.add('active');
+            const activeTabContent = document.getElementById(button.dataset.tab);
+            if (activeTabContent) {
+                activeTabContent.classList.add('active');
+            }
             activeSearchTab = button.dataset.tab;
-            searchInput.placeholder = activeSearchTab === 'groups' ? 'Pesquise por nome ou ID do grupo' : 'Pesquise por nome do utilizador';
-            searchInput.dispatchEvent(new Event('input'));
+
+            const inputToTrigger = document.querySelector(`#${activeSearchTab}`).querySelector('input[type="search"]');
+            if(inputToTrigger) {
+                inputToTrigger.dispatchEvent(new Event('input'));
+            }
         });
     });
 
     let searchTimeout;
-    searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        const query = e.target.value;
-        searchTimeout = setTimeout(async () => {
-            const searchUrl = activeSearchTab === 'groups' ? `/groups/search?q=${encodeURIComponent(query)}` : `/friends/search?q=${encodeURIComponent(query)}`;
-            try {
-                const response = await fetch(searchUrl);
-                const results = await response.json();
-                renderSearchResults(results);
-            } catch (err) {
-                searchResultsContainer.innerHTML = '<p>Erro ao pesquisar.</p>';
-            }
-        }, 300);
+    [searchGroupInput, searchUserInput].forEach(input => {
+        if(!input) return;
+        input.addEventListener('input', e => {
+            clearTimeout(searchTimeout);
+            const query = e.target.value;
+            searchTimeout = setTimeout(async () => {
+                const searchUrl = activeSearchTab === 'groups' ? `/groups/search?q=${encodeURIComponent(query)}` : `/friends/search?q=${encodeURIComponent(query)}`;
+                const container = activeSearchTab === 'groups' ? searchGroupResults : searchUserResults;
+                try {
+                    const response = await fetch(searchUrl);
+                    const results = await response.json();
+                    renderSearchResults(results, container);
+                } catch (err) {
+                    container.innerHTML = '<p>Erro ao pesquisar.</p>';
+                }
+            }, 300);
+        });
     });
-
-    searchResultsContainer.addEventListener('click', async (e) => {
-        const target = e.target;
-        if (target.classList.contains('join-btn')) {
-            const groupId = target.dataset.groupId;
-            handleAction(target, `/groups/${groupId}/join`, 'Entrando...', 'Entrar');
-        } else if (target.classList.contains('add-friend-btn')) {
-            const userId = target.dataset.userId;
-            handleAction(target, '/friends/request', 'Enviando...', 'Adicionar Amigo', { requestedId: userId });
-        }
+    
+    // Ação nos resultados da pesquisa
+    [searchGroupResults, searchUserResults].forEach(container => {
+        container.addEventListener('click', async (e) => {
+            const target = e.target;
+            if (target.classList.contains('join-btn')) {
+                const groupId = target.dataset.groupId;
+                handleAction(target, `/groups/${groupId}/join`, 'Entrando...', 'Entrar', null, 'POST', true);
+            } else if (target.classList.contains('add-friend-btn')) {
+                const userId = target.dataset.userId;
+                handleAction(target, '/friends/request', 'Enviando...', 'Adicionar Amigo', { requestedId: userId });
+            }
+        });
     });
     
     // 5. Responder a pedidos de amizade
-    channelListContent.addEventListener('click', async (e) => {
-        const target = e.target.closest('button');
-        if (!target) return;
+    if(pendingRequestsList) {
+        pendingRequestsList.addEventListener('click', async e => {
+            const target = e.target.closest('button');
+            if (!target) return;
+            const requestItem = target.closest('.search-result-item');
+            const requestId = requestItem.dataset.requestId;
+            const action = target.classList.contains('accept-btn') ? 'aceite' : 'recusada';
+            
+            if (action) {
+                handleAction(target, '/friends/respond', '...', '', { requestId, action }, 'POST', true);
+            }
+        });
+    }
 
-        const requestItem = target.closest('.friend-request-item');
-        if (!requestItem) return;
+    // 6. Cancelar pedido de amizade enviado
+    if(sentRequestsList) {
+        sentRequestsList.addEventListener('click', async e => {
+            const target = e.target;
+            if (!target.classList.contains('cancel-request-btn')) return;
+            const requestItem = target.closest('.search-result-item');
+            const requestId = requestItem.dataset.requestId;
+            handleAction(target, '/friends/cancel', 'Cancelando...', 'Cancelar', { requestId }, 'POST', true);
+        });
+    }
 
-        const requestId = requestItem.dataset.requestId;
-        let action = '';
-
-        if (target.classList.contains('accept-btn')) {
-            action = 'aceite';
-        } else if (target.classList.contains('reject-btn')) {
-            action = 'recusada';
-        }
-        
-        if (action) {
-            handleAction(target, '/friends/respond', '...', '', { requestId, action });
-        }
-    });
-
-    // 6. Lógica de Interação com a Lista de Servidores
+    // 7. Lógica de Interação com a Lista de Servidores
     serverIcons.forEach(icon => {
         icon.addEventListener('click', async () => {
             serverIcons.forEach(i => i.classList.remove('active'));
@@ -206,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     memberDiv.innerHTML = memberHTML;
                     channelListContent.appendChild(memberDiv);
-});
+                });
 
             } catch (err) {
                 if(channelListContent) channelListContent.innerHTML = '<p>Erro ao carregar detalhes.</p>';
@@ -230,10 +258,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderSearchResults(results) {
-        searchResultsContainer.innerHTML = '';
+    function renderSearchResults(results, container) {
+        container.innerHTML = '';
         if (results.length === 0) {
-            searchResultsContainer.innerHTML = '<p>Nenhum resultado encontrado.</p>';
+            container.innerHTML = '<p>Nenhum resultado encontrado.</p>';
             return;
         }
 
@@ -251,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <button class="join-btn" data-group-id="${group.id_grupo}">Entrar</button>
                 `;
-                searchResultsContainer.appendChild(item);
+                container.appendChild(item);
             });
         } else { // 'users'
              results.forEach(user => {
@@ -266,12 +294,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <button class="add-friend-btn" data-user-id="${user.id_usuario}">Adicionar Amigo</button>
                 `;
-                searchResultsContainer.appendChild(item);
+                container.appendChild(item);
             });
         }
     }
 
-    async function handleAction(button, url, loadingText, defaultText, body = null, method = 'POST') {
+    async function handleAction(button, url, loadingText, defaultText, body = null, method = 'POST', reload = false) {
         button.disabled = true;
         button.textContent = loadingText;
         try {
@@ -283,13 +311,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(url, options);
             
             if (response.ok) {
-                 if (method === 'DELETE' || (body && body.action)) { // Para exclusão ou resposta a pedido
+                 if (reload) {
                     window.location.reload();
-                } else {
+                 } else {
                     const data = await response.json();
                     alert(data.message);
                     button.textContent = 'Feito!';
-                }
+                 }
             } else {
                 const data = await response.json();
                 alert(data.message);

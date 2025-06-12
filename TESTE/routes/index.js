@@ -57,17 +57,24 @@ router.get('/dashboard', requireLogin, async (req, res, next) => {
             [user.id_usuario, user.id_usuario, user.id_usuario]
         );
 
-        // Buscar pedidos de amizade pendentes (onde o utilizador logado é o 'requisitado')
+        // Buscar pedidos de amizade recebidos pendentes
         const [pendingRequests] = await pool.query(
              "SELECT u.id_usuario, u.Nome, u.FotoPerfil, a.id_amizade FROM Usuarios u JOIN Amizades a ON u.id_usuario = a.id_utilizador_requisitante WHERE a.id_utilizador_requisitado = ? AND a.status = 'pendente'",
              [user.id_usuario]
+        );
+        
+        // Buscar pedidos de amizade enviados pendentes
+        const [sentRequests] = await pool.query(
+            "SELECT u.id_usuario, u.Nome, u.FotoPerfil, a.id_amizade FROM Usuarios u JOIN Amizades a ON u.id_usuario = a.id_utilizador_requisitado WHERE a.id_utilizador_requisitante = ? AND a.status = 'pendente'",
+            [user.id_usuario]
         );
 
         res.render('Dashboard', { 
             user: user, 
             groups: groups, 
             friends: friends,
-            pendingRequests: pendingRequests
+            pendingRequests: pendingRequests,
+            sentRequests: sentRequests
         });
     } catch (error) {
         next(error);
