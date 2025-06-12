@@ -39,7 +39,14 @@
         .profile-icon { border: 2px solid var(--text-muted); }
         .profile-icon:hover { border-color: var(--purple-accent); }
         
-        .channel-list { width: 240px; background-color: var(--background-secondary); display: flex; flex-direction: column; flex-shrink: 0; }
+        /* --- CORREÇÃO DE LAYOUT --- */
+        .channel-list { 
+            width: 260px; /* Aumentado de 240px para 260px para dar mais espaço */
+            background-color: var(--background-secondary); 
+            display: flex; 
+            flex-direction: column; 
+            flex-shrink: 0; 
+        }
         .channel-header { padding: 12px; box-shadow: 0 1px 0 rgba(0,0,0,0.2); font-weight: bold; color: var(--header-primary); display: flex; justify-content: space-between; align-items: center; }
         #group-settings-icon { color: var(--text-muted); cursor: pointer; display: none; }
         #group-settings-icon:hover { color: var(--header-primary); }
@@ -88,26 +95,28 @@
         .search-result-info { display: flex; align-items: center; gap: 10px; }
         .search-result-info img { width: 40px; height: 40px; border-radius: 50%; }
         .search-result-name .group-id-search { color: var(--text-muted); font-size: 12px; }
-        
-        /* --- ESTILOS ATUALIZADOS PARA CORRIGIR SOBREPOSIÇÃO --- */
         .friends-nav { 
             display: flex; 
-            justify-content: center;
-            gap: 6px; 
             padding: 12px; 
+            gap: 8px; 
             border-bottom: 1px solid var(--background-tertiary); 
         }
         .friends-nav-btn { 
+            flex: 1;
             background: #4f545c; 
             border: none; 
             color: var(--text-normal); 
-            padding: 8px 10px; 
+            padding: 8px 5px; 
             cursor: pointer; 
             border-radius: 4px;
             font-size: 13px;
-            white-space: nowrap;
-            flex: 1; /* Faz com que os botões partilhem o espaço igualmente */
             text-align: center;
+            line-height: 1.3;
+            min-height: 38px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            white-space: nowrap; /* Impede que o texto quebre */
         }
         .friends-nav-btn.active { background-color: var(--brand-experiment); }
         .add-friend-container p { font-size: 12px; color: var(--text-muted); margin-top: 0; margin-bottom: 10px; }
