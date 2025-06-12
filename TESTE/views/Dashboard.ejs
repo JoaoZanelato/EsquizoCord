@@ -7,6 +7,12 @@
     <link rel="icon" type="image/png" href="/images/logo.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
         :root {
             --background-primary: #36393f;
             --background-secondary: #2f3136;
@@ -58,7 +64,7 @@
         .chat-header .group-id { color: var(--text-muted); font-size: 12px; }
         .chat-messages { flex-grow: 1; padding: 16px; overflow-y: auto; }
         .chat-input-bar { padding: 0 16px 24px 16px; }
-        .chat-input-bar input { width: 100%; padding: 12px; border-radius: 8px; border: none; background-color: #40444b; color: var(--text-normal); box-sizing: border-box; }
+        .chat-input-bar input { width: 100%; padding: 12px; border-radius: 8px; border: none; background-color: #40444b; color: var(--text-normal); }
         .chat-input-bar input::placeholder { color: var(--text-muted); }
         
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
@@ -66,7 +72,7 @@
         .modal-content.large { max-width: 520px; height: 70vh; }
         .modal-content h3 { text-align: center; margin-top: 0; }
         .modal-content label { font-weight: bold; color: var(--text-muted); font-size: 12px; display: block; margin-bottom: 8px; }
-        .modal-content input[type="text"], .modal-content input[type="file"], .modal-content input[type="search"] { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--background-tertiary); background-color: var(--background-tertiary); color: var(--text-normal); box-sizing: border-box; margin-bottom: 20px; }
+        .modal-content input[type="text"], .modal-content input[type="file"], .modal-content input[type="search"] { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--background-tertiary); background-color: var(--background-tertiary); color: var(--text-normal); margin-bottom: 20px; }
         .checkbox-container { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
         .checkbox-container label { margin: 0; font-size: 14px; color: var(--text-normal); }
         .modal-actions { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
@@ -82,13 +88,52 @@
         .search-result-info { display: flex; align-items: center; gap: 10px; }
         .search-result-info img { width: 40px; height: 40px; border-radius: 50%; }
         .search-result-name .group-id-search { color: var(--text-muted); font-size: 12px; }
-        .friends-nav { display: flex; padding: 10px; gap: 10px; border-bottom: 1px solid var(--background-tertiary); }
-        .friends-nav-btn { background: #4f545c; border: none; color: var(--text-normal); padding: 8px 12px; cursor: pointer; border-radius: 4px; }
+        
+        /* --- ESTILOS ATUALIZADOS PARA CORRIGIR SOBREPOSIÇÃO --- */
+        .friends-nav { 
+            display: flex; 
+            justify-content: center;
+            gap: 6px; 
+            padding: 12px; 
+            border-bottom: 1px solid var(--background-tertiary); 
+        }
+        .friends-nav-btn { 
+            background: #4f545c; 
+            border: none; 
+            color: var(--text-normal); 
+            padding: 8px 10px; 
+            cursor: pointer; 
+            border-radius: 4px;
+            font-size: 13px;
+            white-space: nowrap;
+            flex: 1; /* Faz com que os botões partilhem o espaço igualmente */
+            text-align: center;
+        }
         .friends-nav-btn.active { background-color: var(--brand-experiment); }
-        .add-friend-container { padding: 12px; }
-        .add-friend-input { display: flex; }
-        .add-friend-input input { flex-grow: 1; border-radius: 4px 0 0 4px; }
-        .add-friend-input button { border-radius: 0 4px 4px 0; }
+        .add-friend-container p { font-size: 12px; color: var(--text-muted); margin-top: 0; margin-bottom: 10px; }
+        .add-friend-input { display: flex; width: 100%; }
+        .add-friend-input input { 
+            flex-grow: 1;
+            width: 1%;
+            min-width: 0;
+            border: 1px solid var(--background-tertiary);
+            background-color: var(--background-tertiary);
+            color: var(--text-normal);
+            padding: 8px;
+            border-radius: 3px 0 0 3px;
+            border-right: none;
+        }
+        .add-friend-input button { 
+            flex-shrink: 0;
+            white-space: nowrap;
+            border-radius: 0 3px 3px 0; 
+            background-color: var(--brand-experiment);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body 
