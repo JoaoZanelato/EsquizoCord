@@ -7,7 +7,7 @@
 const app = require('../app');
 const debug = require('debug')('teste:server');
 const http = require('http');
-const { Server } = require("socket.io");
+const { Server } = require("socket.io"); // Importa o Server do socket.io
 
 /**
  * Get port from environment and store in Express.
@@ -23,11 +23,11 @@ app.set('port', port);
 const server = http.createServer(app);
 
 /**
- * Create Socket.IO server.
+ * Create Socket.IO server and attach it to the HTTP server.
+ * This automatically serves the client-side script at /socket.io/socket.io.js
  */
 const io = new Server(server);
-// Disponibiliza a instância do io para toda a aplicação Express
-app.set('io', io); 
+app.set('io', io); // Torna o 'io' acessível em outras partes da app (ex: rotas)
 
 // Mapeamento para saber em que sala cada socket está
 const socketRooms = {};
@@ -53,6 +53,7 @@ io.on('connection', (socket) => {
     delete socketRooms[socket.id]; // Limpa o registo do socket
   });
 });
+
 
 /**
  * Listen on provided port, on all network interfaces.
