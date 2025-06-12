@@ -62,7 +62,7 @@
         .cancel-btn { background: none; color: var(--header-primary); }
         .submit-btn, .join-btn, .add-friend-btn { background-color: var(--brand-experiment); color: white; }
         .delete-btn { background-color: var(--red-danger); color: white; }
-        #search-results, .friend-requests-container { flex-grow: 1; overflow-y: auto; margin-top: 10px; }
+        #search-results, #search-group-results, .friend-requests-container { flex-grow: 1; overflow-y: auto; margin-top: 10px; }
         .search-result-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-radius: 4px; margin-bottom: 8px; background-color: var(--background-primary); }
         .search-result-info { display: flex; align-items: center; gap: 10px; }
         .search-result-info img { width: 40px; height: 40px; border-radius: 50%; }
@@ -74,6 +74,13 @@
         .add-friend-input { display: flex; width: 100%; }
         .add-friend-input input { flex-grow: 1; width: 1%; min-width: 0; border: 1px solid var(--background-tertiary); background-color: var(--background-tertiary); color: var(--text-normal); padding: 8px; border-radius: 3px 0 0 3px; border-right: none; }
         .add-friend-input button { flex-shrink: 0; white-space: nowrap; border-radius: 0 3px 3px 0; background-color: var(--brand-experiment); color: white; border: none; padding: 8px 12px; cursor: pointer; font-weight: bold; }
+        
+        /* Estilos para mensagens */
+        .message-item { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+        .message-item.sent { flex-direction: row-reverse; text-align: right; }
+        .message-content { flex-grow: 1; }
+        .author-name { font-weight: bold; color: var(--brand-experiment); margin-bottom: 4px; display: block; }
+        .message-text { margin: 0; word-wrap: break-word; }
     </style>
 </head>
 <body 
@@ -112,6 +119,7 @@
                  </a>
             </div>
         </nav>
+        
         <aside class="channel-list">
             <div class="channel-header">
                 <span id="group-name-header">Amigos</span>
@@ -132,26 +140,36 @@
                  <% } %>
             </div>
         </aside>
+        
         <main class="chat-area">
-            <div class="chat-header" id="chat-header"><h3>Mensagens Diretas</h3></div>
-            <div class="chat-messages" id="chat-messages-container"><p>Selecione um amigo para começar a conversar.</p></div>
-            <div class="chat-input-bar"><input type="text" placeholder="Conversar..."></div>
+            <div class="chat-header" id="chat-header">
+                <h3>Mensagens Diretas</h3>
+            </div>
+            <div class="chat-messages" id="chat-messages-container">
+                <p style="text-align: center; color: var(--text-muted); padding: 20px;">Selecione um amigo para começar a conversar.</p>
+            </div>
+            <div class="chat-input-bar">
+                <input type="text" placeholder="Conversar...">
+            </div>
         </main>
     </div>
 
-    <!-- Modais -->
+    <!-- Modal: Criar Grupo -->
     <div class="modal-overlay" id="create-group-modal">
         <div class="modal-content">
             <h3>Crie o seu servidor</h3>
             <form id="create-group-form">
                 <label for="group-name-create">NOME DO SERVIDOR</label>
                 <input type="text" id="group-name-create" name="nome" required>
+                
                 <label for="group-photo-create">FOTO DO SERVIDOR (Opcional)</label>
                 <input type="file" id="group-photo-create" name="foto" accept="image/*">
+                
                 <div class="checkbox-container">
                     <input type="checkbox" id="group-private-create" name="isPrivate">
                     <label for="group-private-create">Grupo Privado</label>
                 </div>
+                
                 <div class="modal-actions">
                     <button type="button" class="cancel-btn">Cancelar</button>
                     <button type="submit" class="submit-btn">Criar</button>
@@ -159,19 +177,25 @@
             </form>
         </div>
     </div>
+
+    <!-- Modal: Editar Grupo -->
     <div class="modal-overlay" id="edit-group-modal">
         <div class="modal-content">
             <h3>Configurações do Grupo</h3>
             <form id="edit-group-form">
                 <input type="hidden" id="edit-group-id" name="groupId">
+                
                 <label for="edit-group-name">NOME DO SERVIDOR</label>
                 <input type="text" id="edit-group-name" name="nome" required>
+                
                 <label for="edit-group-photo">FOTO DO SERVIDOR</label>
                 <input type="file" id="edit-group-photo" name="foto" accept="image/*">
+                
                 <div class="checkbox-container">
                     <input type="checkbox" id="edit-group-private" name="isPrivate">
                     <label for="edit-group-private">Grupo Privado</label>
                 </div>
+                
                 <div class="modal-actions">
                     <button type="button" class="delete-btn" id="delete-group-btn">Excluir Grupo</button>
                     <div>
@@ -182,6 +206,8 @@
             </form>
         </div>
     </div>
+
+    <!-- Modal: Explorar Grupos -->
     <div class="modal-overlay" id="explore-group-modal">
         <div class="modal-content large">
             <h3>Explorar Servidores Públicos</h3>
