@@ -7,27 +7,13 @@
     <link rel="icon" type="image/png" href="/images/logo.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-        }
-
+        *, *::before, *::after { box-sizing: border-box; }
         :root {
-            --background-primary: #36393f;
-            --background-secondary: #2f3136;
-            --background-tertiary: #202225;
-            --header-primary: #fff;
-            --text-normal: #dcddde;
-            --text-muted: #72767d;
-            --brand-experiment: #660080;
-            --brand-hover: #572364;
-            --purple-accent: #cc00ff;
-            --green-accent: #43B581;
-            --red-danger: #f04747;
-            --red-danger-hover: #d84040;
+            --background-primary: #36393f; --background-secondary: #2f3136; --background-tertiary: #202225;
+            --header-primary: #fff; --text-normal: #dcddde; --text-muted: #72767d;
+            --brand-experiment: #660080; --brand-hover: #572364; --purple-accent: #cc00ff;
+            --green-accent: #43B581; --red-danger: #f04747; --red-danger-hover: #d84040;
         }
-        
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; overflow: hidden; color: var(--text-normal); background-color: var(--background-tertiary); }
         .dashboard-layout { display: flex; height: 100vh; }
         .server-list { width: 72px; background-color: var(--background-tertiary); padding: 12px 0; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; overflow-y: auto; }
@@ -38,7 +24,6 @@
         .profile-icon-container { margin-top: auto; }
         .profile-icon { border: 2px solid var(--text-muted); }
         .profile-icon:hover { border-color: var(--purple-accent); }
-        
         .channel-list { width: 260px; background-color: var(--background-secondary); display: flex; flex-direction: column; flex-shrink: 0; }
         .channel-header { padding: 12px; box-shadow: 0 1px 0 rgba(0,0,0,0.2); font-weight: bold; color: var(--header-primary); display: flex; justify-content: space-between; align-items: center; }
         #group-settings-icon { color: var(--text-muted); cursor: pointer; display: none; }
@@ -54,7 +39,6 @@
         .request-actions button { background: none; border: none; cursor: pointer; font-size: 20px; }
         .accept-btn { color: var(--green-accent); }
         .reject-btn, .cancel-request-btn { color: var(--red-danger); }
-        
         .user-panel { background-color: #292b2f; padding: 12px; display: flex; align-items: center; }
         .user-panel img { width: 32px; height: 32px; border-radius: 50%; margin-right: 8px; }
         .user-panel .username { font-weight: bold; }
@@ -65,8 +49,6 @@
         .chat-messages { flex-grow: 1; padding: 16px; overflow-y: auto; }
         .chat-input-bar { padding: 0 16px 24px 16px; }
         .chat-input-bar input { width: 100%; padding: 12px; border-radius: 8px; border: none; background-color: #40444b; color: var(--text-normal); }
-        .chat-input-bar input::placeholder { color: var(--text-muted); }
-        
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background-color: var(--background-secondary); padding: 24px; border-radius: 8px; width: 90%; max-width: 440px; display: flex; flex-direction: column; }
         .modal-content.large { max-width: 520px; height: 70vh; }
@@ -79,10 +61,7 @@
         .modal-actions button { padding: 10px 24px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .cancel-btn { background: none; color: var(--header-primary); }
         .submit-btn, .join-btn, .add-friend-btn { background-color: var(--brand-experiment); color: white; }
-        .join-btn:hover, .add-friend-btn:hover { background-color: var(--brand-hover); }
         .delete-btn { background-color: var(--red-danger); color: white; }
-        .delete-btn:hover { background-color: var(--red-danger-hover); }
-        
         #search-results, .friend-requests-container { flex-grow: 1; overflow-y: auto; margin-top: 10px; }
         .search-result-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-radius: 4px; margin-bottom: 8px; background-color: var(--background-primary); }
         .search-result-info { display: flex; align-items: center; gap: 10px; }
@@ -217,6 +196,7 @@
         </div>
     </div>
     
+    <script src="/socket.io/socket.io.js"></script>
     <script src="/js/dashboard.js"></script>
 </body>
 </html>

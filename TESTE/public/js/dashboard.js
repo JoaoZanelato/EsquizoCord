@@ -3,11 +3,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const socket = io();
     const body = document.querySelector('body');
     
+    // Função segura para fazer o parse dos dados JSON a partir dos data attributes
     const parseJsonData = (attribute) => {
         const data = body.dataset[attribute];
         if (!data) return null;
-        try { return JSON.parse(data); }
-        catch (e) {
+        try {
+            return JSON.parse(data);
+        } catch (e) {
             console.error(`Erro ao fazer o parse do atributo de dados: ${attribute}`, e);
             return null;
         }
@@ -22,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentUserId = currentUser ? currentUser.id_usuario : null;
     let currentGroupData = null;
     let currentChatId = null;
-    let activeSearchTab = 'groups';
 
     // --- SELEÇÃO DE ELEMENTOS DO DOM ---
     const createGroupModal = document.getElementById('create-group-modal');
@@ -32,9 +33,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const createGroupForm = document.getElementById('create-group-form');
     const editGroupForm = document.getElementById('edit-group-form');
     const searchGroupInput = document.getElementById('search-group-input');
-    const searchUserInput = document.getElementById('search-user-input');
     const searchGroupResults = document.getElementById('search-group-results');
+    const searchUserInput = document.getElementById('search-user-input');
     const searchUserResults = document.getElementById('search-user-results');
+
 
     const addServerButton = document.getElementById('add-server-button');
     const exploreButton = document.getElementById('explore-button');
@@ -311,8 +313,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         let searchTimeout;
-        if (searchGroupInput) {
-            searchGroupInput.addEventListener('input', e => {
+        if(searchGroupInput){
+             searchGroupInput.addEventListener('input', e => {
                 clearTimeout(searchTimeout);
                 const query = e.target.value;
                 searchTimeout = setTimeout(async () => {
