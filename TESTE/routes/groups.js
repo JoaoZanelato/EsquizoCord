@@ -12,13 +12,17 @@ cloudinary.config({
 });
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: (req, file) => ({
-    folder: 'esquizocord_groups',
-    format: 'png',
-    public_id: `group-${req.session.user.id_usuario}-${Date.now()}`,
-  }),
+  params: (req, file) => {
+    const userId = req.session.user ? req.session.user.id_usuario : 'unknown_user';
+    return {
+      folder: 'esquizocord_groups',
+      format: 'png',
+      public_id: `group-${userId}-${Date.now()}`,
+    };
+  },
 });
 const upload = multer({ storage: storage });
+
 
 // --- Middlewares ---
 function requireLogin(req, res, next) {
@@ -31,73 +35,55 @@ async function isGroupCreator(req, res, next) {
         const userId = req.session.user.id_usuario;
         const pool = req.db;
         const [rows] = await pool.query("SELECT id_criador FROM Grupos WHERE id_grupo = ?", [id]);
-        if (rows.length === 0) return res.status(404).json({ message: "Grupo não encontrado." });
-        if (rows[0].id_criador !== userId) return res.status(403).json({ message: "Apenas o criador pode alterar as configurações do grupo." });
+        if (rows.length === 0) {
+            return res.status(404).json({ message: "Grupo não encontrado." });
+        }
+        if (rows[0].id_criador !== userId) {
+            return res.status(403).json({ message: "Apenas o criador pode alterar as configurações do grupo." });
+        }
         return next();
     } catch (error) { next(error); }
 }
 
-// --- ROTAS DE CHAT ---
+// --- ROTAS ---
 
-// ROTA GET PARA BUSCAR O HISTÓRICO DE MENSAGENS DE UM CANAL
-router.get('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
-    const { chatId } = req.params;
+// ROTA GET PARA PROCURAR E LISTAR GRUPOS PÚBLICOS
+router.get('/search', requireLogin, async (req, res, next) => {
+    const { q } = req.query;
     const pool = req.db;
     try {
-        const query = `
-            SELECT m.Conteudo, m.DataHora, u.Nome AS autorNome, u.FotoPerfil AS autorFoto
-            FROM Mensagens m
-            JOIN Usuarios u ON m.id_usuario = u.id_usuario
-            WHERE m.id_chat = ?
-            ORDER BY m.DataHora ASC
-            LIMIT 50
-        `;
-        const [messages] = await pool.query(query, [chatId]);
-        res.json(messages);
-    } catch (error) {
-        next(error);
-    }
+        let query;
+        let params;
+        if (q) {
+            query = `SELECT id_grupo, Nome, Foto FROM Grupos WHERE IsPrivate = 0 AND (Nome LIKE ? OR id_grupo = ?)`;
+            params = [`%${q}%`, q];
+        } else {
+            query = `SELECT id_grupo, Nome, Foto FROM Grupos WHERE IsPrivate = 0 ORDER BY Nome ASC`;
+            params = [];
+        }
+        const [groups] = await pool.query(query, params);
+        res.json(groups);
+    } catch (error) { next(error); }
 });
 
-// ROTA POST PARA ENVIAR E GUARDAR UMA NOVA MENSAGEM
-router.post('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
-    const { chatId } = req.params;
-    const { content } = req.body;
+// ROTA POST PARA ENTRAR NUM GRUPO
+router.post('/:id/join', requireLogin, async (req, res, next) => {
+    const groupId = req.params.id;
     const userId = req.session.user.id_usuario;
     const pool = req.db;
-    const io = req.app.get('io');
-
-    if (!content) {
-        return res.status(400).json({ message: "O conteúdo da mensagem não pode estar vazio." });
-    }
-
     try {
-        const [result] = await pool.query(
-            "INSERT INTO Mensagens (id_chat, id_usuario, Conteudo) VALUES (?, ?, ?)",
-            [chatId, userId, content]
-        );
-        const messageData = {
-            id_mensagem: result.insertId,
-            id_chat: parseInt(chatId),
-            Conteudo: content,
-            DataHora: new Date(),
-            autorNome: req.session.user.Nome,
-            autorFoto: req.session.user.FotoPerfil
-        };
-        const [group] = await pool.query("SELECT id_grupo FROM Chats WHERE id_chat = ?", [chatId]);
-        if (group.length > 0) {
-            const roomName = `group-${group[0].id_grupo}`;
-            io.to(roomName).emit('new_group_message', messageData);
-        }
-        res.status(201).json(messageData);
+        const [existing] = await pool.query("SELECT * FROM ParticipantesGrupo WHERE id_usuario = ? AND id_grupo = ?", [userId, groupId]);
+        if (existing.length > 0) return res.status(409).json({ message: "Você já é membro deste grupo." });
+        await pool.query("INSERT INTO ParticipantesGrupo (id_usuario, id_grupo) VALUES (?, ?)", [userId, groupId]);
+        res.status(200).json({ message: "Entrou no grupo com sucesso!" });
     } catch (error) {
+        if (error.code === 'ER_NO_REFERENCED_ROW_2') return res.status(404).json({ message: "Grupo não encontrado." });
         next(error);
     }
 });
 
 
-// --- ROTAS DE GESTÃO DE GRUPOS ---
-
+// ROTA POST PARA CRIAR UM NOVO GRUPO
 router.post('/criar', requireLogin, upload.single('foto'), async (req, res, next) => {
     const { nome, isPrivate } = req.body;
     const id_criador = req.session.user.id_usuario;
@@ -123,6 +109,7 @@ router.post('/criar', requireLogin, upload.single('foto'), async (req, res, next
     }
 });
 
+// ROTA GET PARA BUSCAR OS DETALHES DE UM GRUPO
 router.get('/:id/details', requireLogin, async (req, res, next) => {
     const { id } = req.params;
     const pool = req.db;
@@ -135,6 +122,7 @@ router.get('/:id/details', requireLogin, async (req, res, next) => {
     } catch (error) { next(error); }
 });
 
+// ROTA POST PARA ATUALIZAR AS CONFIGURAÇÕES DE UM GRUPO
 router.post('/:id/settings', requireLogin, isGroupCreator, upload.single('foto'), async (req, res, next) => {
     const { id } = req.params;
     const { nome, isPrivate } = req.body;
@@ -155,6 +143,7 @@ router.post('/:id/settings', requireLogin, isGroupCreator, upload.single('foto')
     } catch (error) { next(error); }
 });
 
+// ROTA DELETE PARA EXCLUIR UM GRUPO
 router.delete('/:id', requireLogin, isGroupCreator, async (req, res, next) => {
     const { id } = req.params;
     const pool = req.db;
@@ -181,38 +170,63 @@ router.delete('/:id', requireLogin, isGroupCreator, async (req, res, next) => {
     }
 });
 
-router.get('/search', requireLogin, async (req, res, next) => {
-    const { q } = req.query;
-    const pool = req.db;
-    try {
-        let query;
-        let params;
-        if (q) {
-            query = `SELECT id_grupo, Nome, Foto FROM Grupos WHERE IsPrivate = 0 AND (Nome LIKE ? OR id_grupo = ?)`;
-            params = [`%${q}%`, q];
-        } else {
-            query = `SELECT id_grupo, Nome, Foto FROM Grupos WHERE IsPrivate = 0 ORDER BY Nome ASC`;
-            params = [];
-        }
-        const [groups] = await pool.query(query, params);
-        res.json(groups);
-    } catch (error) { next(error); }
-});
 
-router.post('/:id/join', requireLogin, async (req, res, next) => {
-    const groupId = req.params.id;
-    const userId = req.session.user.id_usuario;
+// --- ROTAS DE CHAT ---
+
+// ROTA GET PARA BUSCAR O HISTÓRICO DE MENSAGENS DE UM CANAL
+router.get('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
+    const { chatId } = req.params;
     const pool = req.db;
     try {
-        const [existing] = await pool.query("SELECT * FROM ParticipantesGrupo WHERE id_usuario = ? AND id_grupo = ?", [userId, groupId]);
-        if (existing.length > 0) return res.status(409).json({ message: "Você já é membro deste grupo." });
-        await pool.query("INSERT INTO ParticipantesGrupo (id_usuario, id_grupo) VALUES (?, ?)", [userId, groupId]);
-        res.status(200).json({ message: "Entrou no grupo com sucesso!" });
+        const query = `
+            SELECT m.Conteudo, m.DataHora, m.id_usuario, u.Nome AS autorNome, u.FotoPerfil AS autorFoto
+            FROM Mensagens m
+            JOIN Usuarios u ON m.id_usuario = u.id_usuario
+            WHERE m.id_chat = ?
+            ORDER BY m.DataHora ASC
+            LIMIT 50
+        `;
+        const [messages] = await pool.query(query, [chatId]);
+        res.json(messages);
     } catch (error) {
-        if (error.code === 'ER_NO_REFERENCED_ROW_2') return res.status(404).json({ message: "Grupo não encontrado." });
         next(error);
     }
 });
 
+// ROTA POST PARA ENVIAR E GUARDAR UMA NOVA MENSAGEM
+router.post('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
+    const { chatId } = req.params;
+    const { content } = req.body;
+    const user = req.session.user;
+    const pool = req.db;
+    const io = req.app.get('io');
+
+    if (!content) {
+        return res.status(400).json({ message: "O conteúdo da mensagem não pode estar vazio." });
+    }
+
+    try {
+        const [result] = await pool.query(
+            "INSERT INTO Mensagens (id_chat, id_usuario, Conteudo) VALUES (?, ?, ?)",
+            [chatId, user.id_usuario, content]
+        );
+        const messageData = {
+            id_mensagem: result.insertId,
+            id_chat: parseInt(chatId),
+            Conteudo: content,
+            DataHora: new Date(),
+            id_usuario: user.id_usuario,
+            autorNome: user.Nome,
+            autorFoto: user.FotoPerfil
+        };
+        const [group] = await pool.query("SELECT id_grupo FROM Chats WHERE id_chat = ?", [chatId]);
+        if (group.length > 0) {
+            io.to(`group-${group[0].id_grupo}`).emit('new_group_message', messageData);
+        }
+        res.status(201).json(messageData);
+    } catch (error) {
+        next(error);
+    }
+});
 
 module.exports = router;
