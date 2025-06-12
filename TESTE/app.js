@@ -2,19 +2,18 @@ const createError = require('http-errors');
 const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
-const logger = 'morgan';
+const logger = require('morgan');
 const session = require('express-session');
 
-// Importação das rotas
+// Importação de todas as rotas
 const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
 const groupsRouter = require('./routes/groups');
+const friendsRouter = require('./routes/friends');
 
 const app = express();
 
-// --- CORREÇÃO PARA O RENDER ---
-// Diz ao Express para confiar no reverse proxy do Render.
-// Isto é essencial para que as sessões e os cookies seguros funcionem corretamente.
+// Confia no proxy reverso do Render para que as sessões seguras funcionem
 app.set('trust proxy', 1); 
 
 // Configuração da View Engine
@@ -22,26 +21,25 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
 // Configuração dos Middlewares
+app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configuração da Sessão Atualizada para Produção
+// Configuração da Sessão para produção
 app.use(session({
-  secret: 'a_frase_mais_secreta_do_esquizocord', // Mude isto para uma frase aleatória
+  secret: 'uma_frase_bem_secreta_para_o_esquizocord', // É crucial mudar isto
   resave: false,
-  saveUninitialized: false, // Alterado para false, boa prática
+  saveUninitialized: false,
   cookie: { 
-      secure: process.env.NODE_ENV === 'production', // Cookie seguro apenas em produção (HTTPS)
-      httpOnly: true, // Protege contra ataques XSS
-      sameSite: 'lax' // Proteção contra ataques CSRF
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'lax'
     } 
 }));
 
-
 // Middleware para disponibilizar a conexão da DB para todas as rotas
-// (Certifique-se de que a importação do 'pool' está no seu ficheiro real)
 const pool = require('./db'); 
 app.use((req, res, next) => {
   req.db = pool;
@@ -50,7 +48,7 @@ app.use((req, res, next) => {
 
 // Middleware para disponibilizar dados da sessão para as views
 app.use((req, res, next) => {
-  res.locals.user = req.session.user;
+  res.locals.user = req.session.user; 
   next();
 });
 
@@ -58,16 +56,20 @@ app.use((req, res, next) => {
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/groups', groupsRouter);
+app.use('/friends', friendsRouter);
 
-// catch 404 and forward to error handler
+// Tratamento de erro 404
 app.use(function(req, res, next) {
   next(createError(404));
 });
 
-// error handler
+// Tratamento de outros erros
 app.use(function(err, req, res, next) {
+  // Define os locais, fornecendo o erro apenas em desenvolvimento
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
+
+  // Renderiza a página de erro
   res.status(err.status || 500);
   res.render('error');
 });
