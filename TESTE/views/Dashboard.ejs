@@ -43,12 +43,11 @@
         .friend-item:hover { background-color: rgba(255,255,255,0.04); }
         .friend-item img { width: 32px; height: 32px; border-radius: 50%; }
         .admin-icon { color: #f1c40f; font-size: 10px; margin-left: auto; }
-        .friend-request-item { background-color: var(--background-tertiary); padding: 8px; border-radius: 4px; margin-bottom: 8px; }
-        .friend-request-item .friend-item { padding-bottom: 8px; }
-        .request-actions { margin-left: auto; display: flex; gap: 10px; }
-        .request-actions button { background: none; border: none; cursor: pointer; font-size: 18px; }
+        .friend-request-item { background-color: var(--background-tertiary); padding: 8px; border-radius: 4px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .request-actions { display: flex; gap: 10px; }
+        .request-actions button { background: none; border: none; cursor: pointer; font-size: 20px; }
         .accept-btn { color: var(--green-accent); }
-        .reject-btn { color: var(--red-danger); }
+        .reject-btn, .cancel-request-btn { color: var(--red-danger); }
         
         .user-panel { background-color: #292b2f; padding: 12px; display: flex; align-items: center; }
         .user-panel img { width: 32px; height: 32px; border-radius: 50%; margin-right: 8px; }
@@ -61,6 +60,7 @@
         .chat-input-bar { padding: 0 16px 24px 16px; }
         .chat-input-bar input { width: 100%; padding: 12px; border-radius: 8px; border: none; background-color: #40444b; color: var(--text-normal); box-sizing: border-box; }
         .chat-input-bar input::placeholder { color: var(--text-muted); }
+        
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background-color: var(--background-secondary); padding: 24px; border-radius: 8px; width: 90%; max-width: 440px; display: flex; flex-direction: column; }
         .modal-content.large { max-width: 520px; height: 70vh; }
@@ -76,6 +76,7 @@
         .join-btn:hover, .add-friend-btn:hover { background-color: var(--brand-hover); }
         .delete-btn { background-color: var(--red-danger); color: white; }
         .delete-btn:hover { background-color: var(--red-danger-hover); }
+        
         #search-results, .friend-requests-container { flex-grow: 1; overflow-y: auto; margin-top: 10px; }
         .search-result-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-radius: 4px; margin-bottom: 8px; background-color: var(--background-primary); }
         .search-result-info { display: flex; align-items: center; gap: 10px; }
@@ -105,7 +106,7 @@
             <div class="server-icon" id="add-server-button" title="Adicionar um servidor">
                 <i class="fas fa-plus" style="color: var(--green-accent);"></i>
             </div>
-            <div class="server-icon" id="explore-button" title="Explorar">
+            <div class="server-icon" id="explore-button" title="Explorar Servidores">
                 <i class="fas fa-compass" style="color: var(--green-accent);"></i>
             </div>
             <div class="profile-icon-container">
@@ -120,22 +121,11 @@
         </nav>
         <aside class="channel-list">
             <div class="channel-header">
-                <span id="group-name-header">Mensagens Diretas</span>
+                <span id="group-name-header">Amigos</span>
                 <i class="fas fa-cog" id="group-settings-icon" title="Configurações do Grupo"></i>
             </div>
             <div class="channel-list-content" id="channel-list-content">
                 <!-- Conteúdo inicial será a lista de amigos -->
-                <div class="channel-list-header">Amigos</div>
-                <% if (friends && friends.length > 0) { %>
-                    <% friends.forEach(friend => { %>
-                        <div class="friend-item" data-friend-id="<%= friend.id_usuario %>">
-                            <img src="<%= friend.FotoPerfil || '/images/logo.png' %>" alt="<%= friend.Nome %>">
-                            <span><%= friend.Nome %></span>
-                        </div>
-                    <% }); %>
-                <% } else { %>
-                    <p style="padding: 8px; color: var(--text-muted);">A sua lista de amigos está vazia.</p>
-                <% } %>
             </div>
             <div class="user-panel">
                  <% if (user) { %>
@@ -145,80 +135,120 @@
             </div>
         </aside>
         <main class="chat-area">
-            <div class="chat-header" id="chat-header"><h3></h3></div>
-            <div class="chat-messages" id="chat-messages-container"><p>Bem-vindo!</p></div>
+            <div class="chat-header" id="chat-header"><h3>Mensagens Diretas</h3></div>
+            <div class="chat-messages" id="chat-messages-container"><p>Selecione um amigo para começar a conversar.</p></div>
             <div class="chat-input-bar"><input type="text" placeholder="Conversar..."></div>
         </main>
     </div>
 
     <!-- Modais -->
+    <div class="modal-overlay" id="create-group-modal">
+        <div class="modal-content">
+            <h3>Crie o seu servidor</h3>
+            <form id="create-group-form">
+                <label for="group-name">NOME DO SERVIDOR</label>
+                <input type="text" id="group-name" name="nome" required>
+                <label for="group-photo">FOTO DO SERVIDOR (Opcional)</label>
+                <input type="file" id="group-photo" name="foto" accept="image/*">
+                <div class="checkbox-container">
+                    <input type="checkbox" id="group-private-create" name="isPrivate">
+                    <label for="group-private-create">Grupo Privado</label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="cancel-btn">Cancelar</button>
+                    <button type="submit" class="submit-btn">Criar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="modal-overlay" id="edit-group-modal">
+        <div class="modal-content">
+            <h3>Configurações do Grupo</h3>
+            <form id="edit-group-form">
+                <input type="hidden" id="edit-group-id" name="groupId">
+                <label for="edit-group-name">NOME DO SERVIDOR</label>
+                <input type="text" id="edit-group-name" name="nome" required>
+                <label for="edit-group-photo">FOTO DO SERVIDOR</label>
+                <input type="file" id="edit-group-photo" name="foto" accept="image/*">
+                <div class="checkbox-container">
+                    <input type="checkbox" id="edit-group-private" name="isPrivate">
+                    <label for="edit-group-private">Grupo Privado</label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="delete-btn" id="delete-group-btn">Excluir Grupo</button>
+                    <div>
+                        <button type="button" class="cancel-btn">Cancelar</button>
+                        <button type="submit" class="submit-btn">Salvar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
     <div class="modal-overlay" id="explore-modal">
         <div class="modal-content large">
             <div class="tabs">
-                <button class="tab-button active" data-tab="groups">Explorar Grupos</button>
-                <button class="tab-button" data-tab="users">Encontrar Utilizadores</button>
-                <button class="tab-button" data-tab="friends">Amigos</button>
+                <button class="tab-button active" data-tab="explore-groups">Explorar Grupos</button>
+                <button class="tab-button" data-tab="add-friend">Adicionar Amigo</button>
             </div>
-            
-            <div id="groups" class="tab-content active">
+            <div id="explore-groups" class="tab-content active">
                 <form id="search-group-form">
-                     <input type="search" id="search-group-input" placeholder="Pesquisar grupos...">
+                     <input type="search" id="search-group-input" placeholder="Pesquisar grupos públicos...">
                 </form>
                 <div id="search-group-results"></div>
             </div>
-            
-            <div id="users" class="tab-content">
-                <form id="search-user-form">
-                     <input type="search" id="search-user-input" placeholder="Pesquisar utilizadores...">
-                </form>
+            <div id="add-friend" class="tab-content">
+                <h3>Adicionar Amigo</h3>
+                <p>Pode adicionar um amigo com o seu nome de utilizador exacto.</p>
+                <input type="search" id="search-user-input" placeholder="Digite o nome do utilizador...">
                 <div id="search-user-results"></div>
             </div>
-
-            <div id="friends" class="tab-content">
-                <h4>Pedidos Recebidos</h4>
-                <div class="friend-requests-container" id="pending-requests-list">
-                    <% if (pendingRequests && pendingRequests.length > 0) { %>
-                        <% pendingRequests.forEach(request => { %>
-                            <div class="search-result-item" data-request-id="<%= request.id_amizade %>">
-                                <div class="search-result-info">
-                                    <img src="<%= request.FotoPerfil || '/images/logo.png' %>" alt="<%= request.Nome %>">
-                                    <span><%= request.Nome %></span>
-                                </div>
-                                <div class="request-actions">
-                                    <button class="accept-btn" title="Aceitar"><i class="fas fa-check-circle"></i></button>
-                                    <button class="reject-btn" title="Recusar"><i class="fas fa-times-circle"></i></button>
-                                </div>
-                            </div>
-                        <% }); %>
-                    <% } else { %>
-                        <p>Nenhum pedido de amizade pendente.</p>
-                    <% } %>
-                </div>
-                <h4 style="margin-top: 20px;">Pedidos Enviados</h4>
-                <div class="friend-requests-container" id="sent-requests-list">
-                    <% if (sentRequests && sentRequests.length > 0) { %>
-                        <% sentRequests.forEach(request => { %>
-                            <div class="search-result-item" data-request-id="<%= request.id_amizade %>">
-                                <div class="search-result-info">
-                                    <img src="<%= request.FotoPerfil || '/images/logo.png' %>" alt="<%= request.Nome %>">
-                                    <span><%= request.Nome %></span>
-                                </div>
-                                <button class="cancel-request-btn delete-btn">Cancelar</button>
-                            </div>
-                        <% }); %>
-                    <% } else { %>
-                        <p>Nenhum pedido enviado pendente.</p>
-                    <% } %>
-                </div>
-            </div>
-
              <div class="modal-actions">
                 <button type="button" class="cancel-btn">Fechar</button>
             </div>
         </div>
     </div>
-    <!-- Outros modais... -->
-
+    <div class="modal-overlay" id="friend-requests-modal">
+        <div class="modal-content large">
+            <h3>Pedidos de Amizade</h3>
+            <h4>Pedidos Recebidos</h4>
+            <div class="friend-requests-container" id="pending-requests-list">
+                 <% if (pendingRequests && pendingRequests.length > 0) { %>
+                    <% pendingRequests.forEach(request => { %>
+                        <div class="search-result-item" data-request-id="<%= request.id_amizade %>">
+                            <div class="search-result-info">
+                                <img src="<%= request.FotoPerfil || '/images/logo.png' %>" alt="<%= request.Nome %>">
+                                <span><%= request.Nome %></span>
+                            </div>
+                            <div class="request-actions">
+                                <button class="accept-btn" title="Aceitar"><i class="fas fa-check-circle"></i></button>
+                                <button class="reject-btn" title="Recusar"><i class="fas fa-times-circle"></i></button>
+                            </div>
+                        </div>
+                    <% }); %>
+                <% } else { %>
+                    <p>Nenhum pedido de amizade pendente.</p>
+                <% } %>
+            </div>
+            <h4 style="margin-top: 20px;">Pedidos Enviados</h4>
+            <div class="friend-requests-container" id="sent-requests-list">
+                <% if (sentRequests && sentRequests.length > 0) { %>
+                    <% sentRequests.forEach(request => { %>
+                        <div class="search-result-item" data-request-id="<%= request.id_amizade %>">
+                            <div class="search-result-info">
+                                <img src="<%= request.FotoPerfil || '/images/logo.png' %>" alt="<%= request.Nome %>">
+                                <span><%= request.Nome %></span>
+                            </div>
+                            <button class="cancel-request-btn delete-btn">Cancelar</button>
+                        </div>
+                    <% }); %>
+                <% } else { %>
+                    <p>Nenhum pedido enviado pendente.</p>
+                <% } %>
+            </div>
+            <div class="modal-actions"> <button type="button" class="cancel-btn">Fechar</button> </div>
+        </div>
+    </div>
+    
     <script src="/js/dashboard.js"></script>
 </body>
 </html>
