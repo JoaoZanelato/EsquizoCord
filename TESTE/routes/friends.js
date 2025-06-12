@@ -35,11 +35,8 @@ router.post('/request', requireLogin, async (req, res, next) => {
     const { requestedId } = req.body;
     const requesterId = req.session.user.id_usuario;
 
-    if (!requestedId) {
-        return res.status(400).json({ message: "ID do utilizador solicitado é obrigatório." });
-    }
-    if (requesterId == requestedId) {
-        return res.status(400).json({ message: "Não pode adicionar-se a si mesmo." });
+    if (!requestedId || requesterId == requestedId) {
+        return res.status(400).json({ message: "Pedido inválido." });
     }
 
     const pool = req.db;
@@ -51,19 +48,48 @@ router.post('/request', requireLogin, async (req, res, next) => {
         );
 
         if (existing.length > 0) {
-            return res.status(409).json({ message: "Já existe um pedido de amizade ou amizade com este utilizador." });
+            return res.status(409).json({ message: "Já existe uma relação com este utilizador." });
         }
 
         // Cria o novo pedido de amizade
         const sql = "INSERT INTO Amizades (id_utilizador_requisitante, id_utilizador_requisitado, status) VALUES (?, ?, 'pendente')";
         await pool.query(sql, [requesterId, requestedId]);
 
-        res.status(201).json({ message: "Pedido de amizade enviado com sucesso!" });
+        res.status(201).json({ message: "Pedido de amizade enviado!" });
 
     } catch (error) {
         console.error("Erro ao enviar pedido de amizade:", error);
         next(error);
     }
 });
+
+// ROTA POST PARA RESPONDER A UM PEDIDO DE AMIZADE (ACEITAR/RECUSAR)
+router.post('/respond', requireLogin, async (req, res, next) => {
+    const { requestId, action } = req.body; // action será 'aceite' ou 'recusada'
+    const currentUserId = req.session.user.id_usuario;
+
+    if (!requestId || !['aceite', 'recusada'].includes(action)) {
+        return res.status(400).json({ message: "Pedido inválido." });
+    }
+    
+    const pool = req.db;
+    try {
+        if (action === 'aceite') {
+            await pool.query(
+                "UPDATE Amizades SET status = 'aceite' WHERE id_amizade = ? AND id_utilizador_requisitado = ?", 
+                [requestId, currentUserId]
+            );
+        } else { // 'recusada'
+            await pool.query(
+                "DELETE FROM Amizades WHERE id_amizade = ? AND id_utilizador_requisitado = ?", 
+                [requestId, currentUserId]
+            );
+        }
+        res.status(200).json({ message: `Pedido ${action} com sucesso.` });
+    } catch (error) {
+        next(error);
+    }
+});
+
 
 module.exports = router;

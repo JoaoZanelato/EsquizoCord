@@ -5,7 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const saltRounds = 10;
 
-// --- Configuração do Cloudinary ---
+// --- Configuração do Cloudinary e Multer ---
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 cloudinary.config({
@@ -24,9 +24,8 @@ const storage = new CloudinaryStorage({
 const upload = multer({ storage: storage });
 
 
-// --- Middleware de Autenticação Atualizado ---
+// --- Middleware de Autenticação ---
 function requireLogin(req, res, next) {
-    // Agora verifica se o objeto 'user' existe na sessão
     if (req.session && req.session.user) {
         return next();
     } else {
@@ -35,64 +34,67 @@ function requireLogin(req, res, next) {
 }
 
 
-/* --- ROTAS GET PARA RENDERIZAR PÁGINAS --- */
+/* --- ROTAS GET --- */
 
 router.get('/', (req, res) => res.render('Home'));
 router.get('/login', (req, res) => res.render('Login'));
 router.get('/cadastro', (req, res) => res.render('Cadastro'));
 
-// ROTA GET PARA A PÁGINA DE CONFIGURAÇÕES (PROTEGIDA)
-router.get('/configuracao', requireLogin, async (req, res, next) => {
-    try {
-        const pool = req.db;
-        // Usa o utilizador guardado na sessão, não precisa de nova consulta
-        const user = req.session.user;
-
-        const [themesResult] = await pool.query("SELECT * FROM Temas");
-        const themes = themesResult;
-
-        res.render('Configuracao', { user: user, themes: themes });
-    } catch (error) {
-        console.error("Erro ao carregar a página de configurações:", error);
-        next(error);
-    }
-});
-
-// ROTA GET PARA O DASHBOARD (PROTEGIDA)
 router.get('/dashboard', requireLogin, async (req, res, next) => {
     try {
         const pool = req.db;
-        const user = req.session.user; // Usa o utilizador da sessão
+        const user = req.session.user;
 
-        const [groupsResult] = await pool.query(
-            "SELECT g.id_grupo, g.Nome, g.Foto FROM Grupos g " +
-            "JOIN ParticipantesGrupo pg ON g.id_grupo = pg.id_grupo " +
-            "WHERE pg.id_usuario = ?",
+        // Buscar grupos do utilizador
+        const [groups] = await pool.query(
+            "SELECT g.id_grupo, g.Nome, g.Foto FROM Grupos g JOIN ParticipantesGrupo pg ON g.id_grupo = pg.id_grupo WHERE pg.id_usuario = ?",
             [user.id_usuario]
         );
-        const groups = groupsResult;
+        
+        // Buscar amigos (status = aceite)
+        const [friends] = await pool.query(
+            "SELECT u.id_usuario, u.Nome, u.FotoPerfil FROM Usuarios u JOIN Amizades a ON (u.id_usuario = a.id_utilizador_requisitante OR u.id_usuario = a.id_utilizador_requisitado) WHERE (a.id_utilizador_requisitante = ? OR a.id_utilizador_requisitado = ?) AND a.status = 'aceite' AND u.id_usuario != ?",
+            [user.id_usuario, user.id_usuario, user.id_usuario]
+        );
 
-        const friends = []; // Placeholder para amigos
-        res.render('Dashboard', { user: user, groups: groups, friends: friends });
+        // Buscar pedidos de amizade pendentes (onde o utilizador logado é o 'requisitado')
+        const [pendingRequests] = await pool.query(
+             "SELECT u.id_usuario, u.Nome, u.FotoPerfil, a.id_amizade FROM Usuarios u JOIN Amizades a ON u.id_usuario = a.id_utilizador_requisitante WHERE a.id_utilizador_requisitado = ? AND a.status = 'pendente'",
+             [user.id_usuario]
+        );
+
+        res.render('Dashboard', { 
+            user: user, 
+            groups: groups, 
+            friends: friends,
+            pendingRequests: pendingRequests
+        });
     } catch (error) {
-        console.error("Erro ao carregar o dashboard:", error);
         next(error);
     }
 });
 
-// ROTA PARA FAZER LOGOUT (SAIR)
+router.get('/configuracao', requireLogin, async (req, res, next) => {
+    try {
+        const pool = req.db;
+        const user = req.session.user;
+        const [themes] = await pool.query("SELECT * FROM Temas");
+        res.render('Configuracao', { user: user, themes: themes });
+    } catch (error) {
+        next(error);
+    }
+});
+
 router.get('/sair', (req, res) => {
     req.session.destroy(err => {
-        if (err) {
-            return res.redirect('/configuracao');
-        }
+        if (err) return res.redirect('/configuracao');
         res.clearCookie('connect.sid');
         res.redirect('/');
     });
 });
 
 
-/* --- ROTAS POST PARA PROCESSAR DADOS --- */
+/* --- ROTAS POST --- */
 
 router.post('/cadastro', async (req, res, next) => {
   const { nome, email, senha, confirmar_senha } = req.body;
@@ -110,30 +112,21 @@ router.post('/cadastro', async (req, res, next) => {
   }
 });
 
-// ROTA DE LOGIN ATUALIZADA
 router.post('/login', async (req, res, next) => {
   const { email, senha } = req.body;
   try {
     const pool = req.db;
     const sql = "SELECT * FROM Usuarios WHERE Email = ?";
     const [rows] = await pool.query(sql, [email]);
-
     if (rows.length === 0) {
       return res.status(401).send("Erro: Email ou senha inválidos.");
     }
-
     const user = rows[0];
     const match = await bcrypt.compare(senha, user.Senha);
-
     if (match) {
-      // Login bem-sucedido: armazena o objeto completo do utilizador na sessão
       req.session.user = user;
-      
-      // Salva a sessão manualmente antes de redirecionar para evitar race conditions
       req.session.save(err => {
-        if (err) {
-          return next(err);
-        }
+        if (err) return next(err);
         res.redirect('/dashboard');
       });
     } else {
@@ -144,41 +137,30 @@ router.post('/login', async (req, res, next) => {
   }
 });
 
-// ROTA POST PARA SALVAR AS CONFIGURAÇÕES DO PERFIL
 router.post('/configuracao', requireLogin, upload.single('fotoPerfil'), async (req, res, next) => {
     try {
         const { nome, biografia, id_tema } = req.body;
         const userId = req.session.user.id_usuario;
         const pool = req.db;
-
         const fotoUrl = req.file ? req.file.path : null;
-        
         let sql = "UPDATE Usuarios SET Nome = ?, Biografia = ?, id_tema = ?";
         const params = [nome, biografia, id_tema === 'null' ? null : id_tema];
-
         if (fotoUrl) {
             sql += ", FotoPerfil = ?";
             params.push(fotoUrl);
         }
         sql += " WHERE id_usuario = ?";
         params.push(userId);
-        
         await pool.query(sql, params);
-
-        // Atualiza os dados do utilizador na sessão após a alteração
         const [updatedUser] = await pool.query("SELECT * FROM Usuarios WHERE id_usuario = ?", [userId]);
         req.session.user = updatedUser[0];
-
         req.session.save(err => {
-            if (err) {
-                return next(err);
-            }
+            if (err) return next(err);
             res.redirect('/configuracao');
         });
     } catch (error) {
         next(error);
     }
 });
-
 
 module.exports = router;

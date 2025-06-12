@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const groupSettingsIcon = document.getElementById('group-settings-icon');
     const deleteGroupButton = document.getElementById('delete-group-btn');
     const tabButtons = document.querySelectorAll('.tab-button');
+    const homeButton = document.getElementById('home-button');
 
     // Elementos de Exibição
     const serverIcons = document.querySelectorAll('.server-icon[data-group-id]');
@@ -60,21 +61,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- LÓGICA DE EVENTOS (EVENT LISTENERS) ---
 
     // 1. Abrir e Fechar Modais
-    addServerButton.addEventListener('click', () => openModal(createGroupModal));
+    if (addServerButton) addServerButton.addEventListener('click', () => openModal(createGroupModal));
     
-    exploreButton.addEventListener('click', () => {
-        openModal(exploreModal);
-        searchInput.dispatchEvent(new Event('input')); // Inicia a pesquisa ao abrir
-    });
+    if (exploreButton) {
+        exploreButton.addEventListener('click', () => {
+            openModal(exploreModal);
+            searchInput.dispatchEvent(new Event('input')); // Inicia a pesquisa ao abrir
+        });
+    }
 
-    groupSettingsIcon.addEventListener('click', () => {
-        if (currentGroupData) {
-            document.getElementById('edit-group-id').value = currentGroupData.details.id_grupo;
-            document.getElementById('edit-group-name').value = currentGroupData.details.Nome;
-            document.getElementById('edit-group-private').checked = currentGroupData.details.IsPrivate;
-            openModal(editGroupModal);
-        }
-    });
+    if (groupSettingsIcon) {
+        groupSettingsIcon.addEventListener('click', () => {
+            if (currentGroupData) {
+                document.getElementById('edit-group-id').value = currentGroupData.details.id_grupo;
+                document.getElementById('edit-group-name').value = currentGroupData.details.Nome;
+                document.getElementById('edit-group-private').checked = currentGroupData.details.IsPrivate;
+                openModal(editGroupModal);
+            }
+        });
+    }
 
     [createGroupModal, editGroupModal, exploreModal].forEach(modal => {
         if (!modal) return;
@@ -83,32 +88,41 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target === modal) closeModal(modal);
         });
     });
-
-    // 2. Submissão de Formulários
-    createGroupForm.addEventListener('submit', handleFormSubmit('/groups/criar', 'Erro ao criar grupo.'));
     
-    editGroupForm.addEventListener('submit', e => {
-        const groupId = editGroupForm.querySelector('#edit-group-id').value;
-        handleFormSubmit(`/groups/${groupId}/settings`, 'Erro ao atualizar grupo.')(e);
-    });
+    // 2. Navegação Principal
+    if (homeButton) {
+         homeButton.addEventListener('click', () => window.location.reload());
+    }
 
-    deleteGroupButton.addEventListener('click', async () => {
-        const groupId = document.getElementById('edit-group-id').value;
-        const groupName = document.getElementById('edit-group-name').value;
-        
-        if (confirm(`Tem a certeza de que deseja excluir o grupo "${groupName}"? Esta ação é irreversível.`)) {
-            handleAction(deleteGroupButton, `/groups/${groupId}`, 'Excluindo...', 'Excluir Grupo', null, 'DELETE');
-        }
-    });
+    // 3. Submissão de Formulários
+    if (createGroupForm) createGroupForm.addEventListener('submit', handleFormSubmit('/groups/criar', 'Erro ao criar grupo.'));
+    
+    if (editGroupForm) {
+        editGroupForm.addEventListener('submit', e => {
+            const groupId = editGroupForm.querySelector('#edit-group-id').value;
+            handleFormSubmit(`/groups/${groupId}/settings`, 'Erro ao atualizar grupo.')(e);
+        });
+    }
 
-    // 3. Lógica do Modal de Exploração (Abas e Pesquisa)
+    if (deleteGroupButton) {
+        deleteGroupButton.addEventListener('click', async () => {
+            const groupId = document.getElementById('edit-group-id').value;
+            const groupName = document.getElementById('edit-group-name').value;
+            
+            if (confirm(`Tem a certeza de que deseja excluir o grupo "${groupName}"? Esta ação é irreversível.`)) {
+                handleAction(deleteGroupButton, `/groups/${groupId}`, 'Excluindo...', 'Excluir Grupo', null, 'DELETE');
+            }
+        });
+    }
+
+    // 4. Lógica do Modal de Exploração (Abas e Pesquisa)
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
             tabButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
             activeSearchTab = button.dataset.tab;
             searchInput.placeholder = activeSearchTab === 'groups' ? 'Pesquise por nome ou ID do grupo' : 'Pesquise por nome do utilizador';
-            searchInput.dispatchEvent(new Event('input')); // Dispara nova pesquisa ao mudar de aba
+            searchInput.dispatchEvent(new Event('input'));
         });
     });
 
@@ -138,8 +152,30 @@ document.addEventListener('DOMContentLoaded', () => {
             handleAction(target, '/friends/request', 'Enviando...', 'Adicionar Amigo', { requestedId: userId });
         }
     });
+    
+    // 5. Responder a pedidos de amizade
+    channelListContent.addEventListener('click', async (e) => {
+        const target = e.target.closest('button');
+        if (!target) return;
 
-    // 4. Lógica de Interação com a Lista de Servidores
+        const requestItem = target.closest('.friend-request-item');
+        if (!requestItem) return;
+
+        const requestId = requestItem.dataset.requestId;
+        let action = '';
+
+        if (target.classList.contains('accept-btn')) {
+            action = 'aceite';
+        } else if (target.classList.contains('reject-btn')) {
+            action = 'recusada';
+        }
+        
+        if (action) {
+            handleAction(target, '/friends/respond', '...', '', { requestId, action });
+        }
+    });
+
+    // 6. Lógica de Interação com a Lista de Servidores
     serverIcons.forEach(icon => {
         icon.addEventListener('click', async () => {
             serverIcons.forEach(i => i.classList.remove('active'));
@@ -153,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 groupNameHeader.textContent = data.details.Nome;
                 chatHeader.innerHTML = `<h3><i class="fas fa-hashtag" style="color: var(--text-muted); font-size: 20px; margin-right: 5px;"></i> ${data.details.Nome}</h3><span class="group-id">#${data.details.id_grupo}</span>`;
-                groupSettingsIcon.style.display = (currentUserId === data.details.id_criador) ? 'block' : 'none';
+                if (groupSettingsIcon) groupSettingsIcon.style.display = (currentUserId === data.details.id_criador) ? 'block' : 'none';
                 
                 channelListContent.innerHTML = '';
                 
@@ -170,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     memberDiv.innerHTML = memberHTML;
                     channelListContent.appendChild(memberDiv);
-                });
+});
 
             } catch (err) {
                 if(channelListContent) channelListContent.innerHTML = '<p>Erro ao carregar detalhes.</p>';
@@ -202,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (activeSearchTab === 'groups') {
-            results.forEach(group => {
+             results.forEach(group => {
                 const item = document.createElement('div');
                 item.className = 'search-result-item';
                 item.innerHTML = `
@@ -247,9 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(url, options);
             
             if (response.ok) {
-                 // Para exclusão, a resposta pode não ter JSON
-                if (method === 'DELETE') {
-                    alert('Ação concluída com sucesso.');
+                 if (method === 'DELETE' || (body && body.action)) { // Para exclusão ou resposta a pedido
                     window.location.reload();
                 } else {
                     const data = await response.json();
