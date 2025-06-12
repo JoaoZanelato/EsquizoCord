@@ -37,7 +37,7 @@
         .channel-header { padding: 12px; box-shadow: 0 1px 0 rgba(0,0,0,0.2); font-weight: bold; color: var(--header-primary); display: flex; justify-content: space-between; align-items: center; }
         #group-settings-icon { color: var(--text-muted); cursor: pointer; display: none; }
         #group-settings-icon:hover { color: var(--header-primary); }
-        .channel-list-content { padding: 12px; flex-grow: 1; overflow-y: auto; }
+        .channel-list-content { padding: 12px; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column;}
         .channel-list-header { color: var(--text-muted); font-size: 12px; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; }
         .friend-item { display: flex; align-items: center; padding: 8px; border-radius: 4px; cursor: pointer; gap: 8px; }
         .friend-item:hover { background-color: rgba(255,255,255,0.04); }
@@ -82,14 +82,22 @@
         .search-result-info { display: flex; align-items: center; gap: 10px; }
         .search-result-info img { width: 40px; height: 40px; border-radius: 50%; }
         .search-result-name .group-id-search { color: var(--text-muted); font-size: 12px; }
-        .tabs { display: flex; margin-bottom: 15px; border-bottom: 1px solid var(--background-tertiary); }
-        .tab-button { background: none; border: none; color: var(--text-muted); padding: 10px 15px; cursor: pointer; font-size: 16px; border-bottom: 2px solid transparent; }
-        .tab-button.active { color: var(--header-primary); border-bottom-color: var(--purple-accent); }
-        .tab-content { display: none; }
-        .tab-content.active { display: flex; flex-direction: column; height: 100%; flex-grow: 1; }
+        .friends-nav { display: flex; padding: 10px; gap: 10px; border-bottom: 1px solid var(--background-tertiary); }
+        .friends-nav-btn { background: #4f545c; border: none; color: var(--text-normal); padding: 8px 12px; cursor: pointer; border-radius: 4px; }
+        .friends-nav-btn.active { background-color: var(--brand-experiment); }
+        .add-friend-container { padding: 12px; }
+        .add-friend-input { display: flex; }
+        .add-friend-input input { flex-grow: 1; border-radius: 4px 0 0 4px; }
+        .add-friend-input button { border-radius: 0 4px 4px 0; }
     </style>
 </head>
-<body data-user='<%- JSON.stringify(user || null) %>'>
+<body 
+    data-user='<%- JSON.stringify(user || null) %>'
+    data-groups='<%- JSON.stringify(groups || []) %>'
+    data-friends='<%- JSON.stringify(friends || []) %>'
+    data-pending-requests='<%- JSON.stringify(pendingRequests || []) %>'
+    data-sent-requests='<%- JSON.stringify(sentRequests || []) %>'
+>
     <div class="dashboard-layout">
         <nav class="server-list">
             <div class="server-icon active" id="home-button" title="Início">
@@ -124,8 +132,13 @@
                 <span id="group-name-header">Amigos</span>
                 <i class="fas fa-cog" id="group-settings-icon" title="Configurações do Grupo"></i>
             </div>
+            <div id="friends-nav-container" class="friends-nav">
+                <button class="friends-nav-btn active" data-tab="friends-list">Amigos</button>
+                <button class="friends-nav-btn" data-tab="pending-requests">Pendentes</button>
+                <button class="friends-nav-btn" data-tab="add-friend">Adicionar Amigo</button>
+            </div>
             <div class="channel-list-content" id="channel-list-content">
-                <!-- Conteúdo inicial será a lista de amigos -->
+                <!-- Conteúdo dinâmico aqui -->
             </div>
             <div class="user-panel">
                  <% if (user) { %>
@@ -184,68 +197,16 @@
             </form>
         </div>
     </div>
-    <div class="modal-overlay" id="explore-modal">
+    <div class="modal-overlay" id="explore-group-modal">
         <div class="modal-content large">
-            <div class="tabs">
-                <button class="tab-button active" data-tab="explore-groups">Explorar Grupos</button>
-                <button class="tab-button" data-tab="add-friend">Adicionar Amigo</button>
-            </div>
-            <div id="explore-groups" class="tab-content active">
-                <form id="search-group-form">
-                     <input type="search" id="search-group-input" placeholder="Pesquisar grupos públicos...">
-                </form>
-                <div id="search-group-results"></div>
-            </div>
-            <div id="add-friend" class="tab-content">
-                <h3>Adicionar Amigo</h3>
-                <p>Pode adicionar um amigo com o seu nome de utilizador exacto.</p>
-                <input type="search" id="search-user-input" placeholder="Digite o nome do utilizador...">
-                <div id="search-user-results"></div>
-            </div>
+            <h3>Explorar Servidores Públicos</h3>
+            <form id="search-group-form">
+                 <input type="search" id="search-group-input" placeholder="Pesquisar grupos públicos...">
+            </form>
+            <div id="search-group-results"></div>
              <div class="modal-actions">
                 <button type="button" class="cancel-btn">Fechar</button>
             </div>
-        </div>
-    </div>
-    <div class="modal-overlay" id="friend-requests-modal">
-        <div class="modal-content large">
-            <h3>Pedidos de Amizade</h3>
-            <h4>Pedidos Recebidos</h4>
-            <div class="friend-requests-container" id="pending-requests-list">
-                 <% if (pendingRequests && pendingRequests.length > 0) { %>
-                    <% pendingRequests.forEach(request => { %>
-                        <div class="search-result-item" data-request-id="<%= request.id_amizade %>">
-                            <div class="search-result-info">
-                                <img src="<%= request.FotoPerfil || '/images/logo.png' %>" alt="<%= request.Nome %>">
-                                <span><%= request.Nome %></span>
-                            </div>
-                            <div class="request-actions">
-                                <button class="accept-btn" title="Aceitar"><i class="fas fa-check-circle"></i></button>
-                                <button class="reject-btn" title="Recusar"><i class="fas fa-times-circle"></i></button>
-                            </div>
-                        </div>
-                    <% }); %>
-                <% } else { %>
-                    <p>Nenhum pedido de amizade pendente.</p>
-                <% } %>
-            </div>
-            <h4 style="margin-top: 20px;">Pedidos Enviados</h4>
-            <div class="friend-requests-container" id="sent-requests-list">
-                <% if (sentRequests && sentRequests.length > 0) { %>
-                    <% sentRequests.forEach(request => { %>
-                        <div class="search-result-item" data-request-id="<%= request.id_amizade %>">
-                            <div class="search-result-info">
-                                <img src="<%= request.FotoPerfil || '/images/logo.png' %>" alt="<%= request.Nome %>">
-                                <span><%= request.Nome %></span>
-                            </div>
-                            <button class="cancel-request-btn delete-btn">Cancelar</button>
-                        </div>
-                    <% }); %>
-                <% } else { %>
-                    <p>Nenhum pedido enviado pendente.</p>
-                <% } %>
-            </div>
-            <div class="modal-actions"> <button type="button" class="cancel-btn">Fechar</button> </div>
         </div>
     </div>
     
