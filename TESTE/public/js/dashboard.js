@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const socket = io();
     const body = document.querySelector('body');
     
-    // Função segura para fazer o parse dos dados JSON a partir dos data attributes
     const parseJsonData = (attribute) => {
         const data = body.dataset[attribute];
         if (!data) return null;
@@ -34,9 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const editGroupForm = document.getElementById('edit-group-form');
     const searchGroupInput = document.getElementById('search-group-input');
     const searchGroupResults = document.getElementById('search-group-results');
-    const searchUserInput = document.getElementById('search-user-input');
-    const searchUserResults = document.getElementById('search-user-results');
-
 
     const addServerButton = document.getElementById('add-server-button');
     const exploreButton = document.getElementById('explore-button');
@@ -138,13 +134,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 reqDiv.className = 'friend-request-item';
                 reqDiv.dataset.requestId = req.id_amizade;
                 reqDiv.innerHTML = `
-                    <div class="friend-item" style="flex-grow: 1;">
-                        <img src="${req.FotoPerfil || '/images/logo.png'}"> <span>${req.Nome}</span>
-                    </div>
-                    <div class="request-actions">
-                        <button class="accept-btn" title="Aceitar"><i class="fas fa-check-circle"></i></button>
-                        <button class="reject-btn" title="Recusar"><i class="fas fa-times-circle"></i></button>
-                    </div>`;
+                    <div class="friend-item" style="flex-grow: 1;"> <img src="${req.FotoPerfil || '/images/logo.png'}"> <span>${req.Nome}</span> </div>
+                    <div class="request-actions"> <button class="accept-btn" title="Aceitar"><i class="fas fa-check-circle"></i></button> <button class="reject-btn" title="Recusar"><i class="fas fa-times-circle"></i></button> </div>`;
                 channelListContent.appendChild(reqDiv);
             });
         } else {
@@ -157,12 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 reqDiv.className = 'friend-request-item';
                 reqDiv.dataset.requestId = req.id_amizade;
                 reqDiv.innerHTML = `
-                     <div class="friend-item" style="flex-grow: 1;">
-                        <img src="${req.FotoPerfil || '/images/logo.png'}"> <span>${req.Nome}</span>
-                    </div>
-                    <div class="request-actions">
-                        <button class="cancel-request-btn" title="Cancelar Pedido"><i class="fas fa-trash"></i></button>
-                    </div>`;
+                     <div class="friend-item" style="flex-grow: 1;"> <img src="${req.FotoPerfil || '/images/logo.png'}"> <span>${req.Nome}</span> </div>
+                     <div class="request-actions"> <button class="cancel-request-btn" title="Cancelar Pedido"><i class="fas fa-trash"></i></button> </div>`;
                 channelListContent.appendChild(reqDiv);
             });
         } else {
@@ -229,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // --- LÓGICA DE EVENTOS ---
-
+    
     function setupEventListeners() {
         if (addServerButton) addServerButton.addEventListener('click', () => openModal(createGroupModal));
         
@@ -292,23 +279,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (confirm(`Tem a certeza de que deseja excluir o grupo "${groupName}"? Esta ação é irreversível.`)) {
                     handleAction(deleteGroupButton, `/groups/${groupId}`, 'Excluindo...', 'Excluir Grupo', null, 'DELETE', true);
                 }
-            });
-        }
-
-        if (exploreModal) {
-            const exploreTabs = exploreModal.querySelectorAll('.tab-button');
-            exploreTabs.forEach(button => {
-                button.addEventListener('click', () => {
-                    exploreTabs.forEach(btn => btn.classList.remove('active'));
-                    exploreModal.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-                    button.classList.add('active');
-                    const activeTabContent = document.getElementById(button.dataset.tab);
-                    if (activeTabContent) {
-                        activeTabContent.classList.add('active');
-                        const inputToTrigger = activeTabContent.querySelector('input[type="search"]');
-                        if(inputToTrigger) inputToTrigger.dispatchEvent(new Event('input'));
-                    }
-                });
             });
         }
         
