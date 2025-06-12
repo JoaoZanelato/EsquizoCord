@@ -1,103 +1,55 @@
 #!/usr/bin/env node
 
-/**
- * Module dependencies.
- */
-
 const app = require('../app');
 const debug = require('debug')('teste:server');
 const http = require('http');
 const { Server } = require("socket.io");
 
-/**
- * Get port from environment and store in Express.
- */
-
 const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 
-/**
- * Create HTTP server.
- */
-
 const server = http.createServer(app);
 
-/**
- * Create Socket.IO server and attach it to the HTTP server.
- * This automatically serves the client-side script at /socket.io/socket.io.js
- */
+// --- INÍCIO DA CONFIGURAÇÃO DO SOCKET.IO ---
 const io = new Server(server);
-// Disponibiliza a instância do io para toda a aplicação Express
-app.set('io', io); 
+app.set('io', io); // Torna o 'io' acessível em outras partes da app (ex: rotas)
 
-// Mapeamento para saber em que sala cada socket está
 const socketRooms = {};
 
 io.on('connection', (socket) => {
   console.log('Um utilizador conectou-se:', socket.id);
 
-  // Quando um utilizador clica num grupo e entra na "sala" de chat
   socket.on('join_group_room', (groupId) => {
-    // Se o socket já estava numa sala, sai dela primeiro
     if (socketRooms[socket.id]) {
       socket.leave(socketRooms[socket.id]);
     }
-    // Entra na nova sala (ex: 'group-1', 'group-2')
     const roomName = `group-${groupId}`;
     socket.join(roomName);
-    socketRooms[socket.id] = roomName; // Guarda a sala atual do socket
+    socketRooms[socket.id] = roomName;
     console.log(`Socket ${socket.id} entrou na sala ${roomName}`);
   });
 
   socket.on('disconnect', () => {
     console.log('Utilizador desconectou-se:', socket.id);
-    delete socketRooms[socket.id]; // Limpa o registo do socket
+    delete socketRooms[socket.id];
   });
 });
-
-
-/**
- * Listen on provided port, on all network interfaces.
- */
+// --- FIM DA CONFIGURAÇÃO DO SOCKET.IO ---
 
 server.listen(port);
 server.on('error', onError);
 server.on('listening', onListening);
 
-/**
- * Normalize a port into a number, string, or false.
- */
-
 function normalizePort(val) {
   const port = parseInt(val, 10);
-
-  if (isNaN(port)) {
-    // named pipe
-    return val;
-  }
-
-  if (port >= 0) {
-    // port number
-    return port;
-  }
-
+  if (isNaN(port)) { return val; }
+  if (port >= 0) { return port; }
   return false;
 }
 
-/**
- * Event listener for HTTP server "error" event.
- */
-
 function onError(error) {
-  if (error.syscall !== 'listen') {
-    throw error;
-  }
-
-  const bind = typeof port === 'string'
-    ? 'Pipe ' + port
-    : 'Port ' + port;
-
-  // handle specific listen errors with friendly messages
+  if (error.syscall !== 'listen') { throw error; }
+  const bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
   switch (error.code) {
     case 'EACCES':
       console.error(bind + ' requires elevated privileges');
@@ -112,15 +64,9 @@ function onError(error) {
   }
 }
 
-/**
- * Event listener for HTTP server "listening" event.
- */
-
 function onListening() {
   const addr = server.address();
-  const bind = typeof addr === 'string'
-    ? 'pipe ' + addr
-    : 'port ' + addr.port;
+  const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
   debug('Listening on ' + bind);
   console.log('Servidor e Socket.IO a postos na porta ' + port);
 }
