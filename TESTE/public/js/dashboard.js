@@ -6,9 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const parseJsonData = (attribute) => {
         const data = body.dataset[attribute];
         if (!data) return null;
-        try {
-            return JSON.parse(data);
-        } catch (e) {
+        try { return JSON.parse(data); }
+        catch (e) {
             console.error(`Erro ao fazer o parse do atributo de dados: ${attribute}`, e);
             return null;
         }
@@ -23,12 +22,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentUserId = currentUser ? currentUser.id_usuario : null;
     let currentGroupData = null;
     let currentChatId = null;
+    let activeSearchTab = 'groups';
 
     // --- SELEÇÃO DE ELEMENTOS DO DOM ---
     const createGroupModal = document.getElementById('create-group-modal');
     const editGroupModal = document.getElementById('edit-group-modal');
     const exploreModal = document.getElementById('explore-group-modal');
-    const friendRequestsModal = document.getElementById('friend-requests-modal');
     
     const createGroupForm = document.getElementById('create-group-form');
     const editGroupForm = document.getElementById('edit-group-form');
@@ -98,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (chatMessagesContainer) chatMessagesContainer.innerHTML = '<p>Não foi possível carregar as mensagens.</p>';
         }
     }
-
+    
     function renderFriendsView() {
         if(groupSettingsIcon) groupSettingsIcon.style.display = 'none';
         if(friendsNavContainer) friendsNavContainer.style.display = 'flex';
@@ -199,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const firstChannel = data.channels[0];
             if (firstChannel) {
                 currentChatId = firstChannel.id_chat;
-                socket.emit('join_group_room', groupId); // Entra na sala do socket
+                socket.emit('join_group_room', groupId);
                 if(chatHeader) chatHeader.innerHTML = `<h3><i class="fas fa-hashtag" style="color: var(--text-muted);"></i> ${firstChannel.Nome}</h3>`;
                 if(chatInput) chatInput.placeholder = `Conversar em #${firstChannel.Nome}`;
                 loadAndRenderMessages(currentChatId);
@@ -226,16 +225,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if(channelListContent) channelListContent.innerHTML = '<p>Erro ao carregar detalhes.</p>';
         }
     }
-
-    // --- LÓGICA DE EVENTOS ---
     
+    // --- LÓGICA DE EVENTOS ---
+
     function setupEventListeners() {
         if (addServerButton) addServerButton.addEventListener('click', () => openModal(createGroupModal));
         
         if (exploreButton) {
             exploreButton.addEventListener('click', () => {
                 openModal(exploreModal);
-                document.querySelector(`#explore-modal .tab-button.active`).dispatchEvent(new Event('click'));
+                exploreModal.querySelector('#search-group-input')?.dispatchEvent(new Event('input'));
             });
         }
         
@@ -312,46 +311,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         let searchTimeout;
-        [searchGroupInput, searchUserInput].forEach(input => {
-            if(!input) return;
-            input.addEventListener('input', e => {
+        if (searchGroupInput) {
+            searchGroupInput.addEventListener('input', e => {
                 clearTimeout(searchTimeout);
                 const query = e.target.value;
                 searchTimeout = setTimeout(async () => {
-                    const isGroupSearch = input.id === 'search-group-input';
-                    const searchUrl = isGroupSearch ? `/groups/search?q=${encodeURIComponent(query)}` : `/friends/search?q=${encodeURIComponent(query)}`;
-                    const container = isGroupSearch ? searchGroupResults : searchUserResults;
+                    const searchUrl = `/groups/search?q=${encodeURIComponent(query)}`;
                     try {
                         const response = await fetch(searchUrl);
                         const results = await response.json();
-                        renderSearchResults(results, container, isGroupSearch);
+                        renderSearchResults(results, searchGroupResults, true);
                     } catch (err) {
-                        container.innerHTML = '<p>Erro ao pesquisar.</p>';
+                        searchGroupResults.innerHTML = '<p>Erro ao pesquisar.</p>';
                     }
                 }, 300);
             });
-        });
+        }
         
         document.body.addEventListener('click', async (e) => {
             const target = e.target;
+            
             if (target.classList.contains('join-btn')) {
                 const groupId = target.dataset.groupId;
                 handleAction(target, `/groups/${groupId}/join`, 'Entrando...', 'Entrar', null, 'POST', true);
-            } else if (target.classList.contains('add-friend-btn')) {
-                const userId = target.dataset.userId;
-                handleAction(target, '/friends/request', 'Enviando...', 'Adicionar Amigo', { requestedId: userId });
-            } else if (target.closest('.accept-btn') || target.closest('.reject-btn')) {
-                const button = target.closest('button');
-                const requestItem = button.closest('.friend-request-item');
-                const requestId = requestItem.dataset.requestId;
-                const action = button.classList.contains('accept-btn') ? 'aceite' : 'recusada';
-                handleAction(button, '/friends/respond', '...', '', { requestId, action }, 'POST', true);
-            } else if (target.closest('.cancel-request-btn')) {
-                const button = target.closest('button');
-                const requestItem = button.closest('.friend-request-item');
-                const requestId = requestItem.dataset.requestId;
-                handleAction(button, '/friends/cancel', 'Cancelando...', 'Cancelar', { requestId }, 'POST', true);
-            } else if (target.id === 'add-friend-submit') {
+            } 
+            else if (target.id === 'add-friend-submit') {
                 const input = document.getElementById('add-friend-input');
                 const username = input.value.trim();
                 if (!username) return;
@@ -366,6 +350,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch(err) {
                     alert('Erro de rede.');
                 }
+            } else if (target.closest('.accept-btn') || target.closest('.reject-btn')) {
+                const button = target.closest('button');
+                const requestItem = button.closest('.friend-request-item');
+                const requestId = requestItem.dataset.requestId;
+                const action = button.classList.contains('accept-btn') ? 'aceite' : 'recusada';
+                handleAction(button, '/friends/respond', '...', '', { requestId, action }, 'POST', true);
+            } else if (target.closest('.cancel-request-btn')) {
+                const button = target.closest('button');
+                const requestItem = button.closest('.friend-request-item');
+                const requestId = requestItem.dataset.requestId;
+                handleAction(button, '/friends/cancel', 'Cancelando...', 'Cancelar', { requestId }, 'POST', true);
             }
         });
 
