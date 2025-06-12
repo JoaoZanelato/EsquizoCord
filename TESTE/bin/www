@@ -19,19 +19,22 @@ const socketRooms = {};
 io.on('connection', (socket) => {
   console.log('Um utilizador conectou-se:', socket.id);
 
+  // Quando um utilizador clica num grupo e entra na "sala" de chat
   socket.on('join_group_room', (groupId) => {
+    // Se o socket já estava numa sala, sai dela primeiro
     if (socketRooms[socket.id]) {
       socket.leave(socketRooms[socket.id]);
     }
+    // Entra na nova sala (ex: 'group-1', 'group-2')
     const roomName = `group-${groupId}`;
     socket.join(roomName);
-    socketRooms[socket.id] = roomName;
+    socketRooms[socket.id] = roomName; // Guarda a sala atual do socket
     console.log(`Socket ${socket.id} entrou na sala ${roomName}`);
   });
 
   socket.on('disconnect', () => {
     console.log('Utilizador desconectou-se:', socket.id);
-    delete socketRooms[socket.id];
+    delete socketRooms[socket.id]; // Limpa o registo do socket
   });
 });
 // --- FIM DA CONFIGURAÇÃO DO SOCKET.IO ---
