@@ -6,9 +6,11 @@
     <title>Configurações - EsquizoCord</title>
     <link rel="icon" type="image/png" href="/images/logo.png">
     <style>
-        /* DEFINIÇÕES DE CORES BASE (SEU TEMA PADRÃO DISCORD-like) */
-        /* Estas variáveis são o fallback e o tema padrão. Serão substituídas pelas classes de tema no <body>. */
-            :root {
+        /* Base para resetar estilos e definir box-sizing */
+        *, *::before, *::after { box-sizing: border-box; }
+
+        /* DEFINIÇÕES DE CORES BASE (TEMA PADRÃO) */
+        :root {
             --background-primary: #36393f;
             --background-secondary: #2f3136;
             --background-tertiary: #202225;
@@ -18,52 +20,46 @@
             --brand-experiment: #660080; /* Roxo principal */
             --brand-hover: #572364;
             --purple-accent: #cc00ff;
-            --green-accent: #43B581;
             --red-danger: #f04747;
-            --red-danger-hover: #d80000;
         }
 
         /* --- DEFINIÇÕES DOS TEMAS ESPECÍFICOS --- */
-        /* As classes de tema serão aplicadas ao <body> para mudar as variáveis CSS */
-
-        /* Tema Padrão (theme-default - id_tema nulo ou "Padrão do Sistema") */
-        /* Se for idêntico ao :root, pode deixar vazio, pois :root já é o padrão. */
-        .theme-default {
-            /* ex: --background-primary: #36393f; */
+        
+        /* Tema Padrão Roxo (ID 1) */
+        .theme-1 {
+            --brand-experiment: #660080;
+            --brand-hover: #572364;
+            --purple-accent: #cc00ff;
         }
-
-        /* Tema com id_tema = 2 (Ex: "Azul Noturno") */
+        /* Tema Azul Noturno (ID 2) */
         .theme-2 {
-            --background-primary: #2C3E50;
-            --background-secondary: #34495E;
-            --background-tertiary: #23303E;
-            --header-primary: #ECF0F1;
-            --text-normal: #BDC3C7;
-            --text-muted: #95A5A6;
-            --brand-experiment: #3498DB; /* Azul mais claro */
+            --brand-experiment: #3498DB;
             --brand-hover: #2980B9;
-            --purple-accent: #5DADE2; /* Azul acentuado */
-            --green-accent: #2ECC71;
-            --red-danger: #E74C3C;
-            --red-danger-hover: #C0392B;
+            --purple-accent: #5DADE2;
         }
-
-        /* Tema com id_tema = 3 (Ex: "Verde Floresta") */
+        /* Tema Verde Floresta (ID 3) */
         .theme-3 {
-            --background-primary: #2E403F; /* Verde escuro */
-            --background-secondary: #3A4E4E; /* Verde médio */
-            --background-tertiary: #253332; /* Verde mais escuro */
-            --header-primary: #F0FFF0;
-            --text-normal: #D4EDDA;
-            --text-muted: #A8D1B1;
-            --brand-experiment: #28A745; /* Verde vibrante */
+            --brand-experiment: #28A745;
             --brand-hover: #218838;
-            --purple-accent: #86A189; /* Tom de verde acinzentado */
-            --green-accent: #00BC8C;
-            --red-danger: #DC3545;
-            --red-danger-hover: #C82333;
+            --purple-accent: #86A189;
+        }
+        /* Tema Dark (ID 4) */
+        .theme-4 {
+            --brand-experiment: #3498DB;
+            --brand-hover: #2980B9;
+        }
+        /* Tema Light (ID 5) */
+        .theme-5 {
+            --background-primary: #F0F2F5;
+            --background-secondary: #FFFFFF;
+            --header-primary: #1C1E21;
+            --text-normal: #050505;
+            --text-muted: #65676B;
+            --brand-experiment: #0D6EFD;
+            --brand-hover: #0a58ca;
         }
 
+        /* --- ESTILOS GERAIS DA PÁGINA --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             display: flex;
@@ -76,11 +72,13 @@
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
+            color: var(--text-normal); 
+            background-color: var(--background-tertiary);
         }
         .config-container {
             text-align: left;
-            background-color: rgba(84, 11, 112, 0.95); 
-            color: #fff1f1;
+            background-color: var(--background-secondary);
+            color: var(--text-normal);
             padding: 40px 50px;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
@@ -92,6 +90,7 @@
             margin-bottom: 25px;
             font-size: 28px;
             font-weight: 600;
+            color: var(--header-primary);
         }
         form {
             display: flex;
@@ -100,44 +99,36 @@
         label {
             margin-bottom: 5px;
             font-weight: bold;
-            color: #e0c8e6;
+            color: var(--text-muted);
         }
         input, textarea, select {
             padding: 12px;
             margin-bottom: 20px;
-            border: 1px solid #955ca3;
+            border: 1px solid var(--background-tertiary);
             border-radius: 8px;
-            background-color: rgba(0, 0, 0, 0.2);
-            color: white;
+            background-color: var(--background-primary);
+            color: var(--text-normal);
             font-size: 16px;
             font-family: inherit;
         }
-        input::placeholder, textarea::placeholder {
-            color: #b3a1b8;
-        }
         input:focus, textarea:focus, select:focus {
             outline: none;
-            border-color: #cc00ff;
-            box-shadow: 0 0 5px rgba(204, 0, 255, 0.5);
+            border-color: var(--brand-experiment);
+            box-shadow: 0 0 5px var(--brand-experiment);
         }
         textarea {
             resize: vertical;
             min-height: 80px;
         }
-        button {
+        button[type="submit"] {
             padding: 12px;
-            background-color: #cc00ff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            transition: all 0.3s ease;
+            background-color: var(--brand-experiment);
+            color: var(--header-primary);
+            border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600;
+            transition: background-color 0.3s ease;
         }
-        button:hover {
-            background-color: #955ca3;
-            transform: translateY(-2px);
+        button[type="submit"]:hover {
+            background-color: var(--brand-hover);
         }
         .profile-pic-section {
             display: flex;
@@ -150,26 +141,24 @@
             height: 120px;
             border-radius: 50%;
             object-fit: cover;
-            border: 3px solid #955ca3;
+            border: 3px solid var(--text-muted);
             margin-bottom: 10px;
-            background-color: #333; /* Cor de fundo para o caso de não haver imagem */
+            background-color: var(--background-secondary);
         }
-        /* Estilo para o botão de upload de ficheiro */
         .file-upload-label {
             display: inline-block;
             padding: 8px 15px;
-            background-color: #660080;
-            color: white;
+            background-color: var(--brand-experiment);
+            color: var(--header-primary);
             border-radius: 5px;
             cursor: pointer;
             font-weight: normal;
             font-size: 14px;
-            margin-bottom: 20px; /* Adicionado para separar do campo de nome */
+            margin-bottom: 20px;
         }
         .file-upload-label:hover {
-            background-color: #572364;
+            background-color: var(--brand-hover);
         }
-        /* Esconde o input de ficheiro padrão */
         #fotoPerfil {
             display: none;
         }
@@ -180,7 +169,7 @@
             margin-top: 20px;
         }
         .actions-container a {
-            color: #e0c8e6;
+            color: var(--text-muted);
             text-decoration: none;
             font-size: 14px;
         }
@@ -189,38 +178,30 @@
         }
     </style>
 </head>
-<body class="<%= user && user.id_tema ? 'theme-' + user.id_tema : 'theme-default' %>">
+<body class="theme-<%= user && user.id_tema ? user.id_tema : '1' %>">
     <div class="config-container">
-        <!-- Verifica se o utilizador existe antes de tentar aceder às suas propriedades -->
         <% if (user) { %>
             <h2>Configurações de <%= user.Nome %></h2>
-
             <form method="POST" action="/configuracao" enctype="multipart/form-data">
                 <div class="profile-pic-section">
-                    <!-- Mostra a foto do utilizador ou uma padrão -->
                     <img src="<%= user.FotoPerfil || '/images/logo.png' %>" alt="Foto de Perfil" id="profilePicPreview">
-                    
                     <label for="fotoPerfil" class="file-upload-label">Alterar Foto</label>
-                    <input type="file" id="fotoPerfil" name="fotoPerfil" accept="image/png, image/jpeg" onchange="previewImage(event)">
+                    <input type="file" id="fotoPerfil" name="fotoPerfil" accept="image/png, image/jpeg">
                 </div>
-
                 <label for="nome">Nome:</label>
-                <input type="text" id="nome" name="nome" value="<%= user.Nome %>" required>
-
+                <input type="text" id="nome" name="nome" value="<%= user.Nome %>" required autocomplete="name">
                 <label for="biografia">Biografia:</label>
                 <textarea id="biografia" name="biografia" placeholder="Fale um pouco sobre você..."><%= user.Biografia || '' %></textarea>
-
                 <label for="tema">Tema:</label>
                 <select id="tema" name="id_tema">
-                    <option value="null">Padrão do Sistema</option>
-                    <!-- Popula dinamicamente os temas do banco de dados -->
-                    <% themes.forEach(theme => { %>
-                        <option value="<%= theme.id_tema %>" <%= (user.id_tema == theme.id_tema) ? 'selected' : '' %>>
-                            <%= theme.nome_tema %>
-                        </option>
-                    <% }); %>
+                    <% if (themes) { %>
+                        <% themes.forEach(theme => { %>
+                            <option value="<%= theme.id_tema %>" <%= (user.id_tema == theme.id_tema) ? 'selected' : '' %>>
+                                <%= theme.nome_tema %>
+                            </option>
+                        <% }); %>
+                    <% } %>
                 </select>
-
                 <button type="submit">Salvar Alterações</button>
             </form>
             <div class="actions-container">
@@ -234,16 +215,19 @@
     </div>
 
     <script>
-        // Função para mostrar a pré-visualização da imagem selecionada
+        const fotoPerfilInput = document.getElementById('fotoPerfil');
         const previewImage = event => {
-            const imageFiles = event.target.files;
-            const imageFilesLength = imageFiles.length;
-            if (imageFilesLength > 0) {
-                const imageSrc = URL.createObjectURL(imageFiles[0]);
-                const imagePreviewElement = document.querySelector("#profilePicPreview");
-                imagePreviewElement.src = imageSrc;
+            if (event.target.files && event.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.querySelector("#profilePicPreview").src = e.target.result;
+                }
+                reader.readAsDataURL(event.target.files[0]);
             }
         };
+        if(fotoPerfilInput) {
+            fotoPerfilInput.addEventListener('change', previewImage);
+        }
     </script>
 </body>
 </html>
