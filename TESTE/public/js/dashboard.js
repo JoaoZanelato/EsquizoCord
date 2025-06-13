@@ -35,8 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const editGroupForm = document.getElementById('edit-group-form');
     const searchGroupInput = document.getElementById('search-group-input');
     const searchGroupResults = document.getElementById('search-group-results');
-    const searchUserInput = document.getElementById('search-user-input');
-    const searchUserResults = document.getElementById('search-user-results');
 
     const addServerButton = document.getElementById('add-server-button');
     const exploreButton = document.getElementById('explore-button');
@@ -46,10 +44,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const channelListContent = document.getElementById('channel-list-content');
     const groupSettingsIcon = document.getElementById('group-settings-icon');
     const deleteGroupButton = document.getElementById('delete-group-btn');
-    const serverIcons = document.querySelectorAll('.server-icon[data-group-id]');
     const chatHeader = document.getElementById('chat-header');
     const chatMessagesContainer = document.getElementById('chat-messages-container');
     const chatInput = document.querySelector('.chat-input-bar input');
+
+    // --- FUNÇÕES DE MODAL ---
+    function openModal(modal) {
+        if (modal) {
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeModal(modal) {
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }
 
     // --- LÓGICA DE SOCKET.IO ---
     socket.on('connect', () => console.log('Conectado ao servidor de sockets com ID:', socket.id));
@@ -195,37 +207,95 @@ document.addEventListener('DOMContentLoaded', () => {
                 channelListContent.appendChild(memberDiv);
             });
         } catch (err) {
+            console.error('Erro ao carregar grupo:', err);
             if(channelListContent) channelListContent.innerHTML = '<p>Erro ao carregar detalhes.</p>';
         }
     }
     
     // --- LÓGICA DE EVENTOS ---
     function setupEventListeners() {
-        if (addServerButton) addServerButton.addEventListener('click', () => openModal(createGroupModal));
-        if (exploreButton) exploreButton.addEventListener('click', () => {
-            openModal(exploreModal);
-            exploreModal.querySelector('#search-group-input')?.dispatchEvent(new Event('input'));
+        // Debug dos elementos principais
+        console.log('Elementos encontrados:', {
+            addServerButton: !!addServerButton,
+            exploreButton: !!exploreButton,
+            createGroupModal: !!createGroupModal,
+            editGroupModal: !!editGroupModal,
+            exploreModal: !!exploreModal
         });
-        if (groupSettingsIcon) groupSettingsIcon.addEventListener('click', () => {
-            if (currentGroupData) {
-                editGroupModal.querySelector('#edit-group-id').value = currentGroupData.details.id_grupo;
-                editGroupModal.querySelector('#edit-group-name').value = currentGroupData.details.Nome;
-                editGroupModal.querySelector('#edit-group-private').checked = currentGroupData.details.IsPrivate;
-                openModal(editGroupModal);
-            }
-        });
+
+        if (addServerButton) {
+            addServerButton.addEventListener('click', () => {
+                console.log('Clicou em adicionar servidor');
+                openModal(createGroupModal);
+            });
+        }
+
+        if (exploreButton) {
+            exploreButton.addEventListener('click', () => {
+                console.log('Clicou em explorar');
+                openModal(exploreModal);
+                if (searchGroupInput) {
+                    searchGroupInput.dispatchEvent(new Event('input'));
+                }
+            });
+        }
+
+        if (groupSettingsIcon) {
+            groupSettingsIcon.addEventListener('click', () => {
+                console.log('Clicou em configurações do grupo');
+                if (currentGroupData) {
+                    const editGroupId = editGroupModal.querySelector('#edit-group-id');
+                    const editGroupName = editGroupModal.querySelector('#edit-group-name');
+                    const editGroupPrivate = editGroupModal.querySelector('#edit-group-private');
+                    
+                    if (editGroupId) editGroupId.value = currentGroupData.details.id_grupo;
+                    if (editGroupName) editGroupName.value = currentGroupData.details.Nome;
+                    if (editGroupPrivate) editGroupPrivate.checked = currentGroupData.details.IsPrivate;
+                    
+                    openModal(editGroupModal);
+                }
+            });
+        }
+
+        // Event listeners para fechar modais
         [createGroupModal, editGroupModal, exploreModal].forEach(modal => {
             if (!modal) return;
-            modal.querySelector('.cancel-btn')?.addEventListener('click', () => closeModal(modal));
+            
+            const cancelBtn = modal.querySelector('.cancel-btn');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => closeModal(modal));
+            }
+            
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) closeModal(modal);
             });
         });
-        if (homeButton) homeButton.addEventListener('click', () => {
-            document.querySelectorAll('.server-icon').forEach(i => i.classList.remove('active'));
-            homeButton.classList.add('active');
-            renderFriendsView();
-        });
+
+        // Delegação de eventos para ícones de servidor
+        const serverList = document.querySelector('.server-list');
+        if (serverList) {
+            serverList.addEventListener('click', (e) => {
+                const serverIcon = e.target.closest('.server-icon[data-group-id]');
+                if (serverIcon) {
+                    console.log('Clicou em grupo:', serverIcon.dataset.groupId);
+                    // Remove active de todos os ícones
+                    document.querySelectorAll('.server-icon').forEach(i => i.classList.remove('active'));
+                    // Adiciona active ao clicado
+                    serverIcon.classList.add('active');
+                    // Renderiza a view do grupo
+                    renderGroupView(serverIcon.dataset.groupId);
+                }
+            });
+        }
+
+        if (homeButton) {
+            homeButton.addEventListener('click', () => {
+                document.querySelectorAll('.server-icon').forEach(i => i.classList.remove('active'));
+                homeButton.classList.add('active');
+                renderFriendsView();
+            });
+        }
+
         if (friendsNavContainer) {
             friendsNavContainer.addEventListener('click', e => {
                 if (e.target.tagName === 'BUTTON') {
@@ -238,26 +308,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
-        if (createGroupForm) createGroupForm.addEventListener('submit', handleFormSubmit('/groups/criar', 'Erro ao criar grupo.'));
+
+        if (createGroupForm) {
+            createGroupForm.addEventListener('submit', handleFormSubmit('/groups/criar', 'Erro ao criar grupo.'));
+        }
+
         if (editGroupForm) {
             editGroupForm.addEventListener('submit', e => {
-                const groupId = editGroupForm.querySelector('#edit-group-id').value;
-                handleFormSubmit(`/groups/${groupId}/settings`, 'Erro ao atualizar grupo.')(e);
+                const groupIdInput = editGroupForm.querySelector('#edit-group-id');
+                if (groupIdInput) {
+                    const groupId = groupIdInput.value;
+                    handleFormSubmit(`/groups/${groupId}/settings`, 'Erro ao atualizar grupo.')(e);
+                }
             });
         }
+
         if (deleteGroupButton) {
             deleteGroupButton.addEventListener('click', async () => {
-                const groupId = document.getElementById('edit-group-id').value;
-                const groupName = document.getElementById('edit-group-name').value;
-                if (confirm(`Tem a certeza de que deseja excluir o grupo "${groupName}"? Esta ação é irreversível.`)) {
-                    handleAction(deleteGroupButton, `/groups/${groupId}`, 'Excluindo...', 'Excluir Grupo', null, 'DELETE', true);
+                const groupIdInput = document.getElementById('edit-group-id');
+                const groupNameInput = document.getElementById('edit-group-name');
+                
+                if (groupIdInput && groupNameInput) {
+                    const groupId = groupIdInput.value;
+                    const groupName = groupNameInput.value;
+                    
+                    if (confirm(`Tem a certeza de que deseja excluir o grupo "${groupName}"? Esta ação é irreversível.`)) {
+                        handleAction(deleteGroupButton, `/groups/${groupId}`, 'Excluindo...', 'Excluir Grupo', null, 'DELETE', true);
+                    }
                 }
             });
         }
         
         let searchTimeout;
-        if(searchGroupInput){
-             searchGroupInput.addEventListener('input', e => {
+        if (searchGroupInput) {
+            searchGroupInput.addEventListener('input', e => {
                 clearTimeout(searchTimeout);
                 const query = e.target.value;
                 searchTimeout = setTimeout(async () => {
@@ -267,7 +351,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         const results = await response.json();
                         renderSearchResults(results, searchGroupResults, true);
                     } catch (err) {
-                        searchGroupResults.innerHTML = '<p>Erro ao pesquisar.</p>';
+                        console.error('Erro na pesquisa:', err);
+                        if (searchGroupResults) {
+                            searchGroupResults.innerHTML = '<p>Erro ao pesquisar.</p>';
+                        }
                     }
                 }, 300);
             });
@@ -281,35 +368,38 @@ document.addEventListener('DOMContentLoaded', () => {
             } 
             else if (target.id === 'add-friend-submit') {
                 const input = document.getElementById('add-friend-input');
-                const username = input.value.trim();
-                if (!username) return;
-                try {
-                    const response = await fetch(`/friends/search?q=${encodeURIComponent(username)}`);
-                    const users = await response.json();
-                    if(users.length > 0) {
-                         handleAction(target, '/friends/request', 'Enviando...', 'Enviar Pedido', { requestedId: users[0].id_usuario });
-                    } else {
-                        alert('Utilizador não encontrado.');
+                if (input) {
+                    const username = input.value.trim();
+                    if (!username) return;
+                    try {
+                        const response = await fetch(`/friends/search?q=${encodeURIComponent(username)}`);
+                        const users = await response.json();
+                        if(users.length > 0) {
+                             handleAction(target, '/friends/request', 'Enviando...', 'Enviar Pedido', { requestedId: users[0].id_usuario });
+                        } else {
+                            alert('Utilizador não encontrado.');
+                        }
+                    } catch(err) {
+                        console.error('Erro na busca de amigo:', err);
+                        alert('Erro de rede.');
                     }
-                } catch(err) {
-                    alert('Erro de rede.');
                 }
             } else if (target.closest('.accept-btn') || target.closest('.reject-btn')) {
                 const button = target.closest('button');
                 const requestItem = button.closest('.friend-request-item');
-                const requestId = requestItem.dataset.requestId;
-                const action = button.classList.contains('accept-btn') ? 'aceite' : 'recusada';
-                handleAction(button, '/friends/respond', '...', '', { requestId, action }, 'POST', true);
+                if (requestItem) {
+                    const requestId = requestItem.dataset.requestId;
+                    const action = button.classList.contains('accept-btn') ? 'aceite' : 'recusada';
+                    handleAction(button, '/friends/respond', '...', '', { requestId, action }, 'POST', true);
+                }
             } else if (target.closest('.cancel-request-btn')) {
                 const button = target.closest('button');
                 const requestItem = button.closest('.friend-request-item');
-                const requestId = requestItem.dataset.requestId;
-                handleAction(button, '/friends/cancel', 'Cancelando...', 'Cancelar', { requestId }, 'POST', true);
+                if (requestItem) {
+                    const requestId = requestItem.dataset.requestId;
+                    handleAction(button, '/friends/cancel', 'Cancelando...', 'Cancelar', { requestId }, 'POST', true);
+                }
             }
-        });
-
-        serverIcons.forEach(icon => {
-            icon.addEventListener('click', () => renderGroupView(icon.dataset.groupId));
         });
     }
 
@@ -317,18 +407,28 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleFormSubmit(url, errorMessage) {
         return async function(event) {
             event.preventDefault();
+            console.log('Enviando formulário para:', url);
             const formData = new FormData(event.target);
             try {
                 const response = await fetch(url, { method: 'POST', body: formData });
-                if (response.ok) window.location.reload();
-                else alert(`${errorMessage}: ${(await response.json()).message}`);
+                if (response.ok) {
+                    console.log('Formulário enviado com sucesso');
+                    window.location.reload();
+                } else {
+                    const responseData = await response.json();
+                    console.error('Erro na resposta:', responseData);
+                    alert(`${errorMessage}: ${responseData.message}`);
+                }
             } catch (err) {
+                console.error('Erro de rede:', err);
                 alert('Ocorreu um erro de rede. Tente novamente.');
             }
         }
     }
 
     function renderSearchResults(results, container, isGroupSearch) {
+        if (!container) return;
+        
         container.innerHTML = '';
         if (results.length === 0) {
             container.innerHTML = '<p>Nenhum resultado encontrado.</p>';
@@ -347,37 +447,48 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleAction(button, url, loadingText, defaultText, body = null, method = 'POST', reload = false) {
+        if (!button) return;
+        
         button.disabled = true;
         if(button.tagName === 'BUTTON') button.textContent = loadingText;
+        
         try {
             const options = { method: method, headers: {} };
             if (body) {
                 options.headers['Content-Type'] = 'application/json';
                 options.body = JSON.stringify(body);
             }
+            
+            console.log('Enviando requisição:', url, options);
             const response = await fetch(url, options);
+            
             if (response.ok) {
-                 if (reload) {
+                console.log('Ação realizada com sucesso');
+                if (reload) {
                     window.location.reload();
-                 } else {
+                } else {
                     const data = await response.json();
                     alert(data.message);
-                    button.textContent = 'Feito!';
-                 }
+                    if(button.tagName === 'BUTTON') button.textContent = 'Feito!';
+                }
             } else {
                 const data = await response.json();
+                console.error('Erro na ação:', data);
                 alert(data.message);
                 button.disabled = false;
                 if(button.tagName === 'BUTTON') button.textContent = defaultText;
             }
         } catch (err) {
-             alert('Ocorreu um erro de rede.');
-             button.disabled = false;
-             if(button.tagName === 'BUTTON') button.textContent = defaultText;
+            console.error('Erro de rede na ação:', err);
+            alert('Ocorreu um erro de rede.');
+            button.disabled = false;
+            if(button.tagName === 'BUTTON') button.textContent = defaultText;
         }
     }
     
     // --- INICIALIZAÇÃO DA VIEW ---
+    console.log('Inicializando dashboard...');
     renderFriendsView();
     setupEventListeners();
+    console.log('Dashboard inicializado');
 });
