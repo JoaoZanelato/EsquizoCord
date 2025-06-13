@@ -401,6 +401,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
+        if (chatInput){
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && chatInput.value.trim() !== '' && currentChatId) {
+                    const messageContent = chatInput.value.trim()
+                    chatInput.value = ''
+
+                    fetch(`/groups/chats/${currentChatId}/messages`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({content: messageContent}),
+                    })
+                    .catch(err => {
+                        console.error('Erro ao enviar mensagem:', err)
+                        chatInput.value = messageContent
+                    })
+                }
+            })
+        }
     }
 
     // --- FUNÇÕES DE MANIPULAÇÃO DE DADOS ---
