@@ -6,6 +6,64 @@
     <title>Configurações - EsquizoCord</title>
     <link rel="icon" type="image/png" href="/images/logo.png">
     <style>
+        /* DEFINIÇÕES DE CORES BASE (SEU TEMA PADRÃO DISCORD-like) */
+        /* Estas variáveis são o fallback e o tema padrão. Serão substituídas pelas classes de tema no <body>. */
+            :root {
+            --background-primary: #36393f;
+            --background-secondary: #2f3136;
+            --background-tertiary: #202225;
+            --header-primary: #fff;
+            --text-normal: #dcddde;
+            --text-muted: #72767d;
+            --brand-experiment: #660080; /* Roxo principal */
+            --brand-hover: #572364;
+            --purple-accent: #cc00ff;
+            --green-accent: #43B581;
+            --red-danger: #f04747;
+            --red-danger-hover: #d80000;
+        }
+
+        /* --- DEFINIÇÕES DOS TEMAS ESPECÍFICOS --- */
+        /* As classes de tema serão aplicadas ao <body> para mudar as variáveis CSS */
+
+        /* Tema Padrão (theme-default - id_tema nulo ou "Padrão do Sistema") */
+        /* Se for idêntico ao :root, pode deixar vazio, pois :root já é o padrão. */
+        .theme-default {
+            /* ex: --background-primary: #36393f; */
+        }
+
+        /* Tema com id_tema = 2 (Ex: "Azul Noturno") */
+        .theme-2 {
+            --background-primary: #2C3E50;
+            --background-secondary: #34495E;
+            --background-tertiary: #23303E;
+            --header-primary: #ECF0F1;
+            --text-normal: #BDC3C7;
+            --text-muted: #95A5A6;
+            --brand-experiment: #3498DB; /* Azul mais claro */
+            --brand-hover: #2980B9;
+            --purple-accent: #5DADE2; /* Azul acentuado */
+            --green-accent: #2ECC71;
+            --red-danger: #E74C3C;
+            --red-danger-hover: #C0392B;
+        }
+
+        /* Tema com id_tema = 3 (Ex: "Verde Floresta") */
+        .theme-3 {
+            --background-primary: #2E403F; /* Verde escuro */
+            --background-secondary: #3A4E4E; /* Verde médio */
+            --background-tertiary: #253332; /* Verde mais escuro */
+            --header-primary: #F0FFF0;
+            --text-normal: #D4EDDA;
+            --text-muted: #A8D1B1;
+            --brand-experiment: #28A745; /* Verde vibrante */
+            --brand-hover: #218838;
+            --purple-accent: #86A189; /* Tom de verde acinzentado */
+            --green-accent: #00BC8C;
+            --red-danger: #DC3545;
+            --red-danger-hover: #C82333;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             display: flex;
@@ -131,7 +189,7 @@
         }
     </style>
 </head>
-<body>
+<body class="<%= user && user.id_tema ? 'theme-' + user.id_tema : 'theme-default' %>">
     <div class="config-container">
         <!-- Verifica se o utilizador existe antes de tentar aceder às suas propriedades -->
         <% if (user) { %>

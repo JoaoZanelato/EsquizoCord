@@ -6,16 +6,84 @@
     <title>Dashboard - EsquizoCord</title>
     <link rel="icon" type="image/png" href="/images/logo.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- Novo script DOMPurify para sanitização de conteúdo (boa prática de segurança) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+
     <style>
+        /* Base para resetar estilos e definir box-sizing */
         *, *::before, *::after { box-sizing: border-box; }
+
+        /* DEFINIÇÕES DE CORES BASE (SEU TEMA PADRÃO DISCORD-like) */
+        /* Estas variáveis são o fallback e o tema padrão. Serão substituídas pelas classes de tema no <body>. */
         :root {
-            --background-primary: #36393f; --background-secondary: #2f3136; --background-tertiary: #202225;
-            --header-primary: #fff; --text-normal: #dcddde; --text-muted: #72767d;
-            --brand-experiment: #660080; --brand-hover: #572364; --purple-accent: #cc00ff;
-            --green-accent: #43B581; --red-danger: #f04747; --red-danger-hover: #d84040;
-            --chat-bubble-sent: #5865f2;
+            --background-primary: #36393f; /* Roxo escuro - base */
+            --background-secondary: #2f3136; /* Roxo mais escuro */
+            --background-tertiary: #202225; /* Roxo muito escuro */
+            --header-primary: #fff; /* Branco puro */
+            --text-normal: #dcddde; /* Cinza claro */
+            --text-muted: #72767d; /* Cinza médio */
+            --brand-experiment: #660080; /* Roxo principal para interatividade */
+            --brand-hover: #572364; /* Roxo um pouco mais escuro para hover */
+            --purple-accent: #cc00ff; /* Roxo vibrante para acentos */
+            --green-accent: #43B581; /* Verde para sucesso/elementos positivos */
+            --red-danger: #f04747; /* Vermelho para perigo/erros */
+            --red-danger-hover: #d80000; /* Vermelho mais escuro para hover */
+            --chat-bubble-sent: #5865f2; /* Azul Discord para bolhas de chat enviadas */
+
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; overflow: hidden; color: var(--text-normal); background-color: var(--background-tertiary); }
+
+        /* --- DEFINIÇÕES DOS TEMAS ESPECÍFICOS --- */
+        /* As classes de tema serão aplicadas ao <body> para mudar as variáveis CSS */
+
+        /* Tema Padrão (theme-default - id_tema nulo ou "Padrão do Sistema") */
+        /* Se for idêntico ao :root, pode deixar vazio, pois :root já é o padrão. */
+        .theme-default {
+            /* ex: --background-primary: #36393f; */
+        }
+
+        /* Tema com id_tema = 2 (Ex: "Azul Noturno") */
+        .theme-2 {
+            --background-primary: #2C3E50;
+            --background-secondary: #34495E;
+            --background-tertiary: #23303E;
+            --header-primary: #ECF0F1;
+            --text-normal: #BDC3C7;
+            --text-muted: #95A5A6;
+            --brand-experiment: #3498DB; /* Azul mais claro */
+            --brand-hover: #2980B9;
+            --purple-accent: #5DADE2; /* Azul acentuado */
+            --green-accent: #2ECC71;
+            --red-danger: #E74C3C;
+            --red-danger-hover: #C0392B;
+            --chat-bubble-sent: #4A90E2; /* Azul para bolhas de chat */
+        }
+
+        /* Tema com id_tema = 3 (Ex: "Verde Floresta") */
+        .theme-3 {
+            --background-primary: #2E403F; /* Verde escuro */
+            --background-secondary: #3A4E4E; /* Verde médio */
+            --background-tertiary: #253332; /* Verde mais escuro */
+            --header-primary: #F0FFF0;
+            --text-normal: #D4EDDA;
+            --text-muted: #A8D1B1;
+            --brand-experiment: #28A745; /* Verde vibrante */
+            --brand-hover: #218838;
+            --purple-accent: #86A189; /* Tom de verde acinzentado */
+            --green-accent: #00BC8C;
+            --red-danger: #DC3545;
+            --red-danger-hover: #C82333;
+            --chat-bubble-sent: #4CAF50; /* Verde para bolhas de chat */
+        }
+        
+        /* O resto do seu CSS que usa as variáveis (mantido como estava ou ajustado para usar variáveis) */
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; 
+            overflow: hidden; 
+            color: var(--text-normal); 
+            background-color: var(--background-tertiary); 
+        }
         .dashboard-layout { display: flex; height: 100vh; }
         .server-list { width: 72px; background-color: var(--background-tertiary); padding: 12px 0; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; overflow-y: auto; }
         .server-icon { width: 48px; height: 48px; border-radius: 50%; background-color: var(--background-primary); margin-bottom: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: border-radius 0.3s, background-color 0.3s; }
@@ -40,7 +108,7 @@
         .request-actions button { background: none; border: none; cursor: pointer; font-size: 20px; }
         .accept-btn { color: var(--green-accent); }
         .reject-btn, .cancel-request-btn { color: var(--red-danger); }
-        .user-panel { background-color: #292b2f; padding: 12px; display: flex; align-items: center; }
+        .user-panel { background-color: var(--background-tertiary) ; padding: 12px; display: flex; align-items: center; }
         .user-panel img { width: 32px; height: 32px; border-radius: 50%; margin-right: 8px; }
         .user-panel .username { font-weight: bold; }
         .chat-area { flex-grow: 1; background-color: var(--background-primary); display: flex; flex-direction: column; }
@@ -85,7 +153,7 @@
         .add-friend-input button { flex-shrink: 0; white-space: nowrap; border-radius: 0 3px 3px 0; background-color: var(--brand-experiment); color: white; border: none; padding: 8px 12px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
-<body 
+<body class="<%= user && user.id_tema ? 'theme-' + user.id_tema : 'theme-default' %>"
     data-user='<%- JSON.stringify(user || null) %>'
     data-groups='<%- JSON.stringify(groups || []) %>'
     data-friends='<%- JSON.stringify(friends || []) %>'
@@ -95,7 +163,7 @@
     <div class="dashboard-layout">
         <nav class="server-list">
             <div class="server-icon active" id="home-button" title="Início">
-                 <img src="/images/logo.png" alt="Início">
+                <img src="/images/logo.png" alt="Início">
             </div>
             <div class="divider"></div>
             <% if (groups && groups.length > 0) { %>
@@ -112,13 +180,13 @@
                 <i class="fas fa-compass" style="color: var(--green-accent);"></i>
             </div>
             <div class="profile-icon-container">
-                 <a href="/configuracao">
+                <a href="/configuracao">
                     <% if (user && user.FotoPerfil) { %>
                         <img src="<%= user.FotoPerfil %>" alt="Perfil" class="server-icon profile-icon">
                     <% } else { %>
                         <img src="/images/logo.png" alt="Perfil" class="server-icon profile-icon">
                     <% } %>
-                 </a>
+                </a>
             </div>
         </nav>
         <aside class="channel-list">
@@ -135,10 +203,10 @@
                 <!-- Conteúdo dinâmico aqui -->
             </div>
             <div class="user-panel">
-                 <% if (user) { %>
-                     <img src="<%= user.FotoPerfil || '/images/logo.png' %>" alt="Perfil">
-                     <span class="username"><%= user.Nome %></span>
-                 <% } %>
+                <% if (user) { %>
+                    <img src="<%= user.FotoPerfil || '/images/logo.png' %>" alt="Perfil">
+                    <span class="username"><%= user.Nome %></span>
+                <% } %>
             </div>
         </aside>
         <main class="chat-area">
@@ -195,10 +263,10 @@
         <div class="modal-content large">
             <h3>Explorar Servidores Públicos</h3>
             <form id="search-group-form">
-                 <input type="search" id="search-group-input" placeholder="Pesquisar grupos públicos...">
+                <input type="search" id="search-group-input" placeholder="Pesquisar grupos públicos...">
             </form>
             <div id="search-group-results"></div>
-             <div class="modal-actions">
+            <div class="modal-actions">
                 <button type="button" class="cancel-btn">Fechar</button>
             </div>
         </div>
