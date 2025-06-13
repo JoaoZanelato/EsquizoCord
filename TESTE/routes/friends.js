@@ -19,6 +19,26 @@ router.get('/search', requireLogin, async (req, res, next) => {
     } catch (error) { next(error); }
 });
 
+// ROTA GET PARA BUSCAR MENSAGENS DIRETAS 
+router.get('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
+    const friendId = req.params.friendId;
+    const currentUserId = req.session.user.id_usuario;
+    const pool = req.db;
+    try {
+        const query = `
+            SELECT id_mensagem, id_remetente, Conteudo, DataHora
+            FROM MensagensDiretas
+            WHERE (id_remetente = ? AND id_destinatario = ?) OR (id_remetente = ? AND id_destinatario = ?)
+            ORDER BY DataHora ASC
+            LIMIT 100;
+        `;
+        const [messages] = await pool.query(query, [currentUserId, friendId, friendId, currentUserId]);
+        res.json(messages);
+    } catch (error) {
+        next(error);
+    }
+})
+
 // ROTA POST PARA ENVIAR UM PEDIDO DE AMIZADE
 router.post('/request', requireLogin, async (req, res, next) => {
     const { requestedId } = req.body;
@@ -81,6 +101,38 @@ router.post('/cancel', requireLogin, async (req, res, next) => {
         next(error);
     }
 });
+
+// ROTA POST PARA ENVIAR UMA MENSAGEM DIRETA
+router.post('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
+    const friendId = req.params.friendId;
+    const currentUserId = req.session.user.id_usuario;
+    const { content } = req.body;
+    const pool = req.db;
+    const io = req.app.get('io');
+
+    if (!content) {
+        return res.status(400).json({ message: "O conteúdo não pode estar vazio." });
+    }
+    try {
+        const [result] = await pool.query("INSERT INTO MensagensDiretas (id_remetente, id_destinatario, Conteudo) VALUES (?, ?, ?)",
+            [currentUserId, friendId, content]
+        );
+        const messageData = {
+            id_mensagem: result.insertId,
+            id_remetente: currentUserId,
+            id_destinatario: parseInt(friendId, 10),
+            Conteudo: content,
+            DataHora: new Date()
+        };
+        const ids = [currentUserId, parseInt(friendId, 10)].sort();
+        const roomName = `dm-${ids[0]}-${ids[1]}`;
+        io.to(roomName).emit('new_dm', messageData);
+        res.status(201).json(messageData);
+    } catch (error) {
+        next(error);
+    }
+});
+
 
 
 module.exports = router;

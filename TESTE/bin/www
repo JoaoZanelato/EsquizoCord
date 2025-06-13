@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 
-const app = require('../app');
+// MODIFICAÇÃO: Importa o 'app' e o 'sessionMiddleware'
+const { app, sessionMiddleware } = require('../app'); 
 const debug = require('debug')('teste:server');
 const http = require('http');
 const { Server } = require("socket.io");
+// MODIFICAÇÃO: Importa o pacote de ponte
+const sharedsession = require("express-socket.io-session");
 
 const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
@@ -12,29 +15,56 @@ const server = http.createServer(app);
 
 // --- INÍCIO DA CONFIGURAÇÃO DO SOCKET.IO ---
 const io = new Server(server);
-app.set('io', io); // Torna o 'io' acessível em outras partes da app (ex: rotas)
+
+// MODIFICAÇÃO: Conecta a sessão do Express com o Socket.IO
+io.use(sharedsession(sessionMiddleware, {
+    autoSave: true
+}));
+
+app.set('io', io);
 
 const socketRooms = {};
 
 io.on('connection', (socket) => {
   console.log('Um utilizador conectou-se:', socket.id);
 
-  // Quando um utilizador clica num grupo e entra na "sala" de chat
   socket.on('join_group_room', (groupId) => {
-    // Se o socket já estava numa sala, sai dela primeiro
     if (socketRooms[socket.id]) {
       socket.leave(socketRooms[socket.id]);
     }
-    // Entra na nova sala (ex: 'group-1', 'group-2')
     const roomName = `group-${groupId}`;
     socket.join(roomName);
-    socketRooms[socket.id] = roomName; // Guarda a sala atual do socket
-    console.log(`Socket ${socket.id} entrou na sala ${roomName}`);
+    socketRooms[socket.id] = roomName;
+    console.log(`Socket ${socket.id} entrou na sala de grupo: ${roomName}`);
+  });
+  
+  socket.on('leave_group_room', (groupId) => {
+    const roomName = `group-${groupId}`;
+    socket.leave(roomName);
+    if (socketRooms[socket.id] === roomName) {
+      delete socketRooms[socket.id];
+    }
+    console.log(`Socket ${socket.id} saiu da sala de grupo: ${roomName}`);
+  });
+
+  socket.on('join_dm_room', (friendId) => {
+    const currentUserId = socket.handshake.session.user.id_usuario;
+
+    if (socketRooms[socket.id]) {
+      socket.leave(socketRooms[socket.id]);
+    }
+    
+    const ids = [currentUserId, parseInt(friendId, 10)].sort();
+    const roomName = `dm-${ids[0]}-${ids[1]}`;
+
+    socket.join(roomName);
+    socketRooms[socket.id] = roomName;
+    console.log(`Socket ${socket.id} entrou na sala de DM: ${roomName}`);
   });
 
   socket.on('disconnect', () => {
     console.log('Utilizador desconectou-se:', socket.id);
-    delete socketRooms[socket.id]; // Limpa o registo do socket
+    delete socketRooms[socket.id];
   });
 });
 // --- FIM DA CONFIGURAÇÃO DO SOCKET.IO ---

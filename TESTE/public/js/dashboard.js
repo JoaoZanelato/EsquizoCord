@@ -2,6 +2,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- INICIALIZAÇÃO ---
     const socket = io();
     const body = document.querySelector('body');
+
+    let currentGroupData = null
+    let currentChatId = null
+    let currentDmFriendId = null
+    let currentDmFriendData = null;
     
     // Função segura para fazer o parse dos dados JSON a partir dos data attributes
     const parseJsonData = (attribute) => {
@@ -22,9 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const sentRequests = parseJsonData('sentRequests') || [];
     
     const currentUserId = currentUser ? currentUser.id_usuario : null;
-    let currentGroupData = null;
-    let currentChatId = null;
-    let activeSearchTab = 'groups';
 
     // --- SELEÇÃO DE ELEMENTOS DO DOM ---
     const createGroupModal = document.getElementById('create-group-modal');
@@ -68,6 +70,22 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.on('new_group_message', (message) => {
         if (message.id_chat == currentChatId) renderMessage(message);
     });
+    socket.on('new_dm', (message) => {
+        if( currentDmFriendData && 
+            (message.id_remetente == currentDmFriendId && message.id_destinatario == currentUserId) ||
+            (message.id_destinatario == currentDmFriendId && message.id_remetente == currentUserId) ) {
+            renderMessage({
+                ...message,
+                id_usuario: message.id_remetente,
+                autorNome: message.id_remetente === currentUserId ? currentUser.Nome : currentDmFriendData.nome,
+                autorFoto: message.id_remetente === currentUserId ? currentUser.FotoPerfil : currentDmFriendData.foto
+            })
+        }
+    })
+
+        
+            
+        
 
     // --- FUNÇÕES DE RENDERIZAÇÃO ---
     function renderMessage(message) {
@@ -80,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <img src="${message.autorFoto || '/images/logo.png'}" alt="${message.autorNome}">
             <div class="message-content">
                 ${message.id_usuario !== currentUserId ? `<span class="author-name">${message.autorNome}</span>` : ''}
-                <p class="message-text">${message.Conteudo}</p>
+                <p class="message-text">${DOMPurify.sanitize(message.Conteudo)}</p>
             </div>`;
         
         if (message.id_usuario === currentUserId) {
@@ -129,7 +147,10 @@ document.addEventListener('DOMContentLoaded', () => {
             friends.forEach(friend => {
                 const friendDiv = document.createElement('div');
                 friendDiv.className = 'friend-item';
-                friendDiv.innerHTML = `<img src="${friend.FotoPerfil || '/images/logo.png'}"> <span>${friend.Nome}</span>`;
+                friendDiv.dataset.friendId = friend.id_usuario
+                friendDiv.dataset.friendName = friend.Nome
+                friendDiv.dataset.friendPhoto = friend.FotoPerfil || '/images/logo.png';
+                friendDiv.innerHTML =`<img src="${friend.FotoPerfil ||'/images/logo.png'}"><span>${friend.Nome}</span>`
                 channelListContent.appendChild(friendDiv);
             });
         } else {
@@ -290,6 +311,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (homeButton) {
             homeButton.addEventListener('click', () => {
+                if(currentGroupData && currentGroupData.details){
+                    socket.emit('leave_group_room', currentGroupData.details.id_grupo)
+                }
+                currentGroupData = null
+                currentChatId = null
+                currentDmFriendId = null
+                currentDmFriendData = null
+                
                 document.querySelectorAll('.server-icon').forEach(i => i.classList.remove('active'));
                 homeButton.classList.add('active');
                 renderFriendsView();
@@ -359,7 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 300);
             });
         }
-        
+
         document.body.addEventListener('click', async (e) => {
             const target = e.target;
             if (target.classList.contains('join-btn')) {
@@ -403,21 +432,47 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (chatInput){
             chatInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && chatInput.value.trim() !== '' && currentChatId) {
+                if (e.key === 'Enter' && chatInput.value.trim() !== '') {
+                    e.preventDefault()
                     const messageContent = chatInput.value.trim()
                     chatInput.value = ''
 
-                    fetch(`/groups/chats/${currentChatId}/messages`, {
+                    let url
+
+                    if(currentDmFriendId) {
+                        url = `/friends/dm/${currentDmFriendId}/messages`
+                    } else if (currentChatId) {
+                        url = `/groups/chats/${currentChatId}/messages`
+                    } else {
+                        return
+                    }
+                    fetch(url, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({content: messageContent}),
-                    })
-                    .catch(err => {
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({content: messageContent})
+                    }).catch(err => {
                         console.error('Erro ao enviar mensagem:', err)
                         chatInput.value = messageContent
                     })
+                }
+            })
+        }
+        if (channelListContent) {
+            channelListContent.addEventListener('click', (e) =>{
+                const friendItem = e.target.closest('.friend-item[data-friend-id]')
+                if(friendItem) {
+                    const friendId = friendItem.dataset.friendId
+                    const friendName = friendItem.dataset.friendName
+                    const friendPhoto = friendItem.dataset.friendPhoto
+                    
+                    currentChatId = null
+                    currentDmFriendId = friendId
+                    currentDmFriendData = {id: friendId, nome: friendName, foto: friendPhoto}
+                    
+                    document.querySelectorAll('.server-icon').forEach(i => i.classList.remove('active'))
+                    homeButton.classList.add('active')
+                    
+                    renderDmView(friendId, friendName)
                 }
             })
         }
@@ -504,6 +559,40 @@ document.addEventListener('DOMContentLoaded', () => {
             button.disabled = false;
             if(button.tagName === 'BUTTON') button.textContent = defaultText;
         }
+    }
+    async function loadAndRenderDmMessages(friendId) {
+        if (!friendId) return;
+        try {
+            const response = await fetch(`/friends/dm/${friendId}/messages`)
+            const messages = await response.json()
+            chatMessagesContainer.innerHTML = ''
+
+            if (messages.length === 0) {
+                chatMessagesContainer.innerHTML = '<p>Nenhuma mensagem ainda. Envie a primeira!</p>'
+            } else {
+                messages.forEach(msg => {
+                    renderMessage({
+                        ...msg,
+                        id_usuario: msg.id_remetente,
+                        autorNome: msg.id_remetente === currentUserId ? currentUser.Nome : currentDmFriendData.nome,
+                        autorFoto: msg.id_remetente === currentUserId ? currentUser.FotoPerfil : currentDmFriendData.foto
+                    })
+                })
+            }
+        } catch (error) {
+            console.error("Erro ao garregar DMs:", error)
+            chatMessagesContainer.innerHTML = '<p>Não foi possível carregar as mensagens.</p>'
+        }
+        
+    }
+    function renderDmView(friendId, friendName) {
+        if (groupSettingsIcon) groupSettingsIcon.style.display = 'none'
+        socket.emit('join_dm_room', friendId)
+
+        if (chatHeader) chatHeader.innerHTML = `<h3>Conversando com ${friendName}</h3>`
+        if (chatInput) chatInput.placeholder = `Conversar com ${friendName}`
+
+        loadAndRenderDmMessages(friendId)
     }
     
     // --- INICIALIZAÇÃO DA VIEW ---

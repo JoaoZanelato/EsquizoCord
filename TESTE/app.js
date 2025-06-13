@@ -27,17 +27,23 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configuração da Sessão para produção
-app.use(session({
-  secret: 'uma_frase_bem_secreta_para_o_esquizocord', // É crucial mudar isto
+
+const  sessionMiddleware = session({
+  secret: 'uma_frase_bem_secreta_para_o_esquizocord',
   resave: false,
   saveUninitialized: false,
-  cookie: { 
-      secure: process.env.NODE_ENV === 'production',
-      httpOnly: true,
-      sameSite: 'lax'
-    } 
-}));
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'lax'
+  }
+})
+
+app.use(sessionMiddleware)
+
+
+// Configuração da Sessão para produção
+
 
 // Middleware para disponibilizar a conexão da DB para todas as rotas
 const pool = require('./db'); 
@@ -74,4 +80,7 @@ app.use(function(err, req, res, next) {
   res.render('error');
 });
 
-module.exports = app;
+module.exports = {
+  app: app,
+  sessionMiddleware: sessionMiddleware
+}
