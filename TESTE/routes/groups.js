@@ -129,12 +129,22 @@ router.post('/:id/settings', requireLogin, isGroupCreator, upload.single('foto')
     const fotoUrl = req.file ? req.file.path : null;
     const isPrivateBool = isPrivate === 'on';
     const pool = req.db;
+
+    console.log('--- RECEBIDO NO BACKEND (EDIÇÃO DE GRUPO) ---');
+    console.log('ID do grupo a ser atualizado:', id);
+    console.log('Dados recebidos no req.body:', req.body);
+    console.log('Nome recebido:', nome);
+    console.log('É privado?:', isPrivate);
+
     try {
         let sql = "UPDATE Grupos SET Nome = ?, IsPrivate = ?";
         const params = [nome, isPrivateBool];
         if (fotoUrl) {
             sql += ", Foto = ?";
             params.push(fotoUrl);
+
+            console.log('SQL a ser executado:', sql);
+            console.log('Parâmetros do SQL:', params);
         }
         sql += " WHERE id_grupo = ?";
         params.push(id);

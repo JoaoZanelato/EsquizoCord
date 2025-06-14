@@ -14,7 +14,12 @@ app.set('port', port);
 const server = http.createServer(app);
 
 // --- INÍCIO DA CONFIGURAÇÃO DO SOCKET.IO ---
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
+});
 
 // MODIFICAÇÃO: Conecta a sessão do Express com o Socket.IO
 io.use(sharedsession(sessionMiddleware, {

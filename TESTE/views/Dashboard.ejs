@@ -71,7 +71,7 @@
         <main class="chat-area">
             <div class="chat-header" id="chat-header"><h3>Mensagens Diretas</h3></div>
             <div class="chat-messages" id="chat-messages-container"><p>Selecione um amigo para começar a conversar.</p></div>
-            <div class="chat-input-bar"><input type="text" placeholder="Conversar..."></div>
+            <div class="chat-input-bar"><input type="text" id="chat-input" name="chat-message" placeholder="Conversar..."></div>
         </main>
     </div>
 
@@ -122,7 +122,7 @@
         <div class="modal-content large">
             <h3>Explorar Servidores Públicos</h3>
             <form id="search-group-form">
-                <input type="search" id="search-group-input" placeholder="Pesquisar grupos públicos...">
+                <input type="search" id="search-group-input" name="q" placeholder="Pesquisar grupos públicos...">
             </form>
             <div id="search-group-results"></div>
             <div class="modal-actions">
