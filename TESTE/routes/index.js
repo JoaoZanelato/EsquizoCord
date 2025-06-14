@@ -166,4 +166,28 @@ router.post('/configuracao', requireLogin, upload.single('fotoPerfil'), async (r
     }
 });
 
+//verificar email
+
+
+router.post('/verificar-email', async (req, res, next) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ valido: false, mensagem: 'Email não fornecido.' });
+  }
+
+  try {
+    const pool = req.db;
+    const [rows] = await pool.query("SELECT * FROM Usuarios WHERE Email = ?", [email]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ valido: false, mensagem: 'Email não encontrado.' });
+    }
+
+    res.json({ valido: true, mensagem: 'Email encontrado.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
