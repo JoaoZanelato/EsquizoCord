@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> - EsquizoCord</title>
+  <link rel='stylesheet' href='/stylesheets/style.css' />
+  <style>
+    /* Estilos adicionais para a caixa de mensagem */
+    .auth-box {
+      background-color: var(--background-secondary);
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      width: 90%;
+      max-width: 480px;
+    }
+    .auth-box h1 {
+      color: var(--header-primary);
+      margin-top: 0;
+      margin-bottom: 16px;
+      font-size: 24px;
+    }
+    .auth-box p {
+      color: var(--text-normal);
+      font-size: 16px;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+    .auth-button {
+      display: inline-block;
+      padding: 12px 28px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      text-decoration: none;
+      background-color: var(--brand-experiment);
+      color: white;
+      transition: background-color 0.2s;
+    }
+    .auth-button:hover {
+      background-color: var(--brand-hover);
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-layout">
+    <div class="auth-box">
+      <h1><%= titulo %></h1>
+      <p><%= mensagem %></p>
+      
+      <% if (locals.link && locals.textoDoLink) { %>
+        <a href="<%= link %>" class="auth-button"><%= textoDoLink %></a>
+      <% } %>
+    </div>
+  </div>
+</body>
+</html>
