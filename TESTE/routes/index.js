@@ -4,6 +4,10 @@ const bcrypt = require('bcrypt');
 const multer = require('multer');
 const saltRounds = 10;
 
+// --- NOVOS MÓDULOS PARA VERIFICAÇÃO DE E-MAIL ---
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+
 // --- Configuração do Cloudinary e Multer ---
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
@@ -31,6 +35,17 @@ function requireLogin(req, res, next) {
     if (req.session && req.session.user) return next();
     return res.redirect('/login');
 }
+
+// --- CONFIGURAÇÃO DO NODEMAILER ---
+// (Substitua pela configuração do seu provedor de e-mail em um ambiente de produção)
+// (Lembre-se de colocar as credenciais em variáveis de ambiente no seu arquivo .env)
+let transporter = nodemailer.createTransport({
+  service: 'gmail', // ou outro serviço
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 
 /* --- ROTAS GET --- */
@@ -82,22 +97,80 @@ router.get('/sair', (req, res) => {
     });
 });
 
+// --- NOVA ROTA PARA VALIDAR O TOKEN DE E-MAIL ---
+router.get('/verificar-email', async (req, res, next) => {
+    try {
+        const { token } = req.query;
+        if (!token) return res.status(400).send("Token de verificação inválido.");
+        
+        const pool = req.db;
+        const [result] = await pool.query(
+            "UPDATE Usuarios SET email_verificado = 1, token_verificacao = NULL WHERE token_verificacao = ?",
+            [token]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(400).send("Token inválido, expirado ou a conta já foi verificada.");
+        }
+
+        res.send('<h1>E-mail verificado com sucesso!</h1><p>Você já pode fazer o <a href="/login">login</a>.</p>');
+
+    } catch (error) {
+        next(error);
+    }
+});
+
 
 /* --- ROTAS POST --- */
 
+// --- ROTA DE CADASTRO ATUALIZADA ---
 router.post('/cadastro', async (req, res, next) => {
   const { nome, email, senha, confirmar_senha } = req.body;
   if (senha !== confirmar_senha) {
     return res.status(400).send("Erro: As senhas não conferem.");
   }
+  
+  const pool = req.db;
+
   try {
+    // 1. Verifica se o nome ou e-mail já existem
+    const [existingUsers] = await pool.query("SELECT Nome, Email FROM Usuarios WHERE Nome = ? OR Email = ?", [nome, email]);
+    if (existingUsers.length > 0) {
+      return res.status(409).send("Erro: Nome de usuário ou e-mail já está em uso.");
+    }
+    
+    // 2. Criptografa a senha e gera o token
     const senhaCriptografada = await bcrypt.hash(senha, saltRounds);
-    const pool = req.db;
-    await pool.query("INSERT INTO Usuarios (Nome, Email, Senha) VALUES (?, ?, ?)", [nome, email, senhaCriptografada]);
-    res.redirect('/login');
-  } catch (error) { next(error); }
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    // 3. Insere o novo usuário com o token
+    await pool.query(
+        "INSERT INTO Usuarios (Nome, Email, Senha, token_verificacao, email_verificado) VALUES (?, ?, ?, ?, 0)",
+        [nome, email, senhaCriptografada, token]
+    );
+
+    // 4. Envia o e-mail de verificação
+    const verificationLink = `http://${req.headers.host}/verificar-email?token=${token}`;
+    await transporter.sendMail({
+        from: '"EsquizoCord" <no-reply@esquizocord.com>',
+        to: email,
+        subject: "Verificação de E-mail - EsquizoCord",
+        html: `<b>Olá ${nome}!</b><br><p>Obrigado por se cadastrar. Por favor, clique no link a seguir para ativar sua conta: <a href="${verificationLink}">${verificationLink}</a></p>`,
+    });
+
+    res.send("Cadastro realizado com sucesso! Um link de verificação foi enviado para o seu e-mail.");
+
+  } catch (error) {
+    // Trata o erro específico de entrada duplicada do DB
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).send('Erro: Nome de usuário ou e-mail já cadastrado.');
+    }
+    next(error); 
+  }
 });
 
+
+// --- ROTA DE LOGIN ATUALIZADA ---
 router.post('/login', async (req, res, next) => {
   const { email, senha } = req.body;
   try {
@@ -116,6 +189,12 @@ router.post('/login', async (req, res, next) => {
     const match = await bcrypt.compare(senha, user.Senha);
 
     if (match) {
+      // 1. Verifica se o e-mail do usuário foi verificado
+      if (!user.email_verificado) {
+          return res.status(403).send("Erro: Sua conta ainda não foi verificada. Por favor, verifique seu e-mail.");
+      }
+
+      // 2. Se verificado, cria a sessão e redireciona
       req.session.user = user;
       req.session.save(err => {
         if (err) return next(err);
@@ -128,6 +207,7 @@ router.post('/login', async (req, res, next) => {
     next(error);
   }
 });
+
 
 router.post('/configuracao', requireLogin, upload.single('fotoPerfil'), async (req, res, next) => {
     try {
@@ -166,9 +246,7 @@ router.post('/configuracao', requireLogin, upload.single('fotoPerfil'), async (r
     }
 });
 
-//verificar email
-
-
+// Rota para verificar e-mail (para recuperação de conta, etc. - manter se necessário)
 router.post('/verificar-email', async (req, res, next) => {
   const { email } = req.body;
 
