@@ -99,7 +99,7 @@ router.get('/verificar-email', async (req, res, next) => {
     try {
         const { token } = req.query;
         if (!token) {
-            return res.render('mensagem', {
+            return res.render('Mensagem', {
                 titulo: "Erro na Verificação",
                 mensagem: "Token de verificação inválido ou não fornecido."
             });
@@ -112,13 +112,13 @@ router.get('/verificar-email', async (req, res, next) => {
         );
 
         if (result.affectedRows === 0) {
-            return res.render('mensagem', {
+            return res.render('Mensagem', {
                 titulo: "Falha na Verificação",
                 mensagem: "Este token é inválido, expirou ou a conta já foi verificada."
             });
         }
 
-        res.render('mensagem', {
+        res.render('Mensagem', {
             titulo: "E-mail Verificado com Sucesso!",
             mensagem: "Sua conta foi ativada. Você já pode fazer o login na plataforma.",
             link: "/login",
@@ -145,7 +145,7 @@ router.post('/cadastro', async (req, res, next) => {
   try {
     const [existingUsers] = await pool.query("SELECT Nome, Email FROM Usuarios WHERE Nome = ? OR Email = ?", [nome, email]);
     if (existingUsers.length > 0) {
-      return res.render('mensagem', {
+      return res.render('Mensagem', {
           titulo: "Falha no Cadastro",
           mensagem: "O nome de usuário ou e-mail fornecido já está em uso. Por favor, tente outro."
       });
@@ -167,14 +167,14 @@ router.post('/cadastro', async (req, res, next) => {
         html: `<b>Olá ${nome}!</b><br><p>Obrigado por se cadastrar. Por favor, clique no link a seguir para ativar sua conta: <a href="${verificationLink}">${verificationLink}</a></p>`,
     });
 
-    res.render('mensagem', {
+    res.render('Mensagem', {
       titulo: "Cadastro Realizado com Sucesso",
       mensagem: "Enviamos um link de verificação para o seu e-mail. Por favor, acesse-o para ativar sua conta."
     });
 
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
-      return res.render('mensagem', {
+      return res.render('Mensagem', {
           titulo: "Falha no Cadastro",
           mensagem: "O nome de usuário ou e-mail fornecido já está em uso."
       });
