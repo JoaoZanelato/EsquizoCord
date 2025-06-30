@@ -97,11 +97,16 @@ router.get('/sair', (req, res) => {
     });
 });
 
-// --- NOVA ROTA PARA VALIDAR O TOKEN DE E-MAIL ---
 router.get('/verificar-email', async (req, res, next) => {
     try {
         const { token } = req.query;
-        if (!token) return res.status(400).send("Token de verificação inválido.");
+        if (!token) {
+            return res.status(400).render('Verificacao', {
+                titulo: 'Erro',
+                sucesso: false,
+                mensagem: 'Token de verificação não fornecido ou inválido.'
+            });
+        }
         
         const pool = req.db;
         const [result] = await pool.query(
@@ -110,10 +115,17 @@ router.get('/verificar-email', async (req, res, next) => {
         );
 
         if (result.affectedRows === 0) {
-            return res.status(400).send("Token inválido, expirado ou a conta já foi verificada.");
+            return res.status(400).render('Verificacao', {
+                titulo: 'Erro na Verificação',
+                sucesso: false,
+                mensagem: 'Este token é inválido, expirou ou a conta já foi ativada.'
+            });
         }
 
-        res.send('<h1>E-mail verificado com sucesso!</h1><p>Você já pode fazer o <a href="/login">login</a>.</p>');
+        res.render('Verificacao', {
+            titulo: 'Sucesso!',
+            sucesso: true
+        });
 
     } catch (error) {
         next(error);
