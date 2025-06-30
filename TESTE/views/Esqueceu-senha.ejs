@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recuperar Senha - EsquizoCord</title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <style>
+        .auth-container {
+            background-color: var(--background-secondary);
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 450px;
+            width: 90%;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        .auth-container h1 { color: var(--header-primary); margin-bottom: 15px; }
+        .auth-container p { color: var(--text-muted); margin-bottom: 25px; }
+        .form-field { margin-bottom: 20px; text-align: left; }
+        .form-field label { display: block; margin-bottom: 8px; font-weight: bold; color: var(--text-muted); }
+        .form-field input { width: 100%; padding: 12px; border-radius: 4px; border: none; background-color: var(--background-tertiary); color: var(--text-normal); }
+        .submit-btn { width: 100%; background-color: var(--brand-experiment); color: white; padding: 12px 30px; border-radius: 5px; text-decoration: none; font-weight: bold; transition: background-color 0.3s; border: none; cursor: pointer; }
+        .submit-btn:hover { background-color: var(--brand-hover); }
+        .message { margin-top: 20px; color: var(--text-normal); }
+        .message.error { color: var(--red-danger); }
+    </style>
+</head>
+<body class="auth-layout">
+    <div class="auth-container">
+        <h1>Esqueceu a sua senha?</h1>
+        <p>Não se preocupe! Insira o seu e-mail abaixo e enviaremos um link para redefinir a sua senha.</p>
+        
+        <% if (locals.message) { %>
+            <p class="message"><%= message %></p>
+        <% } %>
+
+        <form action="/esqueceu-senha" method="POST">
+            <div class="form-field">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <button type="submit" class="submit-btn">Enviar Link de Recuperação</button>
+        </form>
+    </div>
+</body>
+</html>

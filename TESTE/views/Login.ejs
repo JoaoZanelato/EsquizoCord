@@ -105,6 +105,25 @@
         .back-link:hover {
             text-decoration: underline;
         }
+
+        /* CSS para o link "Esqueceu a senha?" */
+        .forgot-password-link {
+            text-align: right;
+            /* Move o link para cima, para mais perto do campo de senha */
+            margin-top: -15px; 
+            /* Adiciona espaço antes do botão de entrar */
+            margin-bottom: 20px; 
+        }
+
+        .forgot-password-link a {
+            color: #e0c8e6; /* Mesma cor dos outros links para consistência */
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .forgot-password-link a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -117,6 +136,10 @@
 
             <label for="password">Senha:</label>
             <input type="password" id="password" name="senha" placeholder="Digite sua senha" required autocomplete="current-password" />
+            
+             <div class="forgot-password-link">
+                <a href="/esqueceu-senha">Esqueceu a senha?</a>
+            </div>
 
             <button type="submit">Entrar</button>
         </form>
