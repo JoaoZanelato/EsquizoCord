@@ -64,8 +64,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- LÓGICA DE SOCKET.IO ---
     socket.on('connect', () => console.log('Conectado ao servidor de sockets com ID:', socket.id));
     
-    socket.on('new_group_message', (message) => {
-        if (message.id_chat == currentChatId) renderMessage(message);
+    socket.on('new_group_message', async (message) => {
+        if (message.id_chat == currentChatId) {
+            try{
+                const encryptedContent = new Uint8Array(message.Conteudo.data)
+                const fakeGroupKey = await generateGroupKey()
+                const decryptedContent = await decryptMessage(fakeGroupKey, encryptedContent)
+                renderMessage({...message, Conteudo: decryptedContent})
+            } catch(error) {
+                console.error("Falha ao descriptografar mensagem recebida via socket:", error)
+                 renderMessage({ ...message, Conteudo: "[Mensagem criptografada inválida]" });
+            }
+        }
     });
 
     socket.on('new_dm', (message) => {
@@ -80,6 +90,148 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
+
+    // --- FUNÇÔES CRIPTOGRÁFICAS (E2EE) ---
+    async function generateGroupKey() {
+        const key = await window.crypto.subtle.generateKey(
+            { name: "AES-GCM",
+            length: 256 },
+            true,
+            ["encrypt", "decrypt"]
+        )
+        return key;
+    }
+
+    async function encryptGroupKeyForMember(groupKey, memberPublicKey) {
+        const exportedGroupKey = await window.crypto.subtle.exportKey('raw', groupKey)
+        const encryptedKey = await window.crypto.subtle.encrypt(
+            { name: "RSA-OAEP" },
+            memberPublicKey,
+            exportedGroupKey
+        )
+        return encryptedKey;
+    }
+
+    async function encryptMessage(groupKey, messageText) {
+        const iv = window.crypto.getRandomValues(new Uint8Array(12))
+        const encodedMessage = new TextEncoder().encode(messageText)
+        const ciphertext = await window.crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv },
+            groupKey,
+            encodedMessage
+        )
+        const ivAndCiphertext = new Uint8Array(iv.length + ciphertext.byteLength)
+        ivAndCiphertext.set(iv)
+        ivAndCiphertext.set(new Uint8Array(ciphertext), iv.length)
+
+        return ivAndCiphertext
+    }
+
+    async function decryptMessage(groupKey, ivAndCiphertext) {
+        const iv = ivAndCiphertext.slice(0, 12)
+        const ciphertext = ivAndCiphertext.slice(12)
+
+        try{
+            const decrypted = await window.crypto.subtle.decrypt(
+                { name: "AES-GCM", iv: iv},
+                groupKey,
+                ciphertext
+            )
+            return new TextDecoder().decode(decrypted)
+        } catch (e) {
+            console.error("ERRO ao descriptografar a mensagem:", e)
+            return "Falha ao descriptografar esta mensagem."
+        }
+    }
+
+    let userKeys = null
+
+    async function generateUserKeys() {
+        console.log("Gerando novo par de chaves para o usuário...")
+        const keyPair = await window.crypto.subtle.generateKey(
+            { 
+                name: "RSA-OAEP", 
+                modulusLength: 2048,
+                publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+                hash: "SHA-256",
+            },
+            true,
+            ["encrypt", "decrypt"]
+        )
+        return keyPair
+    }
+
+    function saveKeysToIndexedDB(keyPair) {
+        return new Promise((resolve, reject) =>{
+            const request = indexedDB.open("EsquizoCordDB", 1)
+
+            request.onupgradeneeded = (event) =>{
+                const db = event.target.result
+                db.createObjectStore("userKeys", {keyPath: "id"})
+            }
+
+            request.onsuccess = (event) =>{
+                const db = event.target.result
+                const transaction = db.transaction("userKeys", "readwrite")
+                const store = transaction.objectStore("userKeys")
+                store.put({id: "myKeyPair", ...keyPair})
+
+                transaction.oncomplete = () => resolve()
+                transaction.onerror = () => reject("Erro na transação do IndexedDB.")
+            }
+            request.onerror = (event) => reject("Erro ao abrir IndexedDB: " + event.target.errorCode)
+        })
+    }
+
+    function loadKeysFromIndexedDB() {
+        return new Promise((resolve, reject) =>{
+            const request = indexedDB.open("EsquizoCordDB", 1)
+            
+            request.onsuccess = (event) => {
+                const db = event.target.result
+                if(!db.objectStoreNames.contains('userKeys')) {
+                    resolve(null)
+                    return
+                }
+                const transaction = db.transaction("userKeys", "readonly")
+                const store = transaction.objectStore("userKeys")
+                const getRequest = store.get("myKeyPair")
+
+                getRequest.onsuccess = () => resolve(getRequest.result || null)
+                getRequest.onerror = () => reject("ERRO ao ler chaves do IndexedDB")
+            }
+            request.onerror = (event) => reject("Erro ao abrir IndexedDB: " + event.target.errorCode)
+        })
+    }
+
+    async function initializeUserCrypto() {
+        try {
+            let keyPair = await loadKeysFromIndexedDB()
+
+            if (keyPair) {
+                console.log("Chaves do usuário carregadas do IndexedDB")
+                userKeys = keyPair
+            } else {
+                keyPair = await generateUserKeys()
+                await saveKeysToIndexedDB(keyPair)
+                console.log("Novo par de chaves no IndexedDB.")
+                userKeys = keyPair
+
+                const exportedPublicKey = await window.crypto.subtle.exportKey("spki", keyPair.publicKey)
+                const publicKeyString = btoa(String.fromCharCode(...new Uint8Array(exportedPublicKey)))
+                
+                await fetch('/users/save-public-key', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({publicKey: publicKeyString})
+                })
+                console.log("Chave pública enviada para o servidor.")
+            }
+        } catch (error) {
+            console.error("Falha ao inicializar a criptografia do usuário:", error)
+            alert("Erro crítico de criptografia. Por favor, recarregue a página.")
+        }
+    }
 
     // --- FUNÇÕES DE RENDERIZAÇÃO ---
     function renderMessage(message) {
@@ -114,7 +266,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!chatMessagesContainer) return;
             chatMessagesContainer.innerHTML = '';
             if (messages.length === 0) chatMessagesContainer.innerHTML = '<p>Nenhuma mensagem ainda. Seja o primeiro a dizer olá!</p>';
-            else messages.forEach(message => renderMessage(message));
+            else {
+                for (const message of messages) {
+                    try {
+                        const encryptedContent = new Uint8Array(message.Conteudo.data)
+                        const fakeGroupKey = await generateGroupKey()
+                        const decryptedContent = await decryptMessage(fakeGroupKey, encryptedContent)
+                        renderMessage({...message, Conteudo: decryptedContent})
+                    } catch (error) {
+                        console.error("Falha ao descriptografar mensagem do histórico:", error)
+                        renderMessage({ ...message, Conteudo: "[Mensagem criptografada inválida]" })
+                    }
+                }
+            }
         } catch (error) {
             if (chatMessagesContainer) chatMessagesContainer.innerHTML = '<p>Não foi possível carregar as mensagens.</p>';
         }
@@ -414,8 +578,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (createGroupForm) {
-            createGroupForm.addEventListener('submit', 
-                handleFormSubmit('/groups/criar', 'Erro ao criar grupo.')
+            createGroupForm.addEventListener('submit', handleFormSubmit('/groups/criar', 'Erro ao criar grupo.', (responseData, formData) =>{
+                console.log('Grupo criado com sucesso, ID:', responseData.groupId)
+                window.location.reload()
+            })
             );
         }
 
@@ -519,31 +685,46 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (chatInput){
-            chatInput.addEventListener('keydown', (e) => {
+            chatInput.addEventListener('keydown', async (e) => {
                 if (e.key === 'Enter' && chatInput.value.trim() !== '') {
                     e.preventDefault();
                     const messageContent = chatInput.value.trim();
                     chatInput.value = '';
-                    let url;
-                    if(currentDmFriendId) {
-                        url = `/friends/dm/${currentDmFriendId}/messages`;
-                    } else if (currentChatId) {
-                        url = `/groups/chats/${currentChatId}/messages`;
-                    } else {
-                        return;
-                    }
-                    fetch(url, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({content: messageContent})
-                    }).catch(err => {
-                        console.error('Erro ao enviar mensagem:', err);
-                        chatInput.value = messageContent;
-                    });
-                }
-            });
-        }
+                    
+                    if (currentChatId) {
+                        const url  = `/groups/chats/${currentChatId}/messages`
+                        try {
+                            const fakeGroupKey = await generateGroupKey()
+                            const encryptedContent = await encryptMessage(fakeGroupKey, messageContent)
 
+                            fetch(url, {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({content: Array.from(encryptedContent)})
+                            }).catch(err =>{
+                                console.error('ERRO ao enviar mensagem:', err)
+                                chatInput.value = messageContent
+                            })
+                        } catch (error) {
+                            console.error("ERRO no processo de criptografia:", error)
+                            alert("Não foi possível criptografar a mensagem.");
+                            chatInput.value = messageContent;
+                        }
+                    } else if(currentDmFriendId) {
+                        const url = `/friends/dm/${currentDmFriendId}/messages`;
+                        
+                        fetch(url, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({content: messageContent}) 
+                        }).catch(err =>{
+                            console.error('Erro ao enviar mensagem:', err);
+                            chatInput.value = messageContent;
+                        })
+                    }
+                }
+            })      
+        }
         if (channelListContent) {
             channelListContent.addEventListener('click', (e) =>{
                 const friendItem = e.target.closest('.friend-item[data-friend-id]');
@@ -569,5 +750,6 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Inicializando dashboard...');
     renderFriendsView();
     setupEventListeners();
+    initializeUserCrypto();
     console.log('Dashboard inicializado');
 });

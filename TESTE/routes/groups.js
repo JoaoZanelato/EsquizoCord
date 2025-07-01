@@ -153,6 +153,32 @@ router.post('/:id/settings', requireLogin, isGroupCreator, upload.single('foto')
     } catch (error) { next(error); }
 });
 
+// ROTA PARA UM ADMIN DISTRIBUIR UMA CHAVE DE GRUPO CRIPTOGRAFADA PARA UM MEMBRO
+router.post('/:id/distribute-key', requireLogin, async (req, res, next) =>{
+    const {userId, encryptedKey} = req.body 
+    const groupId = req.params.id
+    const pool = req.db
+
+    try{
+        await pool.query("INSERT INTO ChavesGrupo (id_grupo, id_usuario, ChaveCriptografada) VALUES (?, ?, ?)", [groupId, userId, encryptedKey])
+        res.status(200).json({message: "Chave distribuída"})
+    } catch (error) {next(error)}
+})
+
+// ROTA PARA UM MEMBRO BUSCAR SUA PRÓPRIA CHAVE DE GRUPO
+router.get('/:id/my-key', requireLogin, async (req, res, next) =>{
+    const groupId = req.params.id
+    const userId = req.session.user.id_usuario
+    const pool = req.db
+
+    try{
+        const [rows] = await pool.query("SELECT ChaveCriptografada FROM ChavesGrupo WHERE id_grupo = ? AND id_usuario = ?", [groupId, userId])
+        if(rows.length > 0) {
+            res.json({encryptedKey: rows[0].ChaveCriptografada})
+        } else{res.status(404).json({message: "Chave não encontrada para este usuário."})}
+    } catch (error) {next(error)}
+})
+
 // ROTA DELETE PARA EXCLUIR UM GRUPO
 router.delete('/:id', requireLogin, isGroupCreator, async (req, res, next) => {
     const { id } = req.params;
@@ -214,11 +240,12 @@ router.post('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
     if (!content) {
         return res.status(400).json({ message: "O conteúdo da mensagem não pode estar vazio." });
     }
+    const contentBuffer = Buffer.from(content)
 
     try {
         const [result] = await pool.query(
             "INSERT INTO Mensagens (id_chat, id_usuario, Conteudo) VALUES (?, ?, ?)",
-            [chatId, user.id_usuario, content]
+            [chatId, user.id_usuario, contentBuffer]
         );
         const messageData = {
             id_mensagem: result.insertId,
