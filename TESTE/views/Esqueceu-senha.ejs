@@ -4,44 +4,119 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recuperar Senha - EsquizoCord</title>
+    <link rel="icon" type="image/png" href="/images/logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel='stylesheet' href='/stylesheets/style.css' />
+    
     <style>
-        .auth-container {
-            background-color: var(--background-secondary);
-            padding: 40px;
-            border-radius: 8px;
-            text-align: center;
-            max-width: 450px;
-            width: 90%;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        body{
+            background-image: url('/images/senha-background.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
         }
-        .auth-container h1 { color: var(--header-primary); margin-bottom: 15px; }
-        .auth-container p { color: var(--text-muted); margin-bottom: 25px; }
-        .form-field { margin-bottom: 20px; text-align: left; }
-        .form-field label { display: block; margin-bottom: 8px; font-weight: bold; color: var(--text-muted); }
-        .form-field input { width: 100%; padding: 12px; border-radius: 4px; border: none; background-color: var(--background-tertiary); color: var(--text-normal); }
-        .submit-btn { width: 100%; background-color: var(--brand-experiment); color: white; padding: 12px 30px; border-radius: 5px; text-decoration: none; font-weight: bold; transition: background-color 0.3s; border: none; cursor: pointer; }
-        .submit-btn:hover { background-color: var(--brand-hover); }
-        .message { margin-top: 20px; color: var(--text-normal); }
-        .message.error { color: var(--red-danger); }
+        .auth-layout {
+            background-image: url('/images/login-background.png'); /* Exemplo de fundo */
+        }
+        .auth-box {
+            background-color: var(--background-secondary);
+            padding: 32px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .auth-box h2 {
+            color: var(--header-primary);
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-size: 24px;
+        }
+        .auth-box p {
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            color: var(--text-muted);
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid var(--background-tertiary);
+            background-color: var(--background-tertiary);
+            color: var(--text-normal);
+            font-size: 16px;
+        }
+        .auth-button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--brand-experiment);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .auth-button:hover {
+            background-color: var(--brand-hover);
+        }
+        .auth-links {
+            margin-top: 24px;
+        }
+        .auth-links a {
+            color: var(--purple-accent);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .auth-links a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
-<body class="auth-layout">
-    <div class="auth-container">
-        <h1>Esqueceu a sua senha?</h1>
-        <p>Não se preocupe! Insira o seu e-mail abaixo e enviaremos um link para redefinir a sua senha.</p>
-        
-        <% if (locals.message) { %>
-            <p class="message"><%= message %></p>
-        <% } %>
+<body>
+    <div class="auth-layout">
+        <div class="auth-box">
+            <h2>Esqueceu-se da senha?</h2>
+            <p>Sem problemas. Insira o seu e-mail e enviaremos um link para a redefinir.</p>
 
-        <form action="/esqueceu-senha" method="POST">
-            <div class="form-field">
-                <label for="email">E-mail</label>
-                <input type="email" id="email" name="email" required>
+            <% if (locals.success) { %>
+                <div class="feedback-message success">
+                    <p><%= success %></p>
+                </div>
+            <% } %>
+
+            <% if (locals.error) { %>
+                <div class="feedback-message error">
+                    <p><%= error %></p>
+                </div>
+            <% } %>
+
+            <% if (!locals.success) { %>
+                <form action="/esqueceu-senha" method="POST">
+                    <div class="input-group">
+                        <label for="email">E-mail</label>
+                        <input type="email" name="email" id="email" required>
+                    </div>
+                    <button type="submit" class="auth-button">Enviar Link</button>
+                </form>
+            <% } %>
+
+            <div class="auth-links">
+                <a href="/login"><i class="fas fa-arrow-left"></i> Voltar para o Login</a>
             </div>
-            <button type="submit" class="submit-btn">Enviar Link de Recuperação</button>
-        </form>
+        </div>
     </div>
 </body>
 </html>

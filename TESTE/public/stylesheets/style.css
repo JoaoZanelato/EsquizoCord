@@ -116,3 +116,30 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helve
 .add-friend-input button { flex-shrink: 0; white-space: nowrap; border-radius: 0 3px 3px 0; background-color: var(--brand-experiment); color: white; border: none; padding: 8px 12px; cursor: pointer; font-weight: bold; }
 .tab-content { display: none; }
 .tab-content.active { display: flex; flex-direction: column; height: 100%; flex-grow: 1; }
+/* --- ESTILOS DE FEEDBACK (PARA LOGIN, CADASTRO, ETC.) --- */
+.feedback-message {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    /* Usando a cor de fundo secundária do seu tema */
+    background-color: var(--background-secondary);
+    /* Borda lateral de 4px para indicar o status */
+    border-left: 4px solid;
+    text-align: left; /* Alinhamento mais comum para este tipo de caixa */
+    color: var(--text-normal); /* Cor de texto padrão do tema */
+}
+
+.feedback-message p {
+    margin: 0;
+    font-weight: 500;
+}
+
+.feedback-message.success {
+    /* Cor da borda verde para sucesso */
+    border-left-color: var(--green-accent);
+}
+
+.feedback-message.error {
+    /* Cor da borda vermelha para erro */
+    border-left-color: var(--red-danger);
+}
