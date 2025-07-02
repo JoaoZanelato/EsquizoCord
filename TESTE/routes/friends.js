@@ -2,26 +2,46 @@ const express = require('express');
 const router = express.Router();
 const { encrypt, decrypt } = require('../utils/crypto-helper');
 
-// ROTA GET PARA BUSCAR MENSAGENS DIRETAS
+// ROTA GET PARA BUSCAR MENSAGENS DIRETAS (COM RESPOSTA)
 router.get('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
     const friendId = req.params.friendId;
     const currentUserId = req.session.user.id_usuario;
     const pool = req.db;
     try {
-        // Query atualizada para as novas colunas
         const query = `
-            SELECT id_mensagem, id_remetente, ConteudoCriptografado, Nonce, DataHora
-            FROM MensagensDiretas
-            WHERE (id_remetente = ? AND id_destinatario = ?) OR (id_remetente = ? AND id_destinatario = ?)
-            ORDER BY DataHora ASC
+            SELECT 
+                md.id_mensagem, md.id_remetente, md.ConteudoCriptografado, md.Nonce, md.DataHora,
+                u.Nome as autorNome, u.FotoPerfil as autorFoto,
+                md.id_mensagem_respondida,
+                replied.ConteudoCriptografado as repliedContent,
+                replied.Nonce as repliedNonce,
+                replied_u.Nome as repliedAuthorName
+            FROM MensagensDiretas md
+            JOIN Usuarios u ON md.id_remetente = u.id_usuario
+            LEFT JOIN MensagensDiretas replied ON md.id_mensagem_respondida = replied.id_mensagem
+            LEFT JOIN Usuarios replied_u ON replied.id_remetente = replied_u.id_usuario
+            WHERE (md.id_remetente = ? AND md.id_destinatario = ?) OR (md.id_remetente = ? AND md.id_destinatario = ?)
+            ORDER BY md.DataHora ASC
             LIMIT 100;
         `;
         const [messages] = await pool.query(query, [currentUserId, friendId, friendId, currentUserId]);
         
-        const decryptedMessages = messages.map(msg => ({
-            ...msg,
-            Conteudo: decrypt(msg)
-        }));
+        const decryptedMessages = messages.map(msg => {
+            let repliedTo = null;
+            if (msg.id_mensagem_respondida && msg.repliedContent) {
+                const repliedDecryptedContent = decrypt({ ConteudoCriptografado: msg.repliedContent, Nonce: msg.repliedNonce });
+                repliedTo = {
+                    autorNome: msg.repliedAuthorName,
+                    Conteudo: repliedDecryptedContent
+                };
+            }
+            return {
+                ...msg,
+                id_usuario: msg.id_remetente, // Unifica a chave para o frontend
+                Conteudo: decrypt(msg),
+                repliedTo: repliedTo
+            };
+        });
 
         res.json(decryptedMessages);
     } catch (error) {
@@ -29,11 +49,11 @@ router.get('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
     }
 });
 
-// ROTA POST PARA ENVIAR UMA MENSAGEM DIRETA
+// ROTA POST PARA ENVIAR UMA MENSAGEM DIRETA (COM RESPOSTA)
 router.post('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
     const friendId = req.params.friendId;
     const currentUserId = req.session.user.id_usuario;
-    const { content } = req.body;
+    const { content, replyingToMessageId } = req.body;
     const pool = req.db;
     const io = req.app.get('io');
 
@@ -42,20 +62,32 @@ router.post('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
     }
 
     const { ciphertext, nonce } = encrypt(content);
+    const repliedToId = replyingToMessageId || null;
 
     try {
-        // INSERT atualizado para as novas colunas
         const [result] = await pool.query(
-            "INSERT INTO MensagensDiretas (id_remetente, id_destinatario, ConteudoCriptografado, Nonce) VALUES (?, ?, ?, ?)",
-            [currentUserId, friendId, ciphertext, nonce]
+            "INSERT INTO MensagensDiretas (id_remetente, id_destinatario, ConteudoCriptografado, Nonce, id_mensagem_respondida) VALUES (?, ?, ?, ?, ?)",
+            [currentUserId, friendId, ciphertext, nonce, repliedToId]
         );
         const messageData = {
             id_mensagem: result.insertId,
             id_remetente: currentUserId,
             id_destinatario: parseInt(friendId, 10),
             Conteudo: content,
-            DataHora: new Date()
+            DataHora: new Date(),
+            id_mensagem_respondida: repliedToId
         };
+
+        if (repliedToId) {
+            const [repliedMsgArr] = await pool.query("SELECT md.ConteudoCriptografado, md.Nonce, u.Nome as autorNome FROM MensagensDiretas md JOIN Usuarios u ON md.id_remetente = u.id_usuario WHERE md.id_mensagem = ?", [repliedToId]);
+            if (repliedMsgArr.length > 0) {
+                messageData.repliedTo = {
+                    autorNome: repliedMsgArr[0].autorNome,
+                    Conteudo: decrypt(repliedMsgArr[0])
+                };
+            }
+        }
+
         const ids = [currentUserId, parseInt(friendId, 10)].sort();
         const roomName = `dm-${ids[0]}-${ids[1]}`;
         io.to(roomName).emit('new_dm', messageData);
@@ -66,7 +98,6 @@ router.post('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
 });
 
 
-// --- O resto do seu arquivo friends.js ---
 function requireLogin(req, res, next) {
     if (req.session && req.session.user) return next();
     return res.status(401).json({ message: 'Acesso não autorizado' });

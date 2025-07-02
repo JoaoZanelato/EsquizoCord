@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentDmFriendId = null;
     let currentDmFriendData = null;
     let isCurrentUserAdmin = false;
+    let replyingToMessageId = null;
 
 
     // --- PARSE DE DADOS INICIAIS ---
@@ -48,6 +49,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatHeader = document.getElementById('chat-header');
     const chatMessagesContainer = document.getElementById('chat-messages-container');
     const chatInput = document.querySelector('.chat-input-bar input');
+    const chatInputContainer = document.querySelector('.chat-input-bar');
+    const replyBar = document.getElementById('reply-bar'); 
+    const replyBarText = document.getElementById('reply-bar-text'); 
+    const cancelReplyBtn = document.getElementById('cancel-reply-btn'); 
 
     // --- LÓGICA DE SOCKET.IO (SIMPLIFICADA) ---
     socket.on('connect', () => console.log('Conectado ao servidor de sockets com ID:', socket.id));
@@ -94,29 +99,48 @@ socket.on('dm_message_deleted', (data) => {
     function openModal(modal) { if (modal) modal.style.display = 'flex'; }
     function closeModal(modal) { if (modal) modal.style.display = 'none'; }
 
-   function renderMessage(message) {
+ // Em public/js/dashboard.js, substitua a função renderMessage
+function renderMessage(message) {
     if (!chatMessagesContainer) return;
     const messageItem = document.createElement('div');
     messageItem.classList.add('message-item');
-    messageItem.dataset.messageId = message.id_mensagem; // Adiciona o ID da mensagem
+    messageItem.dataset.messageId = message.id_mensagem;
+    messageItem.dataset.authorName = message.autorNome; // Guarda o nome do autor
+    messageItem.dataset.messageContent = message.Conteudo; // Guarda o conteúdo
 
     const isSentByMe = message.id_usuario === currentUserId;
     if (isSentByMe) messageItem.classList.add('sent');
 
-    // Lógica para mostrar o botão de deletar
     const canDelete = isSentByMe || (currentGroupData && isCurrentUserAdmin);
-    const deleteButtonHTML = canDelete ?
-        `<i class="fas fa-trash delete-message-btn" title="Excluir mensagem"></i>` : '';
+    
+    // Mostra ícones de ação (resposta e exclusão)
+    const actionsHTML = `
+        <div class="message-actions">
+            <i class="fas fa-reply reply-message-btn" title="Responder"></i>
+            ${canDelete ? `<i class="fas fa-trash delete-message-btn" title="Excluir mensagem"></i>` : ''}
+        </div>`;
+        
+    // Cria o bloco de citação se for uma resposta
+    let replyHTML = '';
+    if (message.repliedTo && message.repliedTo.Conteudo) {
+        const sanitizedRepliedContent = DOMPurify.sanitize(message.repliedTo.Conteudo);
+        replyHTML = `
+            <div class="reply-context">
+                <span class="reply-author">${message.repliedTo.autorNome}</span>
+                <p class="reply-content">${sanitizedRepliedContent}</p>
+            </div>`;
+    }
 
     const sanitizedContent = DOMPurify.sanitize(message.Conteudo);
 
     messageItem.innerHTML = `
         <img src="${message.autorFoto || '/images/logo.png'}" alt="${message.autorNome}">
         <div class="message-content">
+            ${replyHTML}
             ${!isSentByMe ? `<span class="author-name">${message.autorNome}</span>` : ''}
             <p class="message-text">${sanitizedContent}</p>
         </div>
-        ${deleteButtonHTML}`;
+        ${actionsHTML}`;
 
     chatMessagesContainer.appendChild(messageItem);
     chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
@@ -285,22 +309,72 @@ socket.on('dm_message_deleted', (data) => {
 
     // --- SETUP DE EVENT LISTENERS ---
     function setupEventListeners() {
+        const chatHeaderEl = document.getElementById('chat-header');
+const serverList = document.querySelector('.server-list');
+const channelList = document.querySelector('.channel-list');
+
+if (chatHeaderEl) {
+    chatHeaderEl.addEventListener('click', (e) => {
+        // Verifica se o clique foi no ícone do menu (renderizado pelo CSS via ::before)
+        // e se a tela é pequena.
+        if (window.innerWidth <= 768 && e.target === chatHeaderEl) {
+             if (window.innerWidth <= 480) {
+                 // Em celulares, o menu abre a lista de servidores
+                 serverList.classList.toggle('open');
+             } else {
+                 // Em tablets, o menu abre a lista de canais/amigos
+                 channelList.classList.toggle('open');
+             }
+        }
+    });
+}
+
+// Fecha os painéis se clicar fora deles
+document.body.addEventListener('click', (e) => {
+    if (window.innerWidth > 768) return;
+
+    // Se o painel estiver aberto e o clique for fora dele e fora do menu
+    if (channelList.classList.contains('open') && !channelList.contains(e.target) && !chatHeaderEl.contains(e.target)) {
+        channelList.classList.remove('open');
+    }
+     if (serverList.classList.contains('open') && !serverList.contains(e.target) && !chatHeaderEl.contains(e.target)) {
+        serverList.classList.remove('open');
+    }
+});
         chatMessagesContainer.addEventListener('click', async (e) => {
+    // Manipulador para o botão de RESPONDER
+    if (e.target.classList.contains('reply-message-btn')) {
+        const messageItem = e.target.closest('.message-item');
+        if (!messageItem) return;
+
+        replyingToMessageId = messageItem.dataset.messageId;
+        const author = messageItem.dataset.authorName;
+        const content = messageItem.dataset.messageContent;
+        
+        // Atualiza a barra de resposta e a exibe
+        replyBarText.innerHTML = `Respondendo a <strong>${author}</strong>: ${content.substring(0, 50)}...`;
+        replyBar.style.display = 'flex';
+        chatInput.focus();
+    }
+
+    // Manipulador para o botão de EXCLUIR
     if (e.target.classList.contains('delete-message-btn')) {
         const messageItem = e.target.closest('.message-item');
         const messageId = messageItem.dataset.messageId;
 
         if (!messageId) return;
 
+        // Pede confirmação ao usuário
         if (confirm('Tem certeza de que deseja excluir esta mensagem?')) {
             try {
                 let url;
-                if (currentChatId) { // Estamos em um chat de grupo
+                // Determina a URL correta com base no contexto (grupo ou DM)
+                if (currentChatId) {
                     url = `/groups/messages/${messageId}`;
-                } else if (currentDmFriendId) { // Estamos em uma DM
+                } else if (currentDmFriendId) {
                     url = `/friends/dm/messages/${messageId}`;
                 } else {
-                    return;
+                    return; // Sai se não estiver em um chat válido
                 }
 
                 const response = await fetch(url, { method: 'DELETE' });
@@ -310,8 +384,8 @@ socket.on('dm_message_deleted', (data) => {
                     throw new Error(err.message || 'Falha ao excluir a mensagem.');
                 }
                 
-                // A remoção visual será feita pelo evento do socket para garantir sincronia
-                // messageItem.remove(); 
+                // A remoção visual da mensagem será tratada pelo evento do socket
+                // para garantir que todos os clientes vejam a atualização.
 
             } catch (error) {
                 console.error('Erro ao excluir mensagem:', error);
@@ -403,36 +477,45 @@ socket.on('dm_message_deleted', (data) => {
         }
 
         if (chatInput) {
-            chatInput.addEventListener('keydown', async (e) => {
-                if (e.key === 'Enter' && chatInput.value.trim() !== '') {
-                    e.preventDefault();
-                    const messageContent = chatInput.value.trim();
-                    chatInput.value = '';
+    chatInput.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter' && chatInput.value.trim() !== '') {
+            e.preventDefault();
+            const messageContent = chatInput.value.trim();
+            chatInput.value = '';
 
-                    let url;
-                    if (currentChatId) {
-                        url = `/groups/chats/${currentChatId}/messages`;
-                    } else if (currentDmFriendId) {
-                        url = `/friends/dm/${currentDmFriendId}/messages`;
-                    } else {
-                        return;
-                    }
-                    
-                    try {
-                        const response = await fetch(url, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ content: messageContent })
-                        });
-                        if (!response.ok) throw new Error('Server error');
-                    } catch (error) {
-                        console.error('ERRO ao enviar mensagem:', error);
-                        alert("Não foi possível enviar a mensagem.");
-                        chatInput.value = messageContent;
-                    }
-                }
-            });
+            const body = { 
+                content: messageContent,
+                replyingToMessageId: replyingToMessageId // Envia o ID da resposta
+            };
+
+            // Resetar o estado de resposta
+            replyingToMessageId = null;
+            replyBar.style.display = 'none';
+            
+            let url;
+            if (currentChatId) {
+                url = `/groups/chats/${currentChatId}/messages`;
+            } else if (currentDmFriendId) {
+                url = `/friends/dm/${currentDmFriendId}/messages`;
+            } else {
+                return;
+            }
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body) // Envia o corpo completo
+                });
+                if (!response.ok) throw new Error('Server error');
+            } catch (error) {
+                console.error('ERRO ao enviar mensagem:', error);
+                alert("Não foi possível enviar a mensagem.");
+                chatInput.value = messageContent; // Devolve o texto em caso de erro
+            }
         }
+    });
+}
         
         if(createGroupForm) createGroupForm.addEventListener('submit', (e) => { e.preventDefault(); handleFormSubmit('/groups/criar', 'Erro ao criar grupo', () => window.location.reload(), e.target) });
         if(editGroupForm) editGroupForm.addEventListener('submit', (e) => { e.preventDefault(); const id = e.target.querySelector('#edit-group-id').value; handleFormSubmit(`/groups/${id}/settings`, 'Erro ao editar', () => window.location.reload(), e.target) });

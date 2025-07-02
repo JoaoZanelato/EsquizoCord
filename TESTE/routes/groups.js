@@ -2,81 +2,6 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const { encrypt, decrypt } = require('../utils/crypto-helper');
-
-// ROTA GET PARA BUSCAR O HISTÓRICO DE MENSAGENS
-router.get('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
-    const { chatId } = req.params;
-    const pool = req.db;
-    try {
-        // Query atualizada para buscar as colunas corretas
-        const query = `
-            SELECT m.id_mensagem, m.ConteudoCriptografado, m.Nonce, m.DataHora, m.id_usuario, u.Nome AS autorNome, u.FotoPerfil AS autorFoto
-            FROM Mensagens m
-            JOIN Usuarios u ON m.id_usuario = u.id_usuario
-            WHERE m.id_chat = ?
-            ORDER BY m.DataHora ASC
-            LIMIT 100
-        `;
-        const [messages] = await pool.query(query, [chatId]);
-
-        const decryptedMessages = messages.map(msg => {
-            // Passa o objeto de mensagem inteiro para a função decrypt
-            const decryptedContent = decrypt(msg);
-            return {
-                ...msg,
-                Conteudo: decryptedContent // Retorna a chave "Conteudo" para o frontend
-            };
-        });
-
-        res.json(decryptedMessages);
-    } catch (error) {
-        next(error);
-    }
-});
-
-// ROTA POST PARA ENVIAR E GUARDAR UMA NOVA MENSAGEM
-router.post('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
-    const { chatId } = req.params;
-    const { content } = req.body;
-    const user = req.session.user;
-    const pool = req.db;
-    const io = req.app.get('io');
-
-    if (!content) {
-        return res.status(400).json({ message: "O conteúdo da mensagem não pode estar vazio." });
-    }
-
-    const { ciphertext, nonce } = encrypt(content);
-
-    try {
-        // INSERT atualizado para as colunas corretas
-        const [result] = await pool.query(
-            "INSERT INTO Mensagens (id_chat, id_usuario, ConteudoCriptografado, Nonce) VALUES (?, ?, ?, ?)",
-            [chatId, user.id_usuario, ciphertext, nonce]
-        );
-        const messageData = {
-            id_mensagem: result.insertId,
-            id_chat: parseInt(chatId, 10),
-            Conteudo: content, // Envia o texto original para os clientes
-            DataHora: new Date(),
-            id_usuario: user.id_usuario,
-            autorNome: user.Nome,
-            autorFoto: user.FotoPerfil
-        };
-        
-        const [group] = await pool.query("SELECT id_grupo FROM Chats WHERE id_chat = ?", [chatId]);
-        if (group.length > 0) {
-            const roomName = `group-${group[0].id_grupo}`;
-            io.to(roomName).emit('new_group_message', messageData);
-        }
-        res.status(201).json(messageData);
-    } catch (error) {
-        next(error);
-    }
-});
-
-
-// --- O resto do seu arquivo groups.js ---
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 function requireLogin(req, res, next) {
@@ -113,6 +38,60 @@ async function isGroupCreator(req, res, next) {
         return next();
     } catch (error) { next(error); }
 }
+
+// ROTA POST PARA ENVIAR E GUARDAR UMA NOVA MENSAGEM (COM RESPOSTA)
+router.post('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
+    const { chatId } = req.params;
+    const { content, replyingToMessageId } = req.body; // Pega o ID da mensagem respondida
+    const user = req.session.user;
+    const pool = req.db;
+    const io = req.app.get('io');
+
+    if (!content) {
+        return res.status(400).json({ message: "O conteúdo da mensagem não pode estar vazio." });
+    }
+
+    const { ciphertext, nonce } = encrypt(content);
+    const repliedToId = replyingToMessageId || null;
+
+    try {
+        const [result] = await pool.query(
+            "INSERT INTO Mensagens (id_chat, id_usuario, ConteudoCriptografado, Nonce, id_mensagem_respondida) VALUES (?, ?, ?, ?, ?)",
+            [chatId, user.id_usuario, ciphertext, nonce, repliedToId]
+        );
+        const messageId = result.insertId;
+
+        const messageData = {
+            id_mensagem: messageId,
+            id_chat: parseInt(chatId, 10),
+            Conteudo: content,
+            DataHora: new Date(),
+            id_usuario: user.id_usuario,
+            autorNome: user.Nome,
+            autorFoto: user.FotoPerfil,
+            id_mensagem_respondida: repliedToId
+        };
+        
+        if (repliedToId) {
+            const [repliedMsgArr] = await pool.query("SELECT m.ConteudoCriptografado, m.Nonce, u.Nome as autorNome FROM Mensagens m JOIN Usuarios u ON m.id_usuario = u.id_usuario WHERE m.id_mensagem = ?", [repliedToId]);
+            if(repliedMsgArr.length > 0) {
+                 messageData.repliedTo = {
+                    autorNome: repliedMsgArr[0].autorNome,
+                    Conteudo: decrypt(repliedMsgArr[0])
+                 }
+            }
+        }
+
+        const [group] = await pool.query("SELECT id_grupo FROM Chats WHERE id_chat = ?", [chatId]);
+        if (group.length > 0) {
+            const roomName = `group-${group[0].id_grupo}`;
+            io.to(roomName).emit('new_group_message', messageData);
+        }
+        res.status(201).json(messageData);
+    } catch (error) {
+        next(error);
+    }
+});
 
 router.post('/criar', requireLogin, upload.single('foto'), async (req, res, next) => {
     const { nome, isPrivate } = req.body;
@@ -155,6 +134,51 @@ router.get('/search', requireLogin, async (req, res, next) => {
         const [groups] = await pool.query(query, params);
         res.json(groups);
     } catch (error) { next(error); }
+});
+
+// ROTA GET PARA BUSCAR O HISTÓRICO DE MENSAGENS (COM RESPOSTA)
+router.get('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
+    const { chatId } = req.params;
+    const pool = req.db;
+    try {
+        const query = `
+            SELECT 
+                m.id_mensagem, m.ConteudoCriptografado, m.Nonce, m.DataHora, m.id_usuario, 
+                u.Nome AS autorNome, u.FotoPerfil AS autorFoto,
+                m.id_mensagem_respondida,
+                replied.ConteudoCriptografado as repliedContent, 
+                replied.Nonce as repliedNonce,
+                replied_u.Nome as repliedAuthorName
+            FROM Mensagens m
+            JOIN Usuarios u ON m.id_usuario = u.id_usuario
+            LEFT JOIN Mensagens replied ON m.id_mensagem_respondida = replied.id_mensagem
+            LEFT JOIN Usuarios replied_u ON replied.id_usuario = replied_u.id_usuario
+            WHERE m.id_chat = ?
+            ORDER BY m.DataHora ASC
+            LIMIT 100
+        `;
+        const [messages] = await pool.query(query, [chatId]);
+
+        const decryptedMessages = messages.map(msg => {
+            let repliedTo = null;
+            if (msg.id_mensagem_respondida && msg.repliedContent) {
+                const repliedDecryptedContent = decrypt({ ConteudoCriptografado: msg.repliedContent, Nonce: msg.repliedNonce });
+                repliedTo = {
+                    autorNome: msg.repliedAuthorName,
+                    Conteudo: repliedDecryptedContent
+                };
+            }
+            return {
+                ...msg,
+                Conteudo: decrypt(msg),
+                repliedTo: repliedTo
+            };
+        });
+
+        res.json(decryptedMessages);
+    } catch (error) {
+        next(error);
+    }
 });
 
 router.post('/:id/join', requireLogin, async (req, res, next) => {
