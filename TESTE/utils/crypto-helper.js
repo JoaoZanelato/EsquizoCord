@@ -35,33 +35,42 @@ function encrypt(text) {
 
 /**
  * Descriptografa os dados.
- * @param {{ConteudoCriptografado: string, Nonce: string}} dbRow - A linha do banco de dados.
+ * @param {{id_mensagem?: number, ConteudoCriptografado: string, Nonce: string, Conteudo?: string}} dbRow - A linha do banco de dados.
  * @returns {string} - O texto original.
  */
 function decrypt(dbRow) {
-    // Se a linha não tiver as colunas esperadas, pode ser uma mensagem antiga.
+    // Lida com mensagens antigas ou malformadas que não possuem os campos de criptografia.
     if (!dbRow || !dbRow.Nonce || !dbRow.ConteudoCriptografado) {
-        // Retorna o conteúdo original se ele existir, ou uma string vazia.
-        return dbRow.ConteudoCriptografado || dbRow.Conteudo || '';
+        return dbRow.Conteudo || '[Mensagem antiga ou corrompida]';
     }
 
     try {
         const nonce = Buffer.from(dbRow.Nonce, 'hex');
         const ciphertextWithAuthTag = Buffer.from(dbRow.ConteudoCriptografado, 'hex');
 
-        // Extrai a tag de autenticação do final do ciphertext
+        // Adiciona uma verificação para evitar erros com dados corrompidos
+        if (ciphertextWithAuthTag.length < AUTH_TAG_LENGTH) {
+             console.error("Falha ao descriptografar: Conteúdo criptografado é muito curto.");
+             return "[Mensagem corrompida]";
+        }
+
         const authTag = ciphertextWithAuthTag.slice(-AUTH_TAG_LENGTH);
         const encrypted = ciphertextWithAuthTag.slice(0, -AUTH_TAG_LENGTH);
 
         const decipher = crypto.createDecipheriv(ALGORITHM, SECRET_KEY, nonce);
         decipher.setAuthTag(authTag);
 
-        const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final('utf8')]);
-        return decrypted.toString();
+        // --- AQUI ESTÁ A CORREÇÃO ---
+        // A chamada a decipher.final() agora não tem parâmetros para retornar um Buffer.
+        const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+        
+        // A conversão para string é feita no final.
+        return decrypted.toString('utf8');
 
     } catch (error) {
-        console.error("Falha ao descriptografar:", error.message);
-        return "[Mensagem ilegível]";
+        // Log do erro mais detalhado para ajudar a depurar no futuro
+        console.error(`Falha ao descriptografar a mensagem ID (se disponível): ${dbRow.id_mensagem}. Erro: ${error.message}`);
+        return "[Mensagem ilegível ou incompatível]";
     }
 }
 

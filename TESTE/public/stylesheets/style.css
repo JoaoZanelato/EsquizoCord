@@ -143,3 +143,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helve
     /* Cor da borda vermelha para erro */
     border-left-color: var(--red-danger);
 }
+
+.message-item {
+    position: relative;
+    align-items: center; /* Alinha melhor o botão */
+}
+
+.delete-message-btn {
+    color: var(--text-muted);
+    cursor: pointer;
+    margin-left: 10px;
+    visibility: hidden; /* Fica oculto por padrão */
+    font-size: 14px;
+}
+
+.message-item:hover .delete-message-btn {
+    visibility: visible; /* Aparece ao passar o mouse */
+}
+
+.delete-message-btn:hover {
+    color: var(--red-danger);
+}

@@ -155,4 +155,38 @@ router.post('/cancel', requireLogin, async (req, res, next) => {
         next(error);
     }
 });
+
+// ROTA DELETE PARA EXCLUIR UMA MENSAGEM DIRETA (DM)
+router.delete('/dm/messages/:messageId', requireLogin, async (req, res, next) => {
+    const { messageId } = req.params;
+    const currentUserId = req.session.user.id_usuario;
+    const pool = req.db;
+    const io = req.app.get('io');
+
+    try {
+        // Buscar a mensagem para verificar o remetente
+        const [msgResult] = await pool.query("SELECT id_remetente, id_destinatario FROM MensagensDiretas WHERE id_mensagem = ?", [messageId]);
+        if (msgResult.length === 0) {
+            return res.status(404).json({ message: "Mensagem não encontrada." });
+        }
+        const message = msgResult[0];
+
+        // Apenas o remetente pode apagar a mensagem
+        if (message.id_remetente !== currentUserId) {
+            return res.status(403).json({ message: "Você não pode apagar uma mensagem que não enviou." });
+        }
+
+        // Excluir a mensagem do banco de dados
+        await pool.query("DELETE FROM MensagensDiretas WHERE id_mensagem = ?", [messageId]);
+
+        // Emitir evento para a sala de DM
+        const ids = [message.id_remetente, message.id_destinatario].sort();
+        const roomName = `dm-${ids[0]}-${ids[1]}`;
+        io.to(roomName).emit('dm_message_deleted', { messageId: parseInt(messageId, 10) });
+
+        res.status(200).json({ message: "Mensagem excluída com sucesso." });
+    } catch (error) {
+        next(error);
+    }
+});
 module.exports = router;

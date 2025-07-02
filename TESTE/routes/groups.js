@@ -225,4 +225,49 @@ router.delete('/:id', requireLogin, isGroupCreator, async (req, res, next) => {
         connection.release();
     }
 });
+
+// ROTA DELETE PARA EXCLUIR UMA MENSAGEM DE GRUPO
+router.delete('/messages/:messageId', requireLogin, async (req, res, next) => {
+    const { messageId } = req.params;
+    const userId = req.session.user.id_usuario;
+    const pool = req.db;
+    const io = req.app.get('io');
+
+    try {
+        // Primeiro, buscar a mensagem para obter o autor e o chat
+        const [messageResult] = await pool.query("SELECT id_usuario, id_chat FROM Mensagens WHERE id_mensagem = ?", [messageId]);
+        if (messageResult.length === 0) {
+            return res.status(404).json({ message: "Mensagem não encontrada." });
+        }
+        const message = messageResult[0];
+
+        // Buscar o grupo a que o chat pertence
+        const [chatResult] = await pool.query("SELECT id_grupo FROM Chats WHERE id_chat = ?", [message.id_chat]);
+        if (chatResult.length === 0) {
+            return res.status(404).json({ message: "Grupo não encontrado." });
+        }
+        const groupId = chatResult[0].id_grupo;
+
+        // Verificar se o usuário é um administrador do grupo
+        const [adminResult] = await pool.query("SELECT id_usuario FROM Administradores WHERE id_grupo = ? AND id_usuario = ?", [groupId, userId]);
+        const isUserAdmin = adminResult.length > 0;
+
+        // Permitir a exclusão se o usuário for o autor da mensagem ou um administrador
+        if (message.id_usuario !== userId && !isUserAdmin) {
+            return res.status(403).json({ message: "Você não tem permissão para excluir esta mensagem." });
+        }
+
+        // Excluir a mensagem
+        await pool.query("DELETE FROM Mensagens WHERE id_mensagem = ?", [messageId]);
+
+        // Emitir evento para todos no grupo
+        const roomName = `group-${groupId}`;
+        io.to(roomName).emit('group_message_deleted', { messageId: parseInt(messageId, 10), chatId: message.id_chat });
+
+        res.status(200).json({ message: "Mensagem excluída com sucesso." });
+
+    } catch (error) {
+        next(error);
+    }
+});
 module.exports = router;

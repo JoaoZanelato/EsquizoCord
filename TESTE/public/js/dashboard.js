@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentChatId = null;
     let currentDmFriendId = null;
     let currentDmFriendData = null;
+    let isCurrentUserAdmin = false;
+
 
     // --- PARSE DE DADOS INICIAIS ---
     const parseJsonData = (attribute) => {
@@ -56,6 +58,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    socket.on('group_message_deleted', (data) => {
+    if (data.chatId == currentChatId) {
+        const messageElement = chatMessagesContainer.querySelector(`[data-message-id='${data.messageId}']`);
+        if (messageElement) {
+            messageElement.remove();
+        }
+    }
+});
+
+socket.on('dm_message_deleted', (data) => {
+    // Verifica se a DM ativa corresponde à mensagem deletada
+    if (currentDmFriendId) {
+        const messageElement = chatMessagesContainer.querySelector(`[data-message-id='${data.messageId}']`);
+        if (messageElement) {
+            messageElement.remove();
+        }
+    }
+});
+
     socket.on('new_dm', (message) => {
         if (currentDmFriendData &&
             ((message.id_remetente == currentDmFriendId && message.id_destinatario == currentUserId) ||
@@ -73,22 +94,33 @@ document.addEventListener('DOMContentLoaded', () => {
     function openModal(modal) { if (modal) modal.style.display = 'flex'; }
     function closeModal(modal) { if (modal) modal.style.display = 'none'; }
 
-    function renderMessage(message) {
-        if (!chatMessagesContainer) return;
-        const messageItem = document.createElement('div');
-        messageItem.classList.add('message-item');
-        if (message.id_usuario === currentUserId) messageItem.classList.add('sent');
-        const sanitizedContent = DOMPurify.sanitize(message.Conteudo);
+   function renderMessage(message) {
+    if (!chatMessagesContainer) return;
+    const messageItem = document.createElement('div');
+    messageItem.classList.add('message-item');
+    messageItem.dataset.messageId = message.id_mensagem; // Adiciona o ID da mensagem
 
-        messageItem.innerHTML = `
-            <img src="${message.autorFoto || '/images/logo.png'}" alt="${message.autorNome}">
-            <div class="message-content">
-                ${message.id_usuario !== currentUserId ? `<span class="author-name">${message.autorNome}</span>` : ''}
-                <p class="message-text">${sanitizedContent}</p>
-            </div>`;
-        chatMessagesContainer.appendChild(messageItem);
-        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
-    }
+    const isSentByMe = message.id_usuario === currentUserId;
+    if (isSentByMe) messageItem.classList.add('sent');
+
+    // Lógica para mostrar o botão de deletar
+    const canDelete = isSentByMe || (currentGroupData && isCurrentUserAdmin);
+    const deleteButtonHTML = canDelete ?
+        `<i class="fas fa-trash delete-message-btn" title="Excluir mensagem"></i>` : '';
+
+    const sanitizedContent = DOMPurify.sanitize(message.Conteudo);
+
+    messageItem.innerHTML = `
+        <img src="${message.autorFoto || '/images/logo.png'}" alt="${message.autorNome}">
+        <div class="message-content">
+            ${!isSentByMe ? `<span class="author-name">${message.autorNome}</span>` : ''}
+            <p class="message-text">${sanitizedContent}</p>
+        </div>
+        ${deleteButtonHTML}`;
+
+    chatMessagesContainer.appendChild(messageItem);
+    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+}
 
     async function loadAndRenderMessages(url) {
         if (!chatMessagesContainer) return;
@@ -214,6 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 memberDiv.innerHTML = `<img src="${member.FotoPerfil || '/images/logo.png'}" alt="${member.Nome}"><span>${member.Nome}</span>${member.isAdmin ? '<i class="fas fa-crown admin-icon" title="Administrador"></i>' : ''}`;
                 channelListContent.appendChild(memberDiv);
             });
+            isCurrentUserAdmin = data.members.some(member => member.id_usuario === currentUserId && member.isAdmin);
         } catch (err) {
             console.error('Erro ao carregar grupo:', err);
         }
@@ -252,6 +285,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- SETUP DE EVENT LISTENERS ---
     function setupEventListeners() {
+        chatMessagesContainer.addEventListener('click', async (e) => {
+    if (e.target.classList.contains('delete-message-btn')) {
+        const messageItem = e.target.closest('.message-item');
+        const messageId = messageItem.dataset.messageId;
+
+        if (!messageId) return;
+
+        if (confirm('Tem certeza de que deseja excluir esta mensagem?')) {
+            try {
+                let url;
+                if (currentChatId) { // Estamos em um chat de grupo
+                    url = `/groups/messages/${messageId}`;
+                } else if (currentDmFriendId) { // Estamos em uma DM
+                    url = `/friends/dm/messages/${messageId}`;
+                } else {
+                    return;
+                }
+
+                const response = await fetch(url, { method: 'DELETE' });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.message || 'Falha ao excluir a mensagem.');
+                }
+                
+                // A remoção visual será feita pelo evento do socket para garantir sincronia
+                // messageItem.remove(); 
+
+            } catch (error) {
+                console.error('Erro ao excluir mensagem:', error);
+                alert(error.message);
+            }
+        }
+    }
+});
         if (addServerButton) addServerButton.addEventListener('click', () => openModal(createGroupModal));
         if (exploreButton) {
             exploreButton.addEventListener('click', () => {
@@ -314,9 +382,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
-        // *******************************************************************
-        // ***** INÍCIO DA CORREÇÃO: ADICIONANDO O EVENTO DE EXCLUSÃO *****
-        // *******************************************************************
         if (deleteGroupButton) {
             deleteGroupButton.addEventListener('click', async () => {
                 const groupId = editGroupModal.querySelector('#edit-group-id').value;
@@ -336,10 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
-        // *******************************************************************
-        // ***** FIM DA CORREÇÃO *****
-        // *******************************************************************
-        
+
         if (chatInput) {
             chatInput.addEventListener('keydown', async (e) => {
                 if (e.key === 'Enter' && chatInput.value.trim() !== '') {
