@@ -15,7 +15,7 @@ const friendsRouter = require('./routes/friends');
 const app = express();
 
 // Confia no proxy reverso do Render para que as sessões seguras funcionem
-app.set('trust proxy', 1); 
+app.set('trust proxy', 1);
 
 // Configuração da View Engine
 app.set('views', path.join(__dirname, 'views'));
@@ -23,8 +23,9 @@ app.set('view engine', 'ejs');
 
 // Configuração dos Middlewares
 app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// Aumentar o limite de payload para acomodar dados binários de chaves/mensagens
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -43,11 +44,8 @@ const  sessionMiddleware = session({
 app.use(sessionMiddleware)
 
 
-// Configuração da Sessão para produção
-
-
 // Middleware para disponibilizar a conexão da DB para todas as rotas
-const pool = require('./db'); 
+const pool = require('./db');
 app.use((req, res, next) => {
   req.db = pool;
   next();
@@ -55,7 +53,7 @@ app.use((req, res, next) => {
 
 // Middleware para disponibilizar dados da sessão para as views
 app.use((req, res, next) => {
-  res.locals.user = req.session.user; 
+  res.locals.user = req.session.user;
   next();
 });
 
@@ -85,5 +83,3 @@ module.exports = {
   app: app,
   sessionMiddleware: sessionMiddleware
 }
-
-

@@ -3,11 +3,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const socket = io();
     const body = document.querySelector('body');
 
+    // --- ESTADO GLOBAL ---
     let currentGroupData = null;
     let currentChatId = null;
     let currentDmFriendId = null;
     let currentDmFriendData = null;
 
+    // --- PARSE DE DADOS INICIAIS ---
     const parseJsonData = (attribute) => {
         const data = body.dataset[attribute];
         if (!data) return null;
@@ -18,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return null;
         }
     };
-
     const currentUser = parseJsonData('user');
     const groups = parseJsonData('groups') || [];
     const friends = parseJsonData('friends') || [];
@@ -46,35 +47,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatMessagesContainer = document.getElementById('chat-messages-container');
     const chatInput = document.querySelector('.chat-input-bar input');
 
-    // --- FUNÇÕES DE MODAL ---
-    function openModal(modal) {
-        if (modal) {
-            modal.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
-        }
-    }
-
-    function closeModal(modal) {
-        if (modal) {
-            modal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-        }
-    }
-
-    // --- LÓGICA DE SOCKET.IO ---
+    // --- LÓGICA DE SOCKET.IO (SIMPLIFICADA) ---
     socket.on('connect', () => console.log('Conectado ao servidor de sockets com ID:', socket.id));
-    
-    socket.on('new_group_message', async (message) => {
+
+    socket.on('new_group_message', (message) => {
         if (message.id_chat == currentChatId) {
-            try{
-                const encryptedContent = new Uint8Array(message.Conteudo.data)
-                const fakeGroupKey = await generateGroupKey()
-                const decryptedContent = await decryptMessage(fakeGroupKey, encryptedContent)
-                renderMessage({...message, Conteudo: decryptedContent})
-            } catch(error) {
-                console.error("Falha ao descriptografar mensagem recebida via socket:", error)
-                 renderMessage({ ...message, Conteudo: "[Mensagem criptografada inválida]" });
-            }
+            renderMessage(message);
         }
     });
 
@@ -91,205 +69,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- FUNÇÔES CRIPTOGRÁFICAS (E2EE) ---
-    async function generateGroupKey() {
-        const key = await window.crypto.subtle.generateKey(
-            { name: "AES-GCM",
-            length: 256 },
-            true,
-            ["encrypt", "decrypt"]
-        )
-        return key;
-    }
+    // --- FUNÇÕES DE RENDERIZAÇÃO E UI ---
+    function openModal(modal) { if (modal) modal.style.display = 'flex'; }
+    function closeModal(modal) { if (modal) modal.style.display = 'none'; }
 
-    async function encryptGroupKeyForMember(groupKey, memberPublicKey) {
-        const exportedGroupKey = await window.crypto.subtle.exportKey('raw', groupKey)
-        const encryptedKey = await window.crypto.subtle.encrypt(
-            { name: "RSA-OAEP" },
-            memberPublicKey,
-            exportedGroupKey
-        )
-        return encryptedKey;
-    }
-
-    async function encryptMessage(groupKey, messageText) {
-        const iv = window.crypto.getRandomValues(new Uint8Array(12))
-        const encodedMessage = new TextEncoder().encode(messageText)
-        const ciphertext = await window.crypto.subtle.encrypt(
-            { name: "AES-GCM", iv: iv },
-            groupKey,
-            encodedMessage
-        )
-        const ivAndCiphertext = new Uint8Array(iv.length + ciphertext.byteLength)
-        ivAndCiphertext.set(iv)
-        ivAndCiphertext.set(new Uint8Array(ciphertext), iv.length)
-
-        return ivAndCiphertext
-    }
-
-    async function decryptMessage(groupKey, ivAndCiphertext) {
-        const iv = ivAndCiphertext.slice(0, 12)
-        const ciphertext = ivAndCiphertext.slice(12)
-
-        try{
-            const decrypted = await window.crypto.subtle.decrypt(
-                { name: "AES-GCM", iv: iv},
-                groupKey,
-                ciphertext
-            )
-            return new TextDecoder().decode(decrypted)
-        } catch (e) {
-            console.error("ERRO ao descriptografar a mensagem:", e)
-            return "Falha ao descriptografar esta mensagem."
-        }
-    }
-
-    let userKeys = null
-
-    async function generateUserKeys() {
-        console.log("Gerando novo par de chaves para o usuário...")
-        const keyPair = await window.crypto.subtle.generateKey(
-            { 
-                name: "RSA-OAEP", 
-                modulusLength: 2048,
-                publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-                hash: "SHA-256",
-            },
-            true,
-            ["encrypt", "decrypt"]
-        )
-        return keyPair
-    }
-
-    function saveKeysToIndexedDB(keyPair) {
-        return new Promise((resolve, reject) =>{
-            const request = indexedDB.open("EsquizoCordDB", 1)
-
-            request.onupgradeneeded = (event) =>{
-                const db = event.target.result
-                db.createObjectStore("userKeys", {keyPath: "id"})
-            }
-
-            request.onsuccess = (event) =>{
-                const db = event.target.result
-                const transaction = db.transaction("userKeys", "readwrite")
-                const store = transaction.objectStore("userKeys")
-                store.put({id: "myKeyPair", ...keyPair})
-
-                transaction.oncomplete = () => resolve()
-                transaction.onerror = () => reject("Erro na transação do IndexedDB.")
-            }
-            request.onerror = (event) => reject("Erro ao abrir IndexedDB: " + event.target.errorCode)
-        })
-    }
-
-    function loadKeysFromIndexedDB() {
-        return new Promise((resolve, reject) =>{
-            const request = indexedDB.open("EsquizoCordDB", 1)
-            
-            request.onsuccess = (event) => {
-                const db = event.target.result
-                if(!db.objectStoreNames.contains('userKeys')) {
-                    resolve(null)
-                    return
-                }
-                const transaction = db.transaction("userKeys", "readonly")
-                const store = transaction.objectStore("userKeys")
-                const getRequest = store.get("myKeyPair")
-
-                getRequest.onsuccess = () => resolve(getRequest.result || null)
-                getRequest.onerror = () => reject("ERRO ao ler chaves do IndexedDB")
-            }
-            request.onerror = (event) => reject("Erro ao abrir IndexedDB: " + event.target.errorCode)
-        })
-    }
-
-    async function initializeUserCrypto() {
-        try {
-            let keyPair = await loadKeysFromIndexedDB()
-
-            if (keyPair) {
-                console.log("Chaves do usuário carregadas do IndexedDB")
-                userKeys = keyPair
-            } else {
-                keyPair = await generateUserKeys()
-                await saveKeysToIndexedDB(keyPair)
-                console.log("Novo par de chaves no IndexedDB.")
-                userKeys = keyPair
-
-                const exportedPublicKey = await window.crypto.subtle.exportKey("spki", keyPair.publicKey)
-                const publicKeyString = btoa(String.fromCharCode(...new Uint8Array(exportedPublicKey)))
-                
-                await fetch('/users/save-public-key', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({publicKey: publicKeyString})
-                })
-                console.log("Chave pública enviada para o servidor.")
-            }
-        } catch (error) {
-            console.error("Falha ao inicializar a criptografia do usuário:", error)
-            alert("Erro crítico de criptografia. Por favor, recarregue a página.")
-        }
-    }
-
-    // --- FUNÇÕES DE RENDERIZAÇÃO ---
     function renderMessage(message) {
         if (!chatMessagesContainer) return;
         const messageItem = document.createElement('div');
         messageItem.classList.add('message-item');
         if (message.id_usuario === currentUserId) messageItem.classList.add('sent');
+        const sanitizedContent = DOMPurify.sanitize(message.Conteudo);
+
         messageItem.innerHTML = `
             <img src="${message.autorFoto || '/images/logo.png'}" alt="${message.autorNome}">
             <div class="message-content">
                 ${message.id_usuario !== currentUserId ? `<span class="author-name">${message.autorNome}</span>` : ''}
-                <p class="message-text">${DOMPurify.sanitize(message.Conteudo)}</p>
+                <p class="message-text">${sanitizedContent}</p>
             </div>`;
-        if (message.id_usuario === currentUserId) {
-            const content = messageItem.querySelector('.message-content');
-            const img = messageItem.querySelector('img');
-            messageItem.appendChild(content);
-            messageItem.insertBefore(img, null);
-        }
         chatMessagesContainer.appendChild(messageItem);
         chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
     }
 
-    async function loadAndRenderMessages(chatId) {
-        if (!chatId) {
-            if (chatMessagesContainer) chatMessagesContainer.innerHTML = '<p>Selecione um canal para ver as mensagens.</p>';
-            return;
-        }
+    async function loadAndRenderMessages(url) {
+        if (!chatMessagesContainer) return;
+        chatMessagesContainer.innerHTML = '<p>Carregando mensagens...</p>';
         try {
-            const response = await fetch(`/groups/chats/${chatId}/messages`);
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("Falha ao buscar mensagens.");
             const messages = await response.json();
-            if (!chatMessagesContainer) return;
+            
             chatMessagesContainer.innerHTML = '';
-            if (messages.length === 0) chatMessagesContainer.innerHTML = '<p>Nenhuma mensagem ainda. Seja o primeiro a dizer olá!</p>';
-            else {
-                for (const message of messages) {
-                    try {
-                        const encryptedContent = new Uint8Array(message.Conteudo.data)
-                        const fakeGroupKey = await generateGroupKey()
-                        const decryptedContent = await decryptMessage(fakeGroupKey, encryptedContent)
-                        renderMessage({...message, Conteudo: decryptedContent})
-                    } catch (error) {
-                        console.error("Falha ao descriptografar mensagem do histórico:", error)
-                        renderMessage({ ...message, Conteudo: "[Mensagem criptografada inválida]" })
-                    }
-                }
+            if (messages.length === 0) {
+                chatMessagesContainer.innerHTML = '<p>Nenhuma mensagem ainda. Seja o primeiro a dizer olá!</p>';
+            } else {
+                messages.forEach(renderMessage);
             }
         } catch (error) {
-            if (chatMessagesContainer) chatMessagesContainer.innerHTML = '<p>Não foi possível carregar as mensagens.</p>';
+            console.error("Erro ao carregar mensagens:", error);
+            chatMessagesContainer.innerHTML = '<p>Não foi possível carregar o histórico de mensagens.</p>';
         }
     }
-
+    
     function renderFriendsView() {
+        currentGroupData = null; currentChatId = null; currentDmFriendId = null; currentDmFriendData = null;
         if (groupSettingsIcon) groupSettingsIcon.style.display = 'none';
         if (friendsNavContainer) friendsNavContainer.style.display = 'flex';
         if (groupNameHeader) groupNameHeader.textContent = "Amigos";
         if (chatHeader) chatHeader.innerHTML = `<h3>Mensagens Diretas</h3>`;
-        if (chatInput) chatInput.placeholder = 'Conversar...';
+        if (chatInput) { chatInput.placeholder = 'Selecione um amigo para conversar...'; chatInput.disabled = true; }
         if (chatMessagesContainer) chatMessagesContainer.innerHTML = '<p>Selecione um amigo para começar a conversar.</p>';
         document.querySelectorAll('.friends-nav-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelector('.friends-nav-btn[data-tab="friends-list"]')?.classList.add('active');
@@ -310,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 channelListContent.appendChild(friendDiv);
             });
         } else {
-            channelListContent.innerHTML += '<p style="padding: 8px; color: var(--text-muted);">A sua lista de amigos está vazia.</p>';
+            channelListContent.innerHTML += '<p style="padding: 8px; color: var(--text-muted);">Sua lista de amigos está vazia.</p>';
         }
     }
 
@@ -355,71 +182,55 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const data = await response.json();
             currentGroupData = data;
+            currentDmFriendId = null;
             
             if (friendsNavContainer) friendsNavContainer.style.display = 'none';
             if (groupNameHeader) groupNameHeader.textContent = data.details.Nome;
-            if (groupSettingsIcon) groupSettingsIcon.style.display = (currentUserId === data.details.id_criador) ? 'block' : 'none';
+            if (groupSettingsIcon) groupSettingsIcon.style.display = data.details.id_criador === currentUserId ? 'block' : 'none';
             if (!channelListContent) return;
             
-            channelListContent.innerHTML = '';
             const firstChannel = data.channels[0];
-            
             if (firstChannel) {
                 currentChatId = firstChannel.id_chat;
                 socket.emit('join_group_room', groupId);
                 if (chatHeader) chatHeader.innerHTML = `<h3><i class="fas fa-hashtag" style="color: var(--text-muted);"></i> ${firstChannel.Nome}</h3>`;
-                if (chatInput) chatInput.placeholder = `Conversar em #${firstChannel.Nome}`;
-                loadAndRenderMessages(currentChatId);
+                if (chatInput) { chatInput.placeholder = `Conversar em #${firstChannel.Nome}`; chatInput.disabled = false; }
+                loadAndRenderMessages(`/groups/chats/${currentChatId}/messages`);
             } else {
                 currentChatId = null;
                 if (chatHeader) chatHeader.innerHTML = `<h3>Sem canais de texto</h3>`;
-                if (chatInput) chatInput.placeholder = `Crie um canal para começar a conversar.`;
+                if (chatInput) { chatInput.placeholder = `Crie um canal para começar a conversar.`; chatInput.disabled = true; }
                 if (chatMessagesContainer) chatMessagesContainer.innerHTML = '';
             }
 
+            channelListContent.innerHTML = '';
             const memberHeader = document.createElement('div');
             memberHeader.className = 'channel-list-header';
             memberHeader.textContent = `MEMBROS - ${data.members.length}`;
             channelListContent.appendChild(memberHeader);
-
             data.members.forEach(member => {
                 const memberDiv = document.createElement('div');
                 memberDiv.className = 'friend-item';
-                let memberHTML = `<img src="${member.FotoPerfil || '/images/logo.png'}" alt="${member.Nome}"><span>${member.Nome}</span>`;
-                if (member.isAdmin) memberHTML += `<i class="fas fa-crown admin-icon" title="Administrador"></i>`;
-                memberDiv.innerHTML = memberHTML;
+                memberDiv.innerHTML = `<img src="${member.FotoPerfil || '/images/logo.png'}" alt="${member.Nome}"><span>${member.Nome}</span>${member.isAdmin ? '<i class="fas fa-crown admin-icon" title="Administrador"></i>' : ''}`;
                 channelListContent.appendChild(memberDiv);
             });
         } catch (err) {
             console.error('Erro ao carregar grupo:', err);
-            if (channelListContent) channelListContent.innerHTML = '<p>Erro ao carregar detalhes.</p>';
         }
     }
-    
-    // --- FUNÇÕES DE MANIPULAÇÃO DE DADOS ---
-    function handleFormSubmit(url, errorMessage, onSuccess) {
-        return async function(event) {
-            event.preventDefault();
-            const formData = new FormData(event.target);
-            try {
-                const response = await fetch(url, { method: 'POST', body: formData });
-                if (response.ok) {
-                    if (onSuccess) {
-                        onSuccess(formData); 
-                    } else {
-                        window.location.reload();
-                    }
-                } else {
-                    const responseData = await response.json();
-                    alert(`${errorMessage}: ${responseData.message}`);
-                }
-            } catch (err) {
-                console.error('Erro de rede:', err);
-                alert('Ocorreu um erro de rede. Tente novamente.');
-            }
-        }
+
+    function renderDmView(friendId, friendName, friendPhoto) {
+        currentChatId = null;
+        currentGroupData = null;
+        currentDmFriendId = friendId;
+        currentDmFriendData = { id: friendId, nome: friendName, foto: friendPhoto };
+
+        socket.emit('join_dm_room', [currentUserId, friendId].sort().join('-'));
+        if (chatHeader) chatHeader.innerHTML = `<h3><img src="${friendPhoto}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 8px;">${friendName}</h3>`;
+        if (chatInput) { chatInput.placeholder = `Conversar com ${friendName}`; chatInput.disabled = false; }
+        loadAndRenderMessages(`/friends/dm/${friendId}/messages`);
     }
-    
+
     function renderSearchResults(results, container, isGroupSearch) {
         if (!container) return;
         container.innerHTML = '';
@@ -432,139 +243,47 @@ document.addEventListener('DOMContentLoaded', () => {
             itemDiv.className = 'search-result-item';
             if (isGroupSearch) {
                 itemDiv.innerHTML = `<div class="search-result-info"> <img src="${item.Foto || '/images/default-group-icon.png'}" alt="${item.Nome}"> <div class="search-result-name"> <span>${item.Nome}</span> <span class="group-id-search">#${item.id_grupo}</span> </div> </div> <button class="join-btn" data-group-id="${item.id_grupo}">Entrar</button>`;
-            } else { 
+            } else {
                 itemDiv.innerHTML = `<div class="search-result-info"> <img src="${item.FotoPerfil || '/images/logo.png'}" alt="${item.Nome}"> <div class="search-result-name"><span>${item.Nome}</span></div> </div> <button class="add-friend-btn" data-user-id="${item.id_usuario}">Adicionar Amigo</button>`;
             }
             container.appendChild(itemDiv);
         });
     }
 
-    async function handleAction(button, url, loadingText, defaultText, body = null, method = 'POST', reload = false) {
-        if (!button) return;
-        button.disabled = true;
-        if(button.tagName === 'BUTTON') button.textContent = loadingText;
-        try {
-            const options = { method: method, headers: {} };
-            if (body) {
-                options.headers['Content-Type'] = 'application/json';
-                options.body = JSON.stringify(body);
-            }
-            const response = await fetch(url, options);
-            if (response.ok) {
-                if (reload) {
-                    window.location.reload();
-                } else {
-                    const data = await response.json();
-                    alert(data.message);
-                    if(button.tagName === 'BUTTON') button.textContent = 'Feito!';
-                }
-            } else {
-                const data = await response.json();
-                alert(data.message);
-                button.disabled = false;
-                if(button.tagName === 'BUTTON') button.textContent = defaultText;
-            }
-        } catch (err) {
-            console.error('Erro de rede na ação:', err);
-            alert('Ocorreu um erro de rede.');
-            button.disabled = false;
-            if(button.tagName === 'BUTTON') button.textContent = defaultText;
-        }
-    }
-
-    async function loadAndRenderDmMessages(friendId) {
-        if (!friendId) return;
-        try {
-            const response = await fetch(`/friends/dm/${friendId}/messages`);
-            const messages = await response.json();
-            chatMessagesContainer.innerHTML = '';
-            if (messages.length === 0) {
-                chatMessagesContainer.innerHTML = '<p>Nenhuma mensagem ainda. Envie a primeira!</p>';
-            } else {
-                messages.forEach(msg => {
-                    renderMessage({
-                        ...msg,
-                        id_usuario: msg.id_remetente,
-                        autorNome: msg.id_remetente === currentUserId ? currentUser.Nome : currentDmFriendData.nome,
-                        autorFoto: msg.id_remetente === currentUserId ? currentUser.FotoPerfil : currentDmFriendData.foto
-                    });
-                });
-            }
-        } catch (error) {
-            console.error("Erro ao carregar DMs:", error);
-            chatMessagesContainer.innerHTML = '<p>Não foi possível carregar as mensagens.</p>';
-        }
-    }
-
-    function renderDmView(friendId, friendName) {
-        if (groupSettingsIcon) groupSettingsIcon.style.display = 'none';
-        socket.emit('join_dm_room', friendId);
-        if (chatHeader) chatHeader.innerHTML = `<h3>Conversando com ${friendName}</h3>`;
-        if (chatInput) chatInput.placeholder = `Conversar com ${friendName}`;
-        loadAndRenderDmMessages(friendId);
-    }
-    
-    // --- LÓGICA DE EVENTOS ---
+    // --- SETUP DE EVENT LISTENERS ---
     function setupEventListeners() {
-        if (addServerButton) {
-            addServerButton.addEventListener('click', () => openModal(createGroupModal));
-        }
-
+        if (addServerButton) addServerButton.addEventListener('click', () => openModal(createGroupModal));
         if (exploreButton) {
             exploreButton.addEventListener('click', () => {
                 openModal(exploreModal);
-                if (searchGroupInput) searchGroupInput.dispatchEvent(new Event('input'));
-            });
-        }
-
-        if (groupSettingsIcon) {
-            groupSettingsIcon.addEventListener('click', () => {
-                if (currentGroupData) {
-                    const editGroupId = editGroupModal.querySelector('#edit-group-id');
-                    const editGroupName = editGroupModal.querySelector('#edit-group-name');
-                    const editGroupPrivate = editGroupModal.querySelector('#edit-group-private');
-                    if (editGroupId) editGroupId.value = currentGroupData.details.id_grupo;
-                    if (editGroupName) editGroupName.value = currentGroupData.details.Nome;
-                    if (editGroupPrivate) editGroupPrivate.checked = currentGroupData.details.IsPrivate;
-                    openModal(editGroupModal);
-                }
+                searchGroupInput?.dispatchEvent(new Event('input'));
             });
         }
 
         [createGroupModal, editGroupModal, exploreModal].forEach(modal => {
             if (!modal) return;
-            const cancelBtn = modal.querySelector('.cancel-btn');
-            if (cancelBtn) cancelBtn.addEventListener('click', () => closeModal(modal));
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) closeModal(modal);
-            });
+            modal.querySelector('.cancel-btn')?.addEventListener('click', () => closeModal(modal));
+            modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); });
         });
 
-        const serverList = document.querySelector('.server-list');
-        if (serverList) {
-            serverList.addEventListener('click', (e) => {
-                const serverIcon = e.target.closest('.server-icon[data-group-id]');
-                if (serverIcon) {
-                    document.querySelectorAll('.server-icon').forEach(i => i.classList.remove('active'));
-                    serverIcon.classList.add('active');
-                    renderGroupView(serverIcon.dataset.groupId);
-                }
-            });
-        }
-
+        document.querySelector('.server-list')?.addEventListener('click', (e) => {
+            const serverIcon = e.target.closest('.server-icon[data-group-id]');
+            if (serverIcon) {
+                document.querySelectorAll('.server-icon').forEach(i => i.classList.remove('active'));
+                serverIcon.classList.add('active');
+                renderGroupView(serverIcon.dataset.groupId);
+            }
+        });
+        
         if (homeButton) {
             homeButton.addEventListener('click', () => {
-                if(currentGroupData && currentGroupData.details){
-                    socket.emit('leave_group_room', currentGroupData.details.id_grupo);
-                }
-                currentGroupData = null; currentChatId = null; currentDmFriendId = null; currentDmFriendData = null;
                 document.querySelectorAll('.server-icon').forEach(i => i.classList.remove('active'));
                 homeButton.classList.add('active');
                 renderFriendsView();
             });
         }
-
-        if (friendsNavContainer) {
+        
+        if(friendsNavContainer) {
             friendsNavContainer.addEventListener('click', e => {
                 if (e.target.tagName === 'BUTTON') {
                     friendsNavContainer.querySelectorAll('.friends-nav-btn').forEach(btn => btn.classList.remove('active'));
@@ -576,53 +295,118 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
+        
+        channelListContent.addEventListener('click', (e) => {
+             const friendItem = e.target.closest('.friend-item[data-friend-id]');
+             if (friendItem) {
+                 renderDmView(friendItem.dataset.friendId, friendItem.dataset.friendName, friendItem.dataset.friendPhoto);
+             }
+        });
 
-        if (createGroupForm) {
-            createGroupForm.addEventListener('submit', handleFormSubmit('/groups/criar', 'Erro ao criar grupo.', (responseData, formData) =>{
-                console.log('Grupo criado com sucesso, ID:', responseData.groupId)
-                window.location.reload()
-            })
-            );
-        }
-
-        if (editGroupForm) {
-            editGroupForm.addEventListener('submit', (e) => {
-                // Prevenimos o comportamento padrão para garantir que temos o groupId antes de continuar
-                e.preventDefault();
-                const groupId = document.getElementById('edit-group-id').value;
-                if(groupId) {
-                    const url = `/groups/${groupId}/settings`;
-                    // Criamos a função de sucesso aqui
-                    const onSuccess = async (formData) => {
-                        closeModal(editGroupModal);
-                        await renderGroupView(groupId); 
-                        
-                        const serverIcon = document.querySelector(`.server-icon[data-group-id="${groupId}"]`);
-                        const newName = formData.get('nome');
-                        if (serverIcon && newName) {
-                            serverIcon.title = newName;
-                        }
-                    };
-                    // Chamamos a função retornada por handleFormSubmit
-                    handleFormSubmit(url, 'Erro ao atualizar grupo.', onSuccess)(e);
+        if (groupSettingsIcon) {
+            groupSettingsIcon.addEventListener('click', () => {
+                if (currentGroupData) {
+                    editGroupModal.querySelector('#edit-group-id').value = currentGroupData.details.id_grupo;
+                    editGroupModal.querySelector('#edit-group-name').value = currentGroupData.details.Nome;
+                    editGroupModal.querySelector('#edit-group-private').checked = currentGroupData.details.IsPrivate;
+                    openModal(editGroupModal);
                 }
             });
         }
-
+        
+        // *******************************************************************
+        // ***** INÍCIO DA CORREÇÃO: ADICIONANDO O EVENTO DE EXCLUSÃO *****
+        // *******************************************************************
         if (deleteGroupButton) {
             deleteGroupButton.addEventListener('click', async () => {
-                const groupIdInput = document.getElementById('edit-group-id');
-                const groupNameInput = document.getElementById('edit-group-name');
-                if (groupIdInput && groupNameInput) {
-                    const groupId = groupIdInput.value;
-                    const groupName = groupNameInput.value;
-                    if (confirm(`Tem a certeza de que deseja excluir o grupo "${groupName}"? Esta ação é irreversível.`)) {
-                        handleAction(deleteGroupButton, `/groups/${groupId}`, 'Excluindo...', 'Excluir Grupo', null, 'DELETE', true);
+                const groupId = editGroupModal.querySelector('#edit-group-id').value;
+                const groupName = editGroupModal.querySelector('#edit-group-name').value;
+                if (!groupId) return;
+
+                if (confirm(`Tem a certeza de que deseja excluir o grupo "${groupName}"? Esta ação é irreversível.`)) {
+                    await handleAction(
+                        deleteGroupButton,
+                        `/groups/${groupId}`,
+                        'Excluindo...',
+                        'Excluir Grupo',
+                        null,
+                        'DELETE',
+                        true
+                    );
+                }
+            });
+        }
+        // *******************************************************************
+        // ***** FIM DA CORREÇÃO *****
+        // *******************************************************************
+        
+        if (chatInput) {
+            chatInput.addEventListener('keydown', async (e) => {
+                if (e.key === 'Enter' && chatInput.value.trim() !== '') {
+                    e.preventDefault();
+                    const messageContent = chatInput.value.trim();
+                    chatInput.value = '';
+
+                    let url;
+                    if (currentChatId) {
+                        url = `/groups/chats/${currentChatId}/messages`;
+                    } else if (currentDmFriendId) {
+                        url = `/friends/dm/${currentDmFriendId}/messages`;
+                    } else {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ content: messageContent })
+                        });
+                        if (!response.ok) throw new Error('Server error');
+                    } catch (error) {
+                        console.error('ERRO ao enviar mensagem:', error);
+                        alert("Não foi possível enviar a mensagem.");
+                        chatInput.value = messageContent;
                     }
                 }
             });
         }
         
+        if(createGroupForm) createGroupForm.addEventListener('submit', (e) => { e.preventDefault(); handleFormSubmit('/groups/criar', 'Erro ao criar grupo', () => window.location.reload(), e.target) });
+        if(editGroupForm) editGroupForm.addEventListener('submit', (e) => { e.preventDefault(); const id = e.target.querySelector('#edit-group-id').value; handleFormSubmit(`/groups/${id}/settings`, 'Erro ao editar', () => window.location.reload(), e.target) });
+        
+        document.body.addEventListener('click', async (e) => {
+            const button = e.target.closest('button');
+            if (!button) return;
+
+            if (button.classList.contains('join-btn')) {
+                const groupId = button.dataset.groupId;
+                handleAction(button, `/groups/${groupId}/join`, 'Entrando...', 'Entrar', null, 'POST', true);
+            }
+            else if (button.id === 'add-friend-submit') {
+                const input = document.getElementById('add-friend-input');
+                if (input && input.value.trim()) {
+                    // Modificado para enviar o nome do usuário em vez de fazer outra busca
+                    handleAction(button, '/friends/request', 'Enviando...', 'Enviar Pedido', { username: input.value.trim() }, 'POST');
+                }
+            }
+            else if (button.classList.contains('accept-btn') || button.classList.contains('reject-btn')) {
+                const requestItem = button.closest('.friend-request-item');
+                const requestId = requestItem?.dataset.requestId;
+                const action = button.classList.contains('accept-btn') ? 'aceite' : 'recusada';
+                if (requestId) {
+                    handleAction(button, '/friends/respond', '...', '', { requestId, action }, 'POST', true);
+                }
+            }
+            else if (button.classList.contains('cancel-request-btn')) {
+                const requestItem = button.closest('.friend-request-item');
+                const requestId = requestItem?.dataset.requestId;
+                if (requestId) {
+                    handleAction(button, '/friends/cancel', 'Cancelando...', '', { requestId }, 'POST', true);
+                }
+            }
+        });
+
         let searchTimeout;
         if (searchGroupInput) {
             searchGroupInput.addEventListener('input', e => {
@@ -635,121 +419,78 @@ document.addEventListener('DOMContentLoaded', () => {
                         const results = await response.json();
                         renderSearchResults(results, searchGroupResults, true);
                     } catch (err) {
-                        console.error('Erro na pesquisa:', err);
+                        console.error('Erro na pesquisa de grupo:', err);
                         if (searchGroupResults) searchGroupResults.innerHTML = '<p>Erro ao pesquisar.</p>';
                     }
                 }, 300);
             });
         }
+    }
 
-        document.body.addEventListener('click', async (e) => {
-            const target = e.target;
-            if (target.classList.contains('join-btn')) {
-                const groupId = target.dataset.groupId;
-                handleAction(target, `/groups/${groupId}/join`, 'Entrando...', 'Entrar', null, 'POST', true);
-            } 
-            else if (target.id === 'add-friend-submit') {
-                const input = document.getElementById('add-friend-input');
-                if (input) {
-                    const username = input.value.trim();
-                    if (!username) return;
-                    try {
-                        const response = await fetch(`/friends/search?q=${encodeURIComponent(username)}`);
-                        const users = await response.json();
-                        if(users.length > 0) {
-                             handleAction(target, '/friends/request', 'Enviando...', 'Enviar Pedido', { requestedId: users[0].id_usuario });
-                        } else {
-                            alert('Utilizador não encontrado.');
-                        }
-                    } catch(err) {
-                        console.error('Erro na busca de amigo:', err);
-                        alert('Erro de rede.');
-                    }
-                }
-            } else if (target.closest('.accept-btn') || target.closest('.reject-btn')) {
-                const button = target.closest('button');
-                const requestItem = button.closest('.friend-request-item');
-                if (requestItem) {
-                    const requestId = requestItem.dataset.requestId;
-                    const action = button.classList.contains('accept-btn') ? 'aceite' : 'recusada';
-                    handleAction(button, '/friends/respond', '...', '', { requestId, action }, 'POST', true);
-                }
-            } else if (target.closest('.cancel-request-btn')) {
-                const button = target.closest('button');
-                const requestItem = button.closest('.friend-request-item');
-                if (requestItem) {
-                    const requestId = requestItem.dataset.requestId;
-                    handleAction(button, '/friends/cancel', 'Cancelando...', 'Cancelar', { requestId }, 'POST', true);
-                }
+    async function handleFormSubmit(url, errorMessage, onSuccess, formElement) {
+        const formData = new FormData(formElement);
+        try {
+            const response = await fetch(url, { method: 'POST', body: formData });
+            if (response.ok) {
+                onSuccess();
+            } else {
+                const res = await response.json();
+                alert(`${errorMessage}: ${res.message}`);
             }
-        });
-
-        if (chatInput){
-            chatInput.addEventListener('keydown', async (e) => {
-                if (e.key === 'Enter' && chatInput.value.trim() !== '') {
-                    e.preventDefault();
-                    const messageContent = chatInput.value.trim();
-                    chatInput.value = '';
-                    
-                    if (currentChatId) {
-                        const url  = `/groups/chats/${currentChatId}/messages`
-                        try {
-                            const fakeGroupKey = await generateGroupKey()
-                            const encryptedContent = await encryptMessage(fakeGroupKey, messageContent)
-
-                            fetch(url, {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/json'},
-                                body: JSON.stringify({content: Array.from(encryptedContent)})
-                            }).catch(err =>{
-                                console.error('ERRO ao enviar mensagem:', err)
-                                chatInput.value = messageContent
-                            })
-                        } catch (error) {
-                            console.error("ERRO no processo de criptografia:", error)
-                            alert("Não foi possível criptografar a mensagem.");
-                            chatInput.value = messageContent;
-                        }
-                    } else if(currentDmFriendId) {
-                        const url = `/friends/dm/${currentDmFriendId}/messages`;
-                        
-                        fetch(url, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({content: messageContent}) 
-                        }).catch(err =>{
-                            console.error('Erro ao enviar mensagem:', err);
-                            chatInput.value = messageContent;
-                        })
-                    }
-                }
-            })      
-        }
-        if (channelListContent) {
-            channelListContent.addEventListener('click', (e) =>{
-                const friendItem = e.target.closest('.friend-item[data-friend-id]');
-                if(friendItem) {
-                    const friendId = friendItem.dataset.friendId;
-                    const friendName = friendItem.dataset.friendName;
-                    const friendPhoto = friendItem.dataset.friendPhoto;
-                    
-                    currentChatId = null;
-                    currentDmFriendId = friendId;
-                    currentDmFriendData = {id: friendId, nome: friendName, foto: friendPhoto};
-                    
-                    document.querySelectorAll('.server-icon').forEach(i => i.classList.remove('active'));
-                    homeButton.classList.add('active');
-                    
-                    renderDmView(friendId, friendName);
-                }
-            });
+        } catch (err) {
+            console.error('Erro de rede:', err);
+            alert('Erro de rede.');
         }
     }
 
-    // --- INICIALIZAÇÃO DA VIEW ---
-    console.log('Inicializando dashboard...');
-    renderFriendsView();
-    setupEventListeners();
-    initializeUserCrypto();
-    console.log('Dashboard inicializado');
+    async function handleAction(button, url, loadingText, defaultText, body = null, method = 'POST', reload = false) {
+        if (!button) return;
+        button.disabled = true;
+        const originalText = button.textContent;
+        if(button.tagName === 'BUTTON') button.textContent = loadingText;
+        
+        try {
+            const options = { method, headers: {} };
+            if (body) {
+                options.headers['Content-Type'] = 'application/json';
+                options.body = JSON.stringify(body);
+            }
+            const response = await fetch(url, options);
+            
+            if (response.status === 204 || response.headers.get("content-length") === "0") {
+                 if (reload) {
+                    window.location.reload();
+                }
+                return;
+            }
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                if (reload) {
+                    window.location.reload();
+                } else if (data.message) {
+                    alert(data.message);
+                }
+            } else {
+                throw new Error(data.message || 'Erro desconhecido');
+            }
+        } catch (err) {
+            alert(err.message);
+        } finally {
+             if(!reload){
+                button.disabled = false;
+                button.textContent = defaultText || originalText;
+            }
+        }
+    }
+    
+    // --- INICIALIZAÇÃO DA APLICAÇÃO ---
+    function main() {
+        renderFriendsView();
+        setupEventListeners();
+        console.log('Dashboard inicializado.');
+    }
+
+    main();
 });
