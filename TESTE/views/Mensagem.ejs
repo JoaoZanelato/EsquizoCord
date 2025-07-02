@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= titulo %> - EsquizoCord</title>
+    <link rel="stylesheet" href="/stylesheets/style.css">
+    <style>
+        /* Estilos adicionais para centralizar o conteúdo da mensagem */
+        .auth-layout {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        .message-container {
+            background-color: var(--background-secondary);
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 90%;
+        }
+        .message-container h1 {
+            color: var(--header-primary);
+            margin-bottom: 20px;
+        }
+        .message-container p {
+            color: var(--text-normal);
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .message-container a {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 25px;
+            background-color: var(--brand-experiment);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-layout">
+        <div class="message-container">
+            <h1><%= titulo %></h1>
+            <p><%= mensagem %></p>
+            <a href="/login">Voltar para o Login</a>
+        </div>
+    </div>
+</body>
+</html>

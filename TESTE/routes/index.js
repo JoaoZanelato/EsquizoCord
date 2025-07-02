@@ -165,6 +165,13 @@ router.get('/redefinir-senha', async (req, res, next) => {
     }
 });
 
+router.get('/mensagem', (req, res) => {
+    const { titulo, mensagem } = req.query;
+    if (!titulo || !mensagem) {
+        return res.redirect('/login');
+    }
+    res.render('Mensagem', { titulo: titulo, mensagem: mensagem });
+});
 
 /* --- ROTAS POST --- */
 
@@ -199,7 +206,9 @@ router.post('/cadastro', async (req, res, next) => {
         html: `<b>Olá ${nome}!</b><br><p>Obrigado por se cadastrar. Por favor, clique no link a seguir para ativar sua conta: <a href="${verificationLink}">${verificationLink}</a></p>`,
     });
 
-    res.send("Cadastro realizado com sucesso! Um link de verificação foi enviado para o seu e-mail.");
+    const titulo = "Verifique seu E-mail";
+    const mensagem = "Cadastro realizado com sucesso! Um link de verificação foi enviado para o seu e-mail para ativar sua conta.";
+    res.redirect(`/mensagem?titulo=${encodeURIComponent(titulo)}&mensagem=${encodeURIComponent(mensagem)}`);
 
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -223,14 +232,20 @@ router.post('/login', async (req, res, next) => {
     `;
     const [rows] = await pool.query(sql, [email]);
 
-    if (rows.length === 0) return res.status(401).send("Erro: Email ou senha inválidos.");
+    // Se o usuário não existe, renderiza com erro
+    if (rows.length === 0) {
+      return res.render('Login', { error: 'E-mail ou senha inválidos.' });
+    }
     
     const user = rows[0];
     const match = await bcrypt.compare(senha, user.Senha);
 
     if (match) {
       if (!user.email_verificado) {
-          return res.status(403).send("Erro: Sua conta ainda não foi verificada. Por favor, verifique seu e-mail.");
+        // (Já modificado na etapa anterior)
+        const titulo = "Conta não verificada";
+        const mensagem = "Sua conta ainda não foi ativada. Por favor, verifique o link enviado para o seu e-mail.";
+        return res.redirect(`/mensagem?titulo=${encodeURIComponent(titulo)}&mensagem=${encodeURIComponent(mensagem)}`);
       }
 
       req.session.user = user;
@@ -239,12 +254,16 @@ router.post('/login', async (req, res, next) => {
         res.redirect('/dashboard');
       });
     } else {
-      res.status(401).send("Erro: Email ou senha inválidos.");
+      // Se a senha não confere, renderiza com erro
+      res.render('Login', { error: 'E-mail ou senha inválidos.' });
     }
   } catch (error) {
     next(error);
   }
 });
+
+// Garanta que a rota GET para /login também passe o erro como nulo
+router.get('/login', (req, res) => res.render('Login', { error: null }));
 
 
 // Rota de configuração do perfil
