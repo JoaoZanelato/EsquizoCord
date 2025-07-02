@@ -308,269 +308,260 @@ function renderMessage(message) {
     }
 
     // --- SETUP DE EVENT LISTENERS ---
-    function setupEventListeners() {
-        const chatHeaderEl = document.getElementById('chat-header');
-const serverList = document.querySelector('.server-list');
-const channelList = document.querySelector('.channel-list');
+function setupEventListeners() {
+    // --- Seletores de Elementos (movidos para dentro para garantir que o DOM esteja pronto) ---
+    const createGroupModal = document.getElementById('create-group-modal');
+    const editGroupModal = document.getElementById('edit-group-modal');
+    const exploreModal = document.getElementById('explore-group-modal');
+    const addServerButton = document.getElementById('add-server-button');
+    const exploreButton = document.getElementById('explore-button');
+    const homeButton = document.getElementById('home-button');
+    const friendsNavContainer = document.getElementById('friends-nav-container');
+    const groupSettingsIcon = document.getElementById('group-settings-icon');
+    const deleteGroupButton = document.getElementById('delete-group-btn');
+    const chatHeader = document.getElementById('chat-header');
+    const chatMessagesContainer = document.getElementById('chat-messages-container');
+    const chatInput = document.querySelector('.chat-input-bar input');
+    const createGroupForm = document.getElementById('create-group-form');
+    const editGroupForm = document.getElementById('edit-group-form');
+    const searchGroupInput = document.getElementById('search-group-input');
+    
+    // --- Seletores da funcionalidade de Resposta ---
+    const replyBar = document.getElementById('reply-bar');
+    const replyBarText = document.getElementById('reply-bar-text');
+    const cancelReplyBtn = document.getElementById('cancel-reply-btn');
 
-if (chatHeaderEl) {
-    chatHeaderEl.addEventListener('click', (e) => {
-        // Verifica se o clique foi no ícone do menu (renderizado pelo CSS via ::before)
-        // e se a tela é pequena.
-        if (window.innerWidth <= 768 && e.target === chatHeaderEl) {
-             if (window.innerWidth <= 480) {
-                 // Em celulares, o menu abre a lista de servidores
-                 serverList.classList.toggle('open');
-             } else {
-                 // Em tablets, o menu abre a lista de canais/amigos
-                 channelList.classList.toggle('open');
-             }
+
+    // --- Lógica de Eventos ---
+
+    if (addServerButton) addServerButton.addEventListener('click', () => openModal(createGroupModal));
+    if (exploreButton) {
+        exploreButton.addEventListener('click', () => {
+            openModal(exploreModal);
+            searchGroupInput?.dispatchEvent(new Event('input'));
+        });
+    }
+
+    [createGroupModal, editGroupModal, exploreModal].forEach(modal => {
+        if (!modal) return;
+        modal.querySelector('.cancel-btn')?.addEventListener('click', () => closeModal(modal));
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); });
+    });
+
+    document.querySelector('.server-list')?.addEventListener('click', (e) => {
+        const serverIcon = e.target.closest('.server-icon[data-group-id]');
+        if (serverIcon) {
+            document.querySelectorAll('.server-icon').forEach(i => i.classList.remove('active'));
+            serverIcon.classList.add('active');
+            renderGroupView(serverIcon.dataset.groupId);
         }
     });
-}
-
-// Fecha os painéis se clicar fora deles
-document.body.addEventListener('click', (e) => {
-    if (window.innerWidth > 768) return;
-
-    // Se o painel estiver aberto e o clique for fora dele e fora do menu
-    if (channelList.classList.contains('open') && !channelList.contains(e.target) && !chatHeaderEl.contains(e.target)) {
-        channelList.classList.remove('open');
+    
+    if (homeButton) {
+        homeButton.addEventListener('click', () => {
+            document.querySelectorAll('.server-icon').forEach(i => i.classList.remove('active'));
+            homeButton.classList.add('active');
+            renderFriendsView();
+        });
     }
-     if (serverList.classList.contains('open') && !serverList.contains(e.target) && !chatHeaderEl.contains(e.target)) {
-        serverList.classList.remove('open');
+    
+    if(friendsNavContainer) {
+        friendsNavContainer.addEventListener('click', e => {
+            if (e.target.tagName === 'BUTTON') {
+                friendsNavContainer.querySelectorAll('.friends-nav-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                const tab = e.target.dataset.tab;
+                if (tab === 'friends-list') renderFriendsList();
+                else if (tab === 'pending-requests') renderPendingRequests();
+                else if (tab === 'add-friend') renderAddFriend();
+            }
+        });
     }
-});
+    
+    // --- CORREÇÃO DEFINITIVA DO BOTÃO DE CANCELAR ---
+    if (cancelReplyBtn) {
+        cancelReplyBtn.addEventListener('click', () => {
+            replyingToMessageId = null; // Limpa o ID da mensagem que estava sendo respondida
+            if (replyBar) {
+                replyBar.style.display = 'none'; // Esconde a barra de resposta
+            }
+        });
+    } else {
+        // Se o botão não for encontrado, isso aparecerá no console do navegador (F12)
+        console.error("Botão 'cancelReplyBtn' não encontrado no DOM.");
+    }
+
+    // Listener unificado para cliques na área de mensagens (Responder e Excluir)
+    if (chatMessagesContainer) {
         chatMessagesContainer.addEventListener('click', async (e) => {
-    // Manipulador para o botão de RESPONDER
-    if (e.target.classList.contains('reply-message-btn')) {
-        const messageItem = e.target.closest('.message-item');
-        if (!messageItem) return;
+            const target = e.target;
 
-        replyingToMessageId = messageItem.dataset.messageId;
-        const author = messageItem.dataset.authorName;
-        const content = messageItem.dataset.messageContent;
-        
-        // Atualiza a barra de resposta e a exibe
-        replyBarText.innerHTML = `Respondendo a <strong>${author}</strong>: ${content.substring(0, 50)}...`;
-        replyBar.style.display = 'flex';
-        chatInput.focus();
-    }
+            // --- Lógica para RESPONDER ---
+            if (target.classList.contains('reply-message-btn')) {
+                const messageItem = target.closest('.message-item');
+                if (!messageItem) return;
 
-    // Manipulador para o botão de EXCLUIR
-    if (e.target.classList.contains('delete-message-btn')) {
-        const messageItem = e.target.closest('.message-item');
-        const messageId = messageItem.dataset.messageId;
-
-        if (!messageId) return;
-
-        // Pede confirmação ao usuário
-        if (confirm('Tem certeza de que deseja excluir esta mensagem?')) {
-            try {
-                let url;
-                // Determina a URL correta com base no contexto (grupo ou DM)
-                if (currentChatId) {
-                    url = `/groups/messages/${messageId}`;
-                } else if (currentDmFriendId) {
-                    url = `/friends/dm/messages/${messageId}`;
-                } else {
-                    return; // Sai se não estiver em um chat válido
-                }
-
-                const response = await fetch(url, { method: 'DELETE' });
-
-                if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.message || 'Falha ao excluir a mensagem.');
-                }
+                replyingToMessageId = messageItem.dataset.messageId;
+                const author = messageItem.dataset.authorName;
+                const content = messageItem.dataset.messageContent;
                 
-                // A remoção visual da mensagem será tratada pelo evento do socket
-                // para garantir que todos os clientes vejam a atualização.
-
-            } catch (error) {
-                console.error('Erro ao excluir mensagem:', error);
-                alert(error.message);
+                if (replyBar && replyBarText) {
+                    replyBarText.innerHTML = `Respondendo a <strong>${author}</strong>: ${content.substring(0, 80)}...`;
+                    replyBar.style.display = 'flex';
+                }
+                chatInput?.focus();
+                return; 
             }
-        }
+
+            // --- Lógica para EXCLUIR ---
+            if (target.classList.contains('delete-message-btn')) {
+                // ... (o código de exclusão que já estava funcionando continua aqui)
+                const messageItem = target.closest('.message-item');
+                const messageId = messageItem ? messageItem.dataset.messageId : null;
+                if (!messageId) return;
+
+                if (confirm('Tem certeza de que deseja excluir esta mensagem?')) {
+                    try {
+                        let url;
+                        if (currentChatId) url = `/groups/messages/${messageId}`;
+                        else if (currentDmFriendId) url = `/friends/dm/messages/${messageId}`;
+                        else return;
+
+                        const response = await fetch(url, { method: 'DELETE' });
+                        if (!response.ok) {
+                            const err = await response.json();
+                            throw new Error(err.message || 'Falha ao excluir a mensagem.');
+                        }
+                    } catch (error) {
+                        console.error('Erro ao excluir mensagem:', error);
+                        alert(error.message);
+                    }
+                }
+            }
+        });
     }
-});
-        if (addServerButton) addServerButton.addEventListener('click', () => openModal(createGroupModal));
-        if (exploreButton) {
-            exploreButton.addEventListener('click', () => {
-                openModal(exploreModal);
-                searchGroupInput?.dispatchEvent(new Event('input'));
-            });
-        }
-
-        [createGroupModal, editGroupModal, exploreModal].forEach(modal => {
-            if (!modal) return;
-            modal.querySelector('.cancel-btn')?.addEventListener('click', () => closeModal(modal));
-            modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); });
-        });
-
-        document.querySelector('.server-list')?.addEventListener('click', (e) => {
-            const serverIcon = e.target.closest('.server-icon[data-group-id]');
-            if (serverIcon) {
-                document.querySelectorAll('.server-icon').forEach(i => i.classList.remove('active'));
-                serverIcon.classList.add('active');
-                renderGroupView(serverIcon.dataset.groupId);
+    
+    if (groupSettingsIcon) {
+        groupSettingsIcon.addEventListener('click', () => {
+            if (currentGroupData) {
+                editGroupModal.querySelector('#edit-group-id').value = currentGroupData.details.id_grupo;
+                editGroupModal.querySelector('#edit-group-name').value = currentGroupData.details.Nome;
+                editGroupModal.querySelector('#edit-group-private').checked = currentGroupData.details.IsPrivate;
+                openModal(editGroupModal);
             }
         });
-        
-        if (homeButton) {
-            homeButton.addEventListener('click', () => {
-                document.querySelectorAll('.server-icon').forEach(i => i.classList.remove('active'));
-                homeButton.classList.add('active');
-                renderFriendsView();
-            });
-        }
-        
-        if(friendsNavContainer) {
-            friendsNavContainer.addEventListener('click', e => {
-                if (e.target.tagName === 'BUTTON') {
-                    friendsNavContainer.querySelectorAll('.friends-nav-btn').forEach(btn => btn.classList.remove('active'));
-                    e.target.classList.add('active');
-                    const tab = e.target.dataset.tab;
-                    if (tab === 'friends-list') renderFriendsList();
-                    else if (tab === 'pending-requests') renderPendingRequests();
-                    else if (tab === 'add-friend') renderAddFriend();
-                }
-            });
-        }
-        
-        channelListContent.addEventListener('click', (e) => {
-             const friendItem = e.target.closest('.friend-item[data-friend-id]');
-             if (friendItem) {
-                 renderDmView(friendItem.dataset.friendId, friendItem.dataset.friendName, friendItem.dataset.friendPhoto);
-             }
-        });
+    }
+    
+    if (deleteGroupButton) {
+        deleteGroupButton.addEventListener('click', async () => {
+            const groupId = editGroupModal.querySelector('#edit-group-id').value;
+            const groupName = editGroupModal.querySelector('#edit-group-name').value;
+            if (!groupId) return;
 
-        if (groupSettingsIcon) {
-            groupSettingsIcon.addEventListener('click', () => {
-                if (currentGroupData) {
-                    editGroupModal.querySelector('#edit-group-id').value = currentGroupData.details.id_grupo;
-                    editGroupModal.querySelector('#edit-group-name').value = currentGroupData.details.Nome;
-                    editGroupModal.querySelector('#edit-group-private').checked = currentGroupData.details.IsPrivate;
-                    openModal(editGroupModal);
-                }
-            });
-        }
-        
-        if (deleteGroupButton) {
-            deleteGroupButton.addEventListener('click', async () => {
-                const groupId = editGroupModal.querySelector('#edit-group-id').value;
-                const groupName = editGroupModal.querySelector('#edit-group-name').value;
-                if (!groupId) return;
-
-                if (confirm(`Tem a certeza de que deseja excluir o grupo "${groupName}"? Esta ação é irreversível.`)) {
-                    await handleAction(
-                        deleteGroupButton,
-                        `/groups/${groupId}`,
-                        'Excluindo...',
-                        'Excluir Grupo',
-                        null,
-                        'DELETE',
-                        true
-                    );
-                }
-            });
-        }
-
-        if (chatInput) {
-    chatInput.addEventListener('keydown', async (e) => {
-        if (e.key === 'Enter' && chatInput.value.trim() !== '') {
-            e.preventDefault();
-            const messageContent = chatInput.value.trim();
-            chatInput.value = '';
-
-            const body = { 
-                content: messageContent,
-                replyingToMessageId: replyingToMessageId // Envia o ID da resposta
-            };
-
-            // Resetar o estado de resposta
-            replyingToMessageId = null;
-            replyBar.style.display = 'none';
-            
-            let url;
-            if (currentChatId) {
-                url = `/groups/chats/${currentChatId}/messages`;
-            } else if (currentDmFriendId) {
-                url = `/friends/dm/${currentDmFriendId}/messages`;
-            } else {
-                return;
+            if (confirm(`Tem a certeza de que deseja excluir o grupo "${groupName}"? Esta ação é irreversível.`)) {
+                await handleAction(
+                    deleteGroupButton,
+                    `/groups/${groupId}`,
+                    'Excluindo...',
+                    'Excluir Grupo',
+                    null,
+                    'DELETE',
+                    true
+                );
             }
-            
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body) // Envia o corpo completo
-                });
-                if (!response.ok) throw new Error('Server error');
-            } catch (error) {
-                console.error('ERRO ao enviar mensagem:', error);
-                alert("Não foi possível enviar a mensagem.");
-                chatInput.value = messageContent; // Devolve o texto em caso de erro
+        });
+    }
+    
+    if (chatInput) {
+        chatInput.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter' && chatInput.value.trim() !== '') {
+                e.preventDefault();
+                const messageContent = chatInput.value.trim();
+                
+                const body = { 
+                    content: messageContent,
+                    replyingToMessageId: replyingToMessageId
+                };
+
+                chatInput.value = '';
+                replyingToMessageId = null;
+                if(replyBar) replyBar.style.display = 'none';
+                
+                let url;
+                if (currentChatId) url = `/groups/chats/${currentChatId}/messages`;
+                else if (currentDmFriendId) url = `/friends/dm/${currentDmFriendId}/messages`;
+                else return;
+                
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    if (!response.ok) throw new Error('Server error');
+                } catch (error) {
+                    console.error('ERRO ao enviar mensagem:', error);
+                    alert("Não foi possível enviar a mensagem.");
+                    chatInput.value = messageContent;
+                }
+            }
+        });
+    }
+    
+    if(createGroupForm) createGroupForm.addEventListener('submit', (e) => { e.preventDefault(); handleFormSubmit('/groups/criar', 'Erro ao criar grupo', () => window.location.reload(), e.target) });
+    if(editGroupForm) editGroupForm.addEventListener('submit', (e) => { e.preventDefault(); const id = e.target.querySelector('#edit-group-id').value; handleFormSubmit(`/groups/${id}/settings`, 'Erro ao editar', () => window.location.reload(), e.target) });
+    
+    document.body.addEventListener('click', async (e) => {
+        const button = e.target.closest('button');
+        if (!button) return;
+
+        if (button.classList.contains('join-btn')) {
+            const groupId = button.dataset.groupId;
+            handleAction(button, `/groups/${groupId}/join`, 'Entrando...', 'Entrar', null, 'POST', true);
+        }
+        else if (button.id === 'add-friend-submit') {
+            const input = document.getElementById('add-friend-input');
+            if (input && input.value.trim()) {
+                handleAction(button, '/friends/request', 'Enviando...', 'Enviar Pedido', { username: input.value.trim() }, 'POST');
+            }
+        }
+        else if (button.classList.contains('accept-btn') || button.classList.contains('reject-btn')) {
+            const requestItem = button.closest('.friend-request-item');
+            const requestId = requestItem?.dataset.requestId;
+            const action = button.classList.contains('accept-btn') ? 'aceite' : 'recusada';
+            if (requestId) {
+                handleAction(button, '/friends/respond', '...', '', { requestId, action }, 'POST', true);
+            }
+        }
+        else if (button.classList.contains('cancel-request-btn')) {
+            const requestItem = button.closest('.friend-request-item');
+            const requestId = requestItem?.dataset.requestId;
+            if (requestId) {
+                handleAction(button, '/friends/cancel', 'Cancelando...', '', { requestId }, 'POST', true);
             }
         }
     });
-}
-        
-        if(createGroupForm) createGroupForm.addEventListener('submit', (e) => { e.preventDefault(); handleFormSubmit('/groups/criar', 'Erro ao criar grupo', () => window.location.reload(), e.target) });
-        if(editGroupForm) editGroupForm.addEventListener('submit', (e) => { e.preventDefault(); const id = e.target.querySelector('#edit-group-id').value; handleFormSubmit(`/groups/${id}/settings`, 'Erro ao editar', () => window.location.reload(), e.target) });
-        
-        document.body.addEventListener('click', async (e) => {
-            const button = e.target.closest('button');
-            if (!button) return;
 
-            if (button.classList.contains('join-btn')) {
-                const groupId = button.dataset.groupId;
-                handleAction(button, `/groups/${groupId}/join`, 'Entrando...', 'Entrar', null, 'POST', true);
-            }
-            else if (button.id === 'add-friend-submit') {
-                const input = document.getElementById('add-friend-input');
-                if (input && input.value.trim()) {
-                    // Modificado para enviar o nome do usuário em vez de fazer outra busca
-                    handleAction(button, '/friends/request', 'Enviando...', 'Enviar Pedido', { username: input.value.trim() }, 'POST');
+    let searchTimeout;
+    if (searchGroupInput) {
+        searchGroupInput.addEventListener('input', e => {
+            clearTimeout(searchTimeout);
+            const query = e.target.value;
+            searchTimeout = setTimeout(async () => {
+                const searchUrl = `/groups/search?q=${encodeURIComponent(query)}`;
+                try {
+                    const response = await fetch(searchUrl);
+                    const results = await response.json();
+                    renderSearchResults(results, document.getElementById('search-group-results'), true);
+                } catch (err) {
+                    console.error('Erro na pesquisa de grupo:', err);
+                    const searchGroupResults = document.getElementById('search-group-results');
+                    if (searchGroupResults) searchGroupResults.innerHTML = '<p>Erro ao pesquisar.</p>';
                 }
-            }
-            else if (button.classList.contains('accept-btn') || button.classList.contains('reject-btn')) {
-                const requestItem = button.closest('.friend-request-item');
-                const requestId = requestItem?.dataset.requestId;
-                const action = button.classList.contains('accept-btn') ? 'aceite' : 'recusada';
-                if (requestId) {
-                    handleAction(button, '/friends/respond', '...', '', { requestId, action }, 'POST', true);
-                }
-            }
-            else if (button.classList.contains('cancel-request-btn')) {
-                const requestItem = button.closest('.friend-request-item');
-                const requestId = requestItem?.dataset.requestId;
-                if (requestId) {
-                    handleAction(button, '/friends/cancel', 'Cancelando...', '', { requestId }, 'POST', true);
-                }
-            }
+            }, 300);
         });
-
-        let searchTimeout;
-        if (searchGroupInput) {
-            searchGroupInput.addEventListener('input', e => {
-                clearTimeout(searchTimeout);
-                const query = e.target.value;
-                searchTimeout = setTimeout(async () => {
-                    const searchUrl = `/groups/search?q=${encodeURIComponent(query)}`;
-                    try {
-                        const response = await fetch(searchUrl);
-                        const results = await response.json();
-                        renderSearchResults(results, searchGroupResults, true);
-                    } catch (err) {
-                        console.error('Erro na pesquisa de grupo:', err);
-                        if (searchGroupResults) searchGroupResults.innerHTML = '<p>Erro ao pesquisar.</p>';
-                    }
-                }, 300);
-            });
-        }
     }
+}
 
     async function handleFormSubmit(url, errorMessage, onSuccess, formElement) {
         const formData = new FormData(formElement);

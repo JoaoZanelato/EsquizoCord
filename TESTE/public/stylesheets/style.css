@@ -285,38 +285,57 @@ body {
   gap: 1rem;
 }
 .message-item {
-  display: flex;
-  gap: 16px;
-  max-width: 75%;
+    display: flex;
+    gap: 16px;
+    max-width: 90%; /* Aumenta um pouco o espaço para mensagens */
+    align-items: flex-start; /* Alinha a imagem de perfil com o topo da mensagem */
 }
+
 .message-item img {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    flex-shrink: 0;
 }
+
 .message-content {
-  display: flex;
-  flex-direction: column;
+    display: flex;
+    flex-direction: column;
+    /* CORREÇÃO: Permite que o contêiner encolha e não transborde */
+    min-width: 0;
 }
+
 .author-name {
-  font-weight: bold;
-  color: var(--header-primary);
-  margin-bottom: 4px;
+    font-weight: bold;
+    color: var(--header-primary);
+    margin-bottom: 4px;
 }
+
 .message-text {
-  color: var(--text-normal);
-  line-height: 1.4;
-  word-wrap: break-word;
+    color: var(--text-normal);
+    line-height: 1.4;
+    
+    /* --- CORREÇÃO PRINCIPAL --- */
+    /* Garante que textos longos (como código ou links) quebrem a linha */
+    overflow-wrap: break-word;
+    word-wrap: break-word;     /* Fallback para navegadores antigos */
+    word-break: break-all;     /* Força a quebra em qualquer ponto se necessário */
 }
+
 .message-item.sent {
-  align-self: flex-end;
-  flex-direction: row-reverse;
+    align-self: flex-end;
+    flex-direction: row-reverse;
 }
+
 .message-item.sent .message-content {
-  background-color: var(--chat-bubble-sent);
-  padding: 8px 12px;
-  border-radius: 12px;
+    background-color: var(--chat-bubble-sent);
+    padding: 8px 12px;
+    border-radius: 12px 12px 0 12px;
+}
+
+/* Garante que o texto da mensagem enviada também quebre corretamente */
+.message-item.sent .message-text {
+    color: white; 
 }
 .chat-input-bar {
   padding: 0 16px 24px 16px;
