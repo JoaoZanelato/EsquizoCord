@@ -2,7 +2,16 @@ const express = require('express');
 const router = express.Router();
 const { encrypt, decrypt } = require('../utils/crypto-helper');
 
-// ROTA GET PARA BUSCAR MENSAGENS DIRETAS (COM RESPOSTA)
+// --- MIDDLEWARE DE AUTENTICAÇÃO ---
+function requireLogin(req, res, next) {
+    if (req.session && req.session.user) return next();
+    return res.status(401).json({ message: 'Acesso não autorizado' });
+}
+
+
+// --- ROTAS DE MENSAGEM DIRETA (DM) ---
+
+// ROTA GET PARA BUSCAR MENSAGENS DIRETAS
 router.get('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
     const friendId = req.params.friendId;
     const currentUserId = req.session.user.id_usuario;
@@ -37,7 +46,7 @@ router.get('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
             }
             return {
                 ...msg,
-                id_usuario: msg.id_remetente, // Unifica a chave para o frontend
+                id_usuario: msg.id_remetente,
                 Conteudo: decrypt(msg),
                 repliedTo: repliedTo
             };
@@ -49,7 +58,7 @@ router.get('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
     }
 });
 
-// ROTA POST PARA ENVIAR UMA MENSAGEM DIRETA (COM RESPOSTA)
+// ROTA POST PARA ENVIAR UMA MENSAGEM DIRETA
 router.post('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
     const friendId = req.params.friendId;
     const currentUserId = req.session.user.id_usuario;
@@ -97,57 +106,96 @@ router.post('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
     }
 });
 
+// ROTA DELETE PARA EXCLUIR UMA MENSAGEM DIRETA
+router.delete('/dm/messages/:messageId', requireLogin, async (req, res, next) => {
+    const { messageId } = req.params;
+    const currentUserId = req.session.user.id_usuario;
+    const pool = req.db;
+    const io = req.app.get('io');
 
-function requireLogin(req, res, next) {
-    if (req.session && req.session.user) return next();
-    return res.status(401).json({ message: 'Acesso não autorizado' });
-}
+    try {
+        const [msgResult] = await pool.query("SELECT id_remetente, id_destinatario FROM MensagensDiretas WHERE id_mensagem = ?", [messageId]);
+        if (msgResult.length === 0) {
+            return res.status(404).json({ message: "Mensagem não encontrada." });
+        }
+        const message = msgResult[0];
 
+        if (message.id_remetente !== currentUserId) {
+            return res.status(403).json({ message: "Você não pode apagar uma mensagem que não enviou." });
+        }
+
+        await pool.query("DELETE FROM MensagensDiretas WHERE id_mensagem = ?", [messageId]);
+
+        const ids = [message.id_remetente, message.id_destinatario].sort();
+        const roomName = `dm-${ids[0]}-${ids[1]}`;
+        io.to(roomName).emit('dm_message_deleted', { messageId: parseInt(messageId, 10) });
+
+        res.status(200).json({ message: "Mensagem excluída com sucesso." });
+    } catch (error) {
+        next(error);
+    }
+});
+
+
+// --- ROTAS DE AMIZADE ---
+
+// ROTA GET PARA PROCURAR USUÁRIOS
 router.get('/search', requireLogin, async (req, res, next) => {
     const { q } = req.query;
     const currentUserId = req.session.user.id_usuario;
     if (!q) return res.json([]);
     const pool = req.db;
     try {
-        const query = `SELECT id_usuario, Nome, FotoPerfil FROM Usuarios WHERE Nome LIKE ? AND id_usuario != ?`;
-        const [users] = await pool.query(query, [`%${q}%`, currentUserId]);
+        // Exclui o próprio usuário e amigos existentes dos resultados
+        const query = `
+            SELECT id_usuario, Nome, FotoPerfil FROM Usuarios 
+            WHERE Nome LIKE ? AND id_usuario != ?
+            AND id_usuario NOT IN (
+                SELECT id_utilizador_requisitado FROM Amizades WHERE id_utilizador_requisitante = ?
+                UNION
+                SELECT id_utilizador_requisitante FROM Amizades WHERE id_utilizador_requisitado = ?
+            )
+        `;
+        const [users] = await pool.query(query, [`%${q}%`, currentUserId, currentUserId, currentUserId]);
         res.json(users);
-    } catch (error) { next(error); }
+    } catch (error) { 
+        next(error); 
+    }
 });
 
+
+// ROTA POST PARA ENVIAR PEDIDO DE AMIZADE
 router.post('/request', requireLogin, async (req, res, next) => {
-    const { username } = req.body; // Alterado para receber username
+    const { requestedId } = req.body; // <-- ALTERAÇÃO: Recebe o ID do usuário
     const requesterId = req.session.user.id_usuario;
     const pool = req.db;
 
-    if (!username) {
-        return res.status(400).json({ message: "Nome de usuário é obrigatório." });
+    if (!requestedId) {
+        return res.status(400).json({ message: "ID do usuário é obrigatório." });
+    }
+
+    if (requesterId == requestedId) {
+        return res.status(400).json({ message: "Você não pode adicionar a si mesmo." });
     }
 
     try {
-        // Busca o ID do usuário pelo nome
-        const [users] = await pool.query("SELECT id_usuario FROM Usuarios WHERE Nome = ?", [username]);
-        if (users.length === 0) {
-            return res.status(404).json({ message: "Usuário não encontrado." });
-        }
-        const requestedId = users[0].id_usuario;
-
-        if (requesterId == requestedId) {
-            return res.status(400).json({ message: "Você não pode adicionar a si mesmo." });
-        }
-
         const [existing] = await pool.query(
             "SELECT * FROM Amizades WHERE (id_utilizador_requisitante = ? AND id_utilizador_requisitado = ?) OR (id_utilizador_requisitante = ? AND id_utilizador_requisitado = ?)",
             [requesterId, requestedId, requestedId, requesterId]
         );
+
         if (existing.length > 0) {
             return res.status(409).json({ message: "Já existe um pedido de amizade com este utilizador." });
         }
+
         await pool.query("INSERT INTO Amizades (id_utilizador_requisitante, id_utilizador_requisitado, status) VALUES (?, ?, 'pendente')", [requesterId, requestedId]);
         res.status(201).json({ message: "Pedido de amizade enviado!" });
-    } catch (error) { next(error); }
+    } catch (error) { 
+        next(error); 
+    }
 });
 
+// ROTA POST PARA RESPONDER A UM PEDIDO
 router.post('/respond', requireLogin, async (req, res, next) => {
     const { requestId, action } = req.body;
     const currentUserId = req.session.user.id_usuario;
@@ -165,6 +213,7 @@ router.post('/respond', requireLogin, async (req, res, next) => {
     } catch (error) { next(error); }
 });
 
+// ROTA POST PARA CANCELAR UM PEDIDO ENVIADO
 router.post('/cancel', requireLogin, async (req, res, next) => {
     const { requestId } = req.body;
     const currentUserId = req.session.user.id_usuario;
@@ -187,37 +236,4 @@ router.post('/cancel', requireLogin, async (req, res, next) => {
     }
 });
 
-// ROTA DELETE PARA EXCLUIR UMA MENSAGEM DIRETA (DM)
-router.delete('/dm/messages/:messageId', requireLogin, async (req, res, next) => {
-    const { messageId } = req.params;
-    const currentUserId = req.session.user.id_usuario;
-    const pool = req.db;
-    const io = req.app.get('io');
-
-    try {
-        // Buscar a mensagem para verificar o remetente
-        const [msgResult] = await pool.query("SELECT id_remetente, id_destinatario FROM MensagensDiretas WHERE id_mensagem = ?", [messageId]);
-        if (msgResult.length === 0) {
-            return res.status(404).json({ message: "Mensagem não encontrada." });
-        }
-        const message = msgResult[0];
-
-        // Apenas o remetente pode apagar a mensagem
-        if (message.id_remetente !== currentUserId) {
-            return res.status(403).json({ message: "Você não pode apagar uma mensagem que não enviou." });
-        }
-
-        // Excluir a mensagem do banco de dados
-        await pool.query("DELETE FROM MensagensDiretas WHERE id_mensagem = ?", [messageId]);
-
-        // Emitir evento para a sala de DM
-        const ids = [message.id_remetente, message.id_destinatario].sort();
-        const roomName = `dm-${ids[0]}-${ids[1]}`;
-        io.to(roomName).emit('dm_message_deleted', { messageId: parseInt(messageId, 10) });
-
-        res.status(200).json({ message: "Mensagem excluída com sucesso." });
-    } catch (error) {
-        next(error);
-    }
-});
 module.exports = router;

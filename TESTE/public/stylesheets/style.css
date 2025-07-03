@@ -831,4 +831,47 @@ body {
         left: 0;
         width: 85%; /* Ocupa a maior parte da tela */
     }
+}/* --- ESTILOS PARA A VISUALIZAÇÃO DE AMIGOS --- */
+.chat-area.friends-view-active .chat-messages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  color: var(--text-muted);
+  background-image: url('/images/logo-background.svg'); /* Opcional: um fundo legal */
+  background-size: 20%;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.chat-area.friends-view-active .chat-header {
+  border-bottom: none; /* Remove a linha do header nesta visualização */
+}
+
+/* Oculta a barra de input de texto quando não estiver em um chat */
+.chat-area.friends-view-active .chat-input-bar {
+  display: none;
+}
+
+/* --- ESTILO PARA O NOME DE USUÁRIO COM ID --- */
+.user-tag {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.search-result-name span {
+    font-weight: bold;
+}
+/* --- ESTILO PARA O NOME DE USUÁRIO COM ID (USER TAG) --- */
+.user-tag {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-left: 4px; /* Adiciona um pequeno espaço */
+  font-weight: normal;
+}
+
+.author-name, .search-result-name > span:first-child, .friend-item > span, .user-panel .username {
+    font-weight: bold;
 }

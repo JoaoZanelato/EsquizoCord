@@ -3,28 +3,36 @@ document.addEventListener("DOMContentLoaded", () => {
   const socket = io();
   const body = document.querySelector("body");
 
+  // --- FUNÇÃO PARA FORMATAR NOME DE USUÁRIO COM ID ---
+  const formatUserTag = (name, id) =>
+    `${name}<span class="user-tag">#${id}</span>`;
+
   // --- ESTADO GLOBAL ---
-  let currentGroupData = null;
-  let currentChatId = null;
-  let currentDmFriendId = null;
-  let currentDmFriendData = null;
-  let isCurrentUserAdmin = false;
-  let replyingToMessageId = null;
+  let currentGroupData = null,
+    currentChatId = null,
+    currentDmFriendId = null,
+    currentDmFriendData = null;
+  let isCurrentUserAdmin = false,
+    replyingToMessageId = null;
 
   // --- PARSE DE DADOS INICIAIS ---
   const parseJsonData = (attribute) => {
     const data = body.dataset[attribute];
     if (!data) return null;
     try {
-      return JSON.parse(data);
+      const decodedData = new DOMParser().parseFromString(data, "text/html")
+        .documentElement.textContent;
+      return JSON.parse(decodedData);
     } catch (e) {
       console.error(
         `Erro ao fazer o parse do atributo de dados: ${attribute}`,
+        data,
         e
       );
       return null;
     }
   };
+
   const currentUser = parseJsonData("user");
   const groups = parseJsonData("groups") || [];
   const friends = parseJsonData("friends") || [];
@@ -33,82 +41,70 @@ document.addEventListener("DOMContentLoaded", () => {
   const currentUserId = currentUser ? currentUser.id_usuario : null;
 
   // --- SELEÇÃO DE ELEMENTOS DO DOM ---
-  const createGroupModal = document.getElementById("create-group-modal");
-  const editGroupModal = document.getElementById("edit-group-modal");
-  const exploreModal = document.getElementById("explore-group-modal");
-  const createGroupForm = document.getElementById("create-group-form");
-  const editGroupForm = document.getElementById("edit-group-form");
+  const createGroupModal = document.getElementById("create-group-modal"),
+    editGroupModal = document.getElementById("edit-group-modal"),
+    exploreModal = document.getElementById("explore-group-modal");
+  const createGroupForm = document.getElementById("create-group-form"),
+    editGroupForm = document.getElementById("edit-group-form");
   const searchGroupInput = document.getElementById("search-group-input");
-  const searchGroupResults = document.getElementById("search-group-results");
-  const addServerButton = document.getElementById("add-server-button");
-  const exploreButton = document.getElementById("explore-button");
-  const homeButton = document.getElementById("home-button");
+  const addServerButton = document.getElementById("add-server-button"),
+    exploreButton = document.getElementById("explore-button"),
+    homeButton = document.getElementById("home-button");
   const friendsNavContainer = document.getElementById("friends-nav-container");
-  const groupNameHeader = document.getElementById("group-name-header");
-  const channelListContent = document.getElementById("channel-list-content");
-  const groupSettingsIcon = document.getElementById("group-settings-icon");
+  const groupNameHeader = document.getElementById("group-name-header"),
+    channelListContent = document.getElementById("channel-list-content"),
+    groupSettingsIcon = document.getElementById("group-settings-icon");
   const deleteGroupButton = document.getElementById("delete-group-btn");
-  const chatHeader = document.getElementById("chat-header");
-  const chatMessagesContainer = document.getElementById(
-    "chat-messages-container"
-  );
+  const chatArea = document.querySelector(".chat-area");
+  const chatHeader = document.getElementById("chat-header"),
+    chatMessagesContainer = document.getElementById("chat-messages-container");
   const chatInput = document.querySelector(".chat-input-bar input");
-  const chatInputContainer = document.querySelector(".chat-input-bar");
-  const replyBar = document.getElementById("reply-bar");
-  const replyBarText = document.getElementById("reply-bar-text");
-  const cancelReplyBtn = document.getElementById("cancel-reply-btn");
+  const replyBar = document.getElementById("reply-bar"),
+    replyBarText = document.getElementById("reply-bar-text"),
+    cancelReplyBtn = document.getElementById("cancel-reply-btn");
+  const serverList = document.querySelector(".server-list"),
+    channelList = document.querySelector(".channel-list");
+  const mobileMenuBtn = document.getElementById("mobile-menu-btn");
 
-  // --- LÓGICA DE SOCKET.IO (SIMPLIFICADA) ---
+  // --- LÓGICA DE SOCKET.IO ---
   socket.on("connect", () =>
     console.log("Conectado ao servidor de sockets com ID:", socket.id)
   );
-
-  socket.on("new_group_message", (message) => {
-    if (message.id_chat == currentChatId) {
-      renderMessage(message);
-    }
+  socket.on("new_group_message", (msg) => {
+    if (msg.id_chat == currentChatId) renderMessage(msg);
   });
-
   socket.on("group_message_deleted", (data) => {
     if (data.chatId == currentChatId) {
-      const messageElement = chatMessagesContainer.querySelector(
+      const el = chatMessagesContainer.querySelector(
         `[data-message-id='${data.messageId}']`
       );
-      if (messageElement) {
-        messageElement.remove();
-      }
+      if (el) el.remove();
     }
   });
-
   socket.on("dm_message_deleted", (data) => {
-    // Verifica se a DM ativa corresponde à mensagem deletada
     if (currentDmFriendId) {
-      const messageElement = chatMessagesContainer.querySelector(
+      const el = chatMessagesContainer.querySelector(
         `[data-message-id='${data.messageId}']`
       );
-      if (messageElement) {
-        messageElement.remove();
-      }
+      if (el) el.remove();
     }
   });
-
-  socket.on("new_dm", (message) => {
+  socket.on("new_dm", (msg) => {
     if (
       currentDmFriendData &&
-      ((message.id_remetente == currentDmFriendId &&
-        message.id_destinatario == currentUserId) ||
-        (message.id_destinatario == currentDmFriendId &&
-          message.id_remetente == currentUserId))
+      ((msg.id_remetente == currentDmFriendId &&
+        msg.id_destinatario == currentUserId) ||
+        (msg.id_destinatario == currentDmFriendId &&
+          msg.id_remetente == currentUserId))
     ) {
       renderMessage({
-        ...message,
-        id_usuario: message.id_remetente,
+        ...msg,
         autorNome:
-          message.id_remetente === currentUserId
+          msg.id_remetente === currentUserId
             ? currentUser.Nome
             : currentDmFriendData.nome,
         autorFoto:
-          message.id_remetente === currentUserId
+          msg.id_remetente === currentUserId
             ? currentUser.FotoPerfil
             : currentDmFriendData.foto,
       });
@@ -123,61 +119,44 @@ document.addEventListener("DOMContentLoaded", () => {
     if (modal) modal.style.display = "none";
   }
 
-  // Em public/js/dashboard.js, substitua a função renderMessage
   function renderMessage(message) {
     if (!chatMessagesContainer) return;
     const messageItem = document.createElement("div");
     messageItem.classList.add("message-item");
     messageItem.dataset.messageId = message.id_mensagem;
-    messageItem.dataset.authorName = message.autorNome; // Guarda o nome do autor
-    messageItem.dataset.messageContent = message.Conteudo; // Guarda o conteúdo
+    messageItem.dataset.authorName = message.autorNome;
+    messageItem.dataset.authorId = message.id_usuario;
+    messageItem.dataset.messageContent = message.Conteudo;
 
     const isSentByMe = message.id_usuario === currentUserId;
     if (isSentByMe) messageItem.classList.add("sent");
 
     const canDelete = isSentByMe || (currentGroupData && isCurrentUserAdmin);
+    const actionsHTML = `<div class="message-actions"><i class="fas fa-reply reply-message-btn" title="Responder"></i>${
+      canDelete
+        ? `<i class="fas fa-trash delete-message-btn" title="Excluir mensagem"></i>`
+        : ""
+    }</div>`;
 
-    // Mostra ícones de ação (resposta e exclusão)
-    const actionsHTML = `
-        <div class="message-actions">
-            <i class="fas fa-reply reply-message-btn" title="Responder"></i>
-            ${
-              canDelete
-                ? `<i class="fas fa-trash delete-message-btn" title="Excluir mensagem"></i>`
-                : ""
-            }
-        </div>`;
-
-    // Cria o bloco de citação se for uma resposta
     let replyHTML = "";
     if (message.repliedTo && message.repliedTo.Conteudo) {
       const sanitizedRepliedContent = DOMPurify.sanitize(
         message.repliedTo.Conteudo
       );
-      replyHTML = `
-            <div class="reply-context">
-                <span class="reply-author">${message.repliedTo.autorNome}</span>
-                <p class="reply-content">${sanitizedRepliedContent}</p>
-            </div>`;
+      const replyAuthorTag = formatUserTag(
+        message.repliedTo.autorNome,
+        message.repliedTo.autorId
+      );
+      replyHTML = `<div class="reply-context"><span class="reply-author">${replyAuthorTag}</span><p class="reply-content">${sanitizedRepliedContent}</p></div>`;
     }
 
+    const authorTag = formatUserTag(message.autorNome, message.id_usuario);
     const sanitizedContent = DOMPurify.sanitize(message.Conteudo);
-
-    messageItem.innerHTML = `
-        <img src="${message.autorFoto || "/images/logo.png"}" alt="${
-      message.autorNome
-    }">
-        <div class="message-content">
-            ${replyHTML}
-            ${
-              !isSentByMe
-                ? `<span class="author-name">${message.autorNome}</span>`
-                : ""
-            }
-            <p class="message-text">${sanitizedContent}</p>
-        </div>
-        ${actionsHTML}`;
-
+    messageItem.innerHTML = `<img src="${
+      message.autorFoto || "/images/logo.png"
+    }" alt="${message.autorNome}"><div class="message-content">${replyHTML}${
+      !isSentByMe ? `<span class="author-name">${authorTag}</span>` : ""
+    }<p class="message-text">${sanitizedContent}</p></div>${actionsHTML}`;
     chatMessagesContainer.appendChild(messageItem);
     chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
   }
@@ -189,14 +168,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await fetch(url);
       if (!response.ok) throw new Error("Falha ao buscar mensagens.");
       const messages = await response.json();
-
       chatMessagesContainer.innerHTML = "";
-      if (messages.length === 0) {
-        chatMessagesContainer.innerHTML =
-          "<p>Nenhuma mensagem ainda. Seja o primeiro a dizer olá!</p>";
-      } else {
-        messages.forEach(renderMessage);
-      }
+      messages.length === 0
+        ? (chatMessagesContainer.innerHTML =
+            "<p>Nenhuma mensagem ainda. Seja o primeiro a dizer olá!</p>")
+        : messages.forEach(renderMessage);
     } catch (error) {
       console.error("Erro ao carregar mensagens:", error);
       chatMessagesContainer.innerHTML =
@@ -209,17 +185,15 @@ document.addEventListener("DOMContentLoaded", () => {
     currentChatId = null;
     currentDmFriendId = null;
     currentDmFriendData = null;
+    if (chatArea) chatArea.classList.add("friends-view-active");
     if (groupSettingsIcon) groupSettingsIcon.style.display = "none";
     if (friendsNavContainer) friendsNavContainer.style.display = "flex";
     if (groupNameHeader) groupNameHeader.textContent = "Amigos";
-    if (chatHeader) chatHeader.innerHTML = `<h3>Mensagens Diretas</h3>`;
-    if (chatInput) {
-      chatInput.placeholder = "Selecione um amigo para conversar...";
-      chatInput.disabled = true;
-    }
+    if (chatHeader)
+      chatHeader.innerHTML = `<h3><i class="fas fa-user-friends"></i> Amigos</h3>`;
     if (chatMessagesContainer)
       chatMessagesContainer.innerHTML =
-        "<p>Selecione um amigo para começar a conversar.</p>";
+        "<h2>Selecione um amigo para começar a conversar.</h2>";
     document
       .querySelectorAll(".friends-nav-btn")
       .forEach((btn) => btn.classList.remove("active"));
@@ -233,79 +207,75 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!channelListContent) return;
     channelListContent.innerHTML =
       '<div class="channel-list-header">Amigos</div>';
-    if (friends.length > 0) {
-      friends.forEach((friend) => {
-        const friendDiv = document.createElement("div");
-        friendDiv.className = "friend-item";
-        friendDiv.dataset.friendId = friend.id_usuario;
-        friendDiv.dataset.friendName = friend.Nome;
-        friendDiv.dataset.friendPhoto = friend.FotoPerfil || "/images/logo.png";
-        friendDiv.innerHTML = `<img src="${
-          friend.FotoPerfil || "/images/logo.png"
-        }"><span>${friend.Nome}</span>`;
-        channelListContent.appendChild(friendDiv);
-      });
-    } else {
-      channelListContent.innerHTML +=
-        '<p style="padding: 8px; color: var(--text-muted);">Sua lista de amigos está vazia.</p>';
-    }
+    friends.length > 0
+      ? friends.forEach((friend) => {
+          const friendDiv = document.createElement("div");
+          friendDiv.className = "friend-item";
+          friendDiv.dataset.friendId = friend.id_usuario;
+          friendDiv.dataset.friendName = friend.Nome;
+          friendDiv.dataset.friendPhoto =
+            friend.FotoPerfil || "/images/logo.png";
+          friendDiv.innerHTML = `<img src="${
+            friend.FotoPerfil || "/images/logo.png"
+          }"><span>${formatUserTag(friend.Nome, friend.id_usuario)}</span>`;
+          channelListContent.appendChild(friendDiv);
+        })
+      : (channelListContent.innerHTML +=
+          '<p style="padding: 8px; color: var(--text-muted);">Sua lista de amigos está vazia.</p>');
   }
 
   function renderPendingRequests() {
     if (!channelListContent) return;
-    channelListContent.innerHTML = "";
-    channelListContent.innerHTML +=
+    channelListContent.innerHTML =
       '<div class="channel-list-header">Pedidos Recebidos</div>';
-    if (pendingRequests && pendingRequests.length > 0) {
-      pendingRequests.forEach((req) => {
-        const reqDiv = document.createElement("div");
-        reqDiv.className = "friend-request-item";
-        reqDiv.dataset.requestId = req.id_amizade;
-        reqDiv.innerHTML = `<div class="friend-item" style="flex-grow: 1;"> <img src="${
-          req.FotoPerfil || "/images/logo.png"
-        }"> <span>${
-          req.Nome
-        }</span> </div> <div class="request-actions"> <button class="accept-btn" title="Aceitar"><i class="fas fa-check-circle"></i></button> <button class="reject-btn" title="Recusar"><i class="fas fa-times-circle"></i></button> </div>`;
-        channelListContent.appendChild(reqDiv);
-      });
-    } else {
-      channelListContent.innerHTML +=
-        '<p style="padding: 8px; color: var(--text-muted);">Nenhum pedido recebido.</p>';
-    }
+    pendingRequests && pendingRequests.length > 0
+      ? pendingRequests.forEach((req) => {
+          const reqDiv = document.createElement("div");
+          reqDiv.className = "friend-request-item";
+          reqDiv.dataset.requestId = req.id_amizade;
+          reqDiv.innerHTML = `<div class="friend-item" style="flex-grow: 1;"><img src="${
+            req.FotoPerfil || "/images/logo.png"
+          }"><span>${formatUserTag(
+            req.Nome,
+            req.id_usuario
+          )}</span></div><div class="request-actions"><button class="accept-btn" title="Aceitar"><i class="fas fa-check-circle"></i></button><button class="reject-btn" title="Recusar"><i class="fas fa-times-circle"></i></button></div>`;
+          channelListContent.appendChild(reqDiv);
+        })
+      : (channelListContent.innerHTML +=
+          '<p style="padding: 8px; color: var(--text-muted);">Nenhum pedido recebido.</p>');
+
     channelListContent.innerHTML +=
       '<div class="channel-list-header" style="margin-top: 20px;">Pedidos Enviados</div>';
-    if (sentRequests && sentRequests.length > 0) {
-      sentRequests.forEach((req) => {
-        const reqDiv = document.createElement("div");
-        reqDiv.className = "friend-request-item";
-        reqDiv.dataset.requestId = req.id_amizade;
-        reqDiv.innerHTML = `<div class="friend-item" style="flex-grow: 1;"> <img src="${
-          req.FotoPerfil || "/images/logo.png"
-        }"> <span>${
-          req.Nome
-        }</span> </div> <div class="request-actions"> <button class="cancel-request-btn" title="Cancelar Pedido"><i class="fas fa-trash"></i></button> </div>`;
-        channelListContent.appendChild(reqDiv);
-      });
-    } else {
-      channelListContent.innerHTML +=
-        '<p style="padding: 8px; color: var(--text-muted);">Nenhum pedido enviado.</p>';
-    }
+    sentRequests && sentRequests.length > 0
+      ? sentRequests.forEach((req) => {
+          const reqDiv = document.createElement("div");
+          reqDiv.className = "friend-request-item";
+          reqDiv.dataset.requestId = req.id_amizade;
+          reqDiv.innerHTML = `<div class="friend-item" style="flex-grow: 1;"><img src="${
+            req.FotoPerfil || "/images/logo.png"
+          }"><span>${formatUserTag(
+            req.Nome,
+            req.id_usuario
+          )}</span></div><div class="request-actions"><button class="cancel-request-btn" title="Cancelar Pedido"><i class="fas fa-trash"></i></button></div>`;
+          channelListContent.appendChild(reqDiv);
+        })
+      : (channelListContent.innerHTML +=
+          '<p style="padding: 8px; color: var(--text-muted);">Nenhum pedido enviado.</p>');
   }
 
   function renderAddFriend() {
     if (!channelListContent) return;
-    channelListContent.innerHTML = `<div class="add-friend-container"> <div class="channel-list-header">Adicionar Amigo</div> <p>Pode adicionar um amigo com o seu nome de utilizador.</p> <div class="add-friend-input"> <input type="text" id="add-friend-input" placeholder="Digite o nome do utilizador..."> <button id="add-friend-submit" class="submit-btn">Enviar Pedido</button> </div> <div id="add-friend-results" style="margin-top: 10px;"></div> </div>`;
+    channelListContent.innerHTML = `<div class="add-friend-container"><div class="channel-list-header">Adicionar Amigo</div><p>Procure por um amigo com o seu nome de utilizador.</p><div class="add-friend-input"><input type="search" id="search-friend-input" placeholder="Digite o nome para buscar..."></div><div id="add-friend-results" class="search-results-container" style="margin-top: 10px;"><p style="padding: 8px; color: var(--text-muted);">Digite para buscar usuários.</p></div></div>`;
   }
 
   async function renderGroupView(groupId) {
+    if (chatArea) chatArea.classList.remove("friends-view-active");
     try {
       const response = await fetch(`/groups/${groupId}/details`);
       if (!response.ok) throw new Error("Falha ao buscar detalhes do grupo.");
-
       const data = await response.json();
       currentGroupData = data;
       currentDmFriendId = null;
-
       if (friendsNavContainer) friendsNavContainer.style.display = "none";
       if (groupNameHeader) groupNameHeader.textContent = data.details.Nome;
       if (groupSettingsIcon)
@@ -344,7 +314,10 @@ document.addEventListener("DOMContentLoaded", () => {
         memberDiv.className = "friend-item";
         memberDiv.innerHTML = `<img src="${
           member.FotoPerfil || "/images/logo.png"
-        }" alt="${member.Nome}"><span>${member.Nome}</span>${
+        }" alt="${member.Nome}"><span>${formatUserTag(
+          member.Nome,
+          member.id_usuario
+        )}</span>${
           member.isAdmin
             ? '<i class="fas fa-crown admin-icon" title="Administrador"></i>'
             : ""
@@ -352,7 +325,7 @@ document.addEventListener("DOMContentLoaded", () => {
         channelListContent.appendChild(memberDiv);
       });
       isCurrentUserAdmin = data.members.some(
-        (member) => member.id_usuario === currentUserId && member.isAdmin
+        (m) => m.id_usuario === currentUserId && m.isAdmin
       );
     } catch (err) {
       console.error("Erro ao carregar grupo:", err);
@@ -360,14 +333,17 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderDmView(friendId, friendName, friendPhoto) {
+    if (chatArea) chatArea.classList.remove("friends-view-active");
     currentChatId = null;
     currentGroupData = null;
     currentDmFriendId = friendId;
     currentDmFriendData = { id: friendId, nome: friendName, foto: friendPhoto };
-
     socket.emit("join_dm_room", [currentUserId, friendId].sort().join("-"));
     if (chatHeader)
-      chatHeader.innerHTML = `<h3><img src="${friendPhoto}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 8px;">${friendName}</h3>`;
+      chatHeader.innerHTML = `<h3><img src="${friendPhoto}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 8px;">${formatUserTag(
+        friendName,
+        friendId
+      )}</h3>`;
     if (chatInput) {
       chatInput.placeholder = `Conversar com ${friendName}`;
       chatInput.disabled = false;
@@ -379,79 +355,47 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!container) return;
     container.innerHTML = "";
     if (results.length === 0) {
-      container.innerHTML = "<p>Nenhum resultado encontrado.</p>";
+      container.innerHTML =
+        "<p style='padding: 8px; color: var(--text-muted);'>Nenhum resultado encontrado.</p>";
       return;
     }
     results.forEach((item) => {
       const itemDiv = document.createElement("div");
       itemDiv.className = "search-result-item";
-      if (isGroupSearch) {
-        itemDiv.innerHTML = `<div class="search-result-info"> <img src="${
-          item.Foto || "/images/default-group-icon.png"
-        }" alt="${item.Nome}"> <div class="search-result-name"> <span>${
-          item.Nome
-        }</span> <span class="group-id-search">#${
-          item.id_grupo
-        }</span> </div> </div> <button class="join-btn" data-group-id="${
-          item.id_grupo
-        }">Entrar</button>`;
-      } else {
-        itemDiv.innerHTML = `<div class="search-result-info"> <img src="${
-          item.FotoPerfil || "/images/logo.png"
-        }" alt="${item.Nome}"> <div class="search-result-name"><span>${
-          item.Nome
-        }</span></div> </div> <button class="add-friend-btn" data-user-id="${
-          item.id_usuario
-        }">Adicionar Amigo</button>`;
-      }
+      itemDiv.innerHTML = isGroupSearch
+        ? `<div class="search-result-info"><img src="${
+            item.Foto || "/images/default-group-icon.png"
+          }" alt="${item.Nome}"><div class="search-result-name"><span>${
+            item.Nome
+          }</span><span class="group-id-search">#${
+            item.id_grupo
+          }</span></div></div><button class="join-btn" data-group-id="${
+            item.id_grupo
+          }">Entrar</button>`
+        : `<div class="search-result-info"><img src="${
+            item.FotoPerfil || "/images/logo.png"
+          }" alt="${item.Nome}"><div class="search-result-name">${formatUserTag(
+            item.Nome,
+            item.id_usuario
+          )}</div></div><button class="add-friend-btn" data-user-id="${
+            item.id_usuario
+          }">Adicionar</button>`;
       container.appendChild(itemDiv);
     });
   }
 
   // --- SETUP DE EVENT LISTENERS ---
   function setupEventListeners() {
-    // --- Seletores de Elementos (movidos para dentro para garantir que o DOM esteja pronto) ---
-    const createGroupModal = document.getElementById("create-group-modal");
-    const editGroupModal = document.getElementById("edit-group-modal");
-    const exploreModal = document.getElementById("explore-group-modal");
-    const addServerButton = document.getElementById("add-server-button");
-    const exploreButton = document.getElementById("explore-button");
-    const homeButton = document.getElementById("home-button");
-    const friendsNavContainer = document.getElementById(
-      "friends-nav-container"
-    );
-    const groupSettingsIcon = document.getElementById("group-settings-icon");
-    const deleteGroupButton = document.getElementById("delete-group-btn");
-    const chatHeader = document.getElementById("chat-header");
-    const chatMessagesContainer = document.getElementById(
-      "chat-messages-container"
-    );
-    const chatInput = document.querySelector(".chat-input-bar input");
-    const createGroupForm = document.getElementById("create-group-form");
-    const editGroupForm = document.getElementById("edit-group-form");
-    const searchGroupInput = document.getElementById("search-group-input");
-
-    // --- Seletores da funcionalidade de Resposta ---
-    const replyBar = document.getElementById("reply-bar");
-    const replyBarText = document.getElementById("reply-bar-text");
-    const cancelReplyBtn = document.getElementById("cancel-reply-btn");
-
-    // --- Lógica de Eventos ---
-
-    if (chatHeader) {
-      chatHeader.addEventListener("click", () => {
-        if (window.innerWidth <= 768) {
-          if (window.innerWidth <= 480) {
-            // Em celulares, o menu abre a lista de servidores
-            serverList.classList.toggle("open");
-          } else {
-            // Em tablets, o menu abre a lista de canais/amigos
-            channelList.classList.toggle("open");
-          }
-        }
+    if (mobileMenuBtn) {
+      mobileMenuBtn.addEventListener("click", () => {
+        channelList.classList.toggle("open");
       });
     }
-
+    serverList?.addEventListener("click", (e) => {
+      if (window.innerWidth <= 768) {
+        channelList.classList.remove("open");
+      }
+    });
     if (addServerButton)
       addServerButton.addEventListener("click", () =>
         openModal(createGroupModal)
@@ -462,7 +406,6 @@ document.addEventListener("DOMContentLoaded", () => {
         searchGroupInput?.dispatchEvent(new Event("input"));
       });
     }
-
     [createGroupModal, editGroupModal, exploreModal].forEach((modal) => {
       if (!modal) return;
       modal
@@ -472,8 +415,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (e.target === modal) closeModal(modal);
       });
     });
-
-    document.querySelector(".server-list")?.addEventListener("click", (e) => {
+    serverList?.addEventListener("click", (e) => {
       const serverIcon = e.target.closest(".server-icon[data-group-id]");
       if (serverIcon) {
         document
@@ -483,7 +425,6 @@ document.addEventListener("DOMContentLoaded", () => {
         renderGroupView(serverIcon.dataset.groupId);
       }
     });
-
     if (homeButton) {
       homeButton.addEventListener("click", () => {
         document
@@ -493,7 +434,6 @@ document.addEventListener("DOMContentLoaded", () => {
         renderFriendsView();
       });
     }
-
     if (friendsNavContainer) {
       friendsNavContainer.addEventListener("click", (e) => {
         if (e.target.tagName === "BUTTON") {
@@ -508,73 +448,74 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
     }
-
-    if (cancelReplyBtn) {
-      cancelReplyBtn.addEventListener("click", () => {
-        replyingToMessageId = null; // Limpa o ID da mensagem que estava sendo respondida
-        if (replyBar) {
-          replyBar.style.display = "none"; // Esconde a barra de resposta
+    if (channelListContent) {
+      channelListContent.addEventListener("click", (e) => {
+        const friendItem = e.target.closest(".friend-item[data-friend-id]");
+        if (friendItem) {
+          renderDmView(
+            friendItem.dataset.friendId,
+            friendItem.dataset.friendName,
+            friendItem.dataset.friendPhoto
+          );
+          if (window.innerWidth <= 768) {
+            channelList.classList.remove("open");
+          }
         }
       });
-    } else {
-      // Se o botão não for encontrado, isso aparecerá no console do navegador (F12)
-      console.error("Botão 'cancelReplyBtn' não encontrado no DOM.");
     }
-
-    // Listener unificado para cliques na área de mensagens (Responder e Excluir)
+    if (cancelReplyBtn) {
+      cancelReplyBtn.addEventListener("click", () => {
+        replyingToMessageId = null;
+        if (replyBar) replyBar.style.display = "none";
+      });
+    }
     if (chatMessagesContainer) {
       chatMessagesContainer.addEventListener("click", async (e) => {
         const target = e.target;
-
-        // --- Lógica para RESPONDER ---
         if (target.classList.contains("reply-message-btn")) {
           const messageItem = target.closest(".message-item");
           if (!messageItem) return;
-
           replyingToMessageId = messageItem.dataset.messageId;
-          const author = messageItem.dataset.authorName;
+          const author = messageItem.dataset.authorName,
+            authorId = messageItem.dataset.authorId;
           const content = messageItem.dataset.messageContent;
-
           if (replyBar && replyBarText) {
-            replyBarText.innerHTML = `Respondendo a <strong>${author}</strong>: ${content.substring(
-              0,
-              80
-            )}...`;
+            replyBarText.innerHTML = `Respondendo a <strong>${formatUserTag(
+              author,
+              authorId
+            )}</strong>: ${content.substring(0, 80)}...`;
             replyBar.style.display = "flex";
           }
           chatInput?.focus();
           return;
         }
-
-        // --- Lógica para EXCLUIR ---
         if (target.classList.contains("delete-message-btn")) {
-          // ... (o código de exclusão que já estava funcionando continua aqui)
           const messageItem = target.closest(".message-item");
           const messageId = messageItem ? messageItem.dataset.messageId : null;
-          if (!messageId) return;
-
-          if (confirm("Tem certeza de que deseja excluir esta mensagem?")) {
-            try {
-              let url;
-              if (currentChatId) url = `/groups/messages/${messageId}`;
-              else if (currentDmFriendId)
-                url = `/friends/dm/messages/${messageId}`;
-              else return;
-
-              const response = await fetch(url, { method: "DELETE" });
-              if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.message || "Falha ao excluir a mensagem.");
-              }
-            } catch (error) {
-              console.error("Erro ao excluir mensagem:", error);
-              alert(error.message);
+          if (
+            !messageId ||
+            !confirm("Tem certeza de que deseja excluir esta mensagem?")
+          )
+            return;
+          try {
+            let url = currentChatId
+              ? `/groups/messages/${messageId}`
+              : currentDmFriendId
+              ? `/friends/dm/messages/${messageId}`
+              : null;
+            if (!url) return;
+            const response = await fetch(url, { method: "DELETE" });
+            if (!response.ok) {
+              const err = await response.json();
+              throw new Error(err.message || "Falha ao excluir a mensagem.");
             }
+          } catch (error) {
+            console.error("Erro ao excluir mensagem:", error);
+            alert(error.message);
           }
         }
       });
     }
-
     if (groupSettingsIcon) {
       groupSettingsIcon.addEventListener("click", () => {
         if (currentGroupData) {
@@ -588,60 +529,53 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
     }
-
     if (deleteGroupButton) {
       deleteGroupButton.addEventListener("click", async () => {
         const groupId = editGroupModal.querySelector("#edit-group-id").value;
         const groupName =
           editGroupModal.querySelector("#edit-group-name").value;
-        if (!groupId) return;
-
         if (
-          confirm(
+          !groupId ||
+          !confirm(
             `Tem a certeza de que deseja excluir o grupo "${groupName}"? Esta ação é irreversível.`
           )
-        ) {
-          await handleAction(
-            deleteGroupButton,
-            `/groups/${groupId}`,
-            "Excluindo...",
-            "Excluir Grupo",
-            null,
-            "DELETE",
-            true
-          );
-        }
+        )
+          return;
+        await handleAction(
+          deleteGroupButton,
+          `/groups/${groupId}`,
+          "Excluindo...",
+          "Excluir Grupo",
+          null,
+          "DELETE",
+          true
+        );
       });
     }
-
     if (chatInput) {
       chatInput.addEventListener("keydown", async (e) => {
         if (e.key === "Enter" && chatInput.value.trim() !== "") {
           e.preventDefault();
           const messageContent = chatInput.value.trim();
-
           const body = {
             content: messageContent,
             replyingToMessageId: replyingToMessageId,
           };
-
           chatInput.value = "";
           replyingToMessageId = null;
           if (replyBar) replyBar.style.display = "none";
-
-          let url;
-          if (currentChatId) url = `/groups/chats/${currentChatId}/messages`;
-          else if (currentDmFriendId)
-            url = `/friends/dm/${currentDmFriendId}/messages`;
-          else return;
-
+          let url = currentChatId
+            ? `/groups/chats/${currentChatId}/messages`
+            : currentDmFriendId
+            ? `/friends/dm/${currentDmFriendId}/messages`
+            : null;
+          if (!url) return;
           try {
-            const response = await fetch(url, {
+            await fetch(url, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(body),
             });
-            if (!response.ok) throw new Error("Server error");
           } catch (error) {
             console.error("ERRO ao enviar mensagem:", error);
             alert("Não foi possível enviar a mensagem.");
@@ -650,7 +584,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
     }
-
     if (createGroupForm)
       createGroupForm.addEventListener("submit", (e) => {
         e.preventDefault();
@@ -676,7 +609,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.addEventListener("click", async (e) => {
       const button = e.target.closest("button");
       if (!button) return;
-
       if (button.classList.contains("join-btn")) {
         const groupId = button.dataset.groupId;
         handleAction(
@@ -688,18 +620,18 @@ document.addEventListener("DOMContentLoaded", () => {
           "POST",
           true
         );
-      } else if (button.id === "add-friend-submit") {
-        const input = document.getElementById("add-friend-input");
-        if (input && input.value.trim()) {
-          handleAction(
-            button,
-            "/friends/request",
-            "Enviando...",
-            "Enviar Pedido",
-            { username: input.value.trim() },
-            "POST"
-          );
-        }
+      } else if (button.classList.contains("add-friend-btn")) {
+        const userId = button.dataset.userId;
+        handleAction(
+          button,
+          "/friends/request",
+          "Enviando...",
+          "Adicionar",
+          { requestedId: userId },
+          "POST"
+        );
+        button.textContent = "Enviado";
+        button.disabled = true;
       } else if (
         button.classList.contains("accept-btn") ||
         button.classList.contains("reject-btn")
@@ -709,7 +641,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const action = button.classList.contains("accept-btn")
           ? "aceite"
           : "recusada";
-        if (requestId) {
+        if (requestId)
           handleAction(
             button,
             "/friends/respond",
@@ -719,11 +651,10 @@ document.addEventListener("DOMContentLoaded", () => {
             "POST",
             true
           );
-        }
       } else if (button.classList.contains("cancel-request-btn")) {
         const requestItem = button.closest(".friend-request-item");
         const requestId = requestItem?.dataset.requestId;
-        if (requestId) {
+        if (requestId)
           handleAction(
             button,
             "/friends/cancel",
@@ -733,36 +664,46 @@ document.addEventListener("DOMContentLoaded", () => {
             "POST",
             true
           );
-        }
       }
     });
 
     let searchTimeout;
-    if (searchGroupInput) {
-      searchGroupInput.addEventListener("input", (e) => {
+    document.body.addEventListener("input", (e) => {
+      const target = e.target;
+      if (
+        target.id === "search-group-input" ||
+        target.id === "search-friend-input"
+      ) {
         clearTimeout(searchTimeout);
-        const query = e.target.value;
+        const query = target.value;
+        const isGroupSearch = target.id === "search-group-input";
         searchTimeout = setTimeout(async () => {
-          const searchUrl = `/groups/search?q=${encodeURIComponent(query)}`;
+          if (!query.trim() && !isGroupSearch) {
+            const container = document.getElementById("add-friend-results");
+            if (container)
+              container.innerHTML =
+                "<p style='padding: 8px; color: var(--text-muted);'>Digite para buscar usuários.</p>";
+            return;
+          }
+          const searchUrl = isGroupSearch
+            ? `/groups/search?q=${encodeURIComponent(query)}`
+            : `/friends/search?q=${encodeURIComponent(query)}`;
+          const resultsContainer = document.getElementById(
+            isGroupSearch ? "search-group-results" : "add-friend-results"
+          );
+          if (!resultsContainer) return;
           try {
             const response = await fetch(searchUrl);
             const results = await response.json();
-            renderSearchResults(
-              results,
-              document.getElementById("search-group-results"),
-              true
-            );
+            renderSearchResults(results, resultsContainer, isGroupSearch);
           } catch (err) {
-            console.error("Erro na pesquisa de grupo:", err);
-            const searchGroupResults = document.getElementById(
-              "search-group-results"
-            );
-            if (searchGroupResults)
-              searchGroupResults.innerHTML = "<p>Erro ao pesquisar.</p>";
+            console.error("Erro na pesquisa:", err);
+            if (resultsContainer)
+              resultsContainer.innerHTML = "<p>Erro ao pesquisar.</p>";
           }
         }, 300);
-      });
-    }
+      }
+    });
   }
 
   async function handleFormSubmit(url, errorMessage, onSuccess, formElement) {
@@ -780,7 +721,6 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("Erro de rede.");
     }
   }
-
   async function handleAction(
     button,
     url,
@@ -794,7 +734,6 @@ document.addEventListener("DOMContentLoaded", () => {
     button.disabled = true;
     const originalText = button.textContent;
     if (button.tagName === "BUTTON") button.textContent = loadingText;
-
     try {
       const options = { method, headers: {} };
       if (body) {
@@ -802,25 +741,17 @@ document.addEventListener("DOMContentLoaded", () => {
         options.body = JSON.stringify(body);
       }
       const response = await fetch(url, options);
-
       if (
         response.status === 204 ||
         response.headers.get("content-length") === "0"
       ) {
-        if (reload) {
-          window.location.reload();
-        }
+        if (reload) window.location.reload();
         return;
       }
-
       const data = await response.json();
-
       if (response.ok) {
-        if (reload) {
-          window.location.reload();
-        } else if (data.message) {
-          alert(data.message);
-        }
+        if (reload) window.location.reload();
+        else if (data.message) alert(data.message);
       } else {
         throw new Error(data.message || "Erro desconhecido");
       }
@@ -838,8 +769,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function main() {
     renderFriendsView();
     setupEventListeners();
-    console.log("Dashboard inicializado.");
+    console.log("Dashboard inicializado com as novas melhorias.");
   }
-
   main();
 });

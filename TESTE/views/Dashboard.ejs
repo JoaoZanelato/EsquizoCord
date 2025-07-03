@@ -14,12 +14,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
   </head>
   <body
-    class="<%= user && user.id_tema ? 'theme-' + user.id_tema : 'theme-default' %>"
-    data-user="<%- JSON.stringify(user || null) %>"
-    data-groups="<%- JSON.stringify(groups || []) %>"
-    data-friends="<%- JSON.stringify(friends || []) %>"
-    data-pending-requests="<%- JSON.stringify(pendingRequests || []) %>"
-    data-sent-requests="<%- JSON.stringify(sentRequests || []) %>"
+    class='theme-<%= user.id_tema || 1 %>'
+    data-user='<%- JSON.stringify(user) %>' 
+    data-groups='<%- JSON.stringify(groups) %>' 
+    data-friends='<%- JSON.stringify(friends) %>' 
+    data-pending-requests='<%- JSON.stringify(pendingRequests) %>''
+    data-sent-requests='<%- JSON.stringify(sentRequests) %>'
   >
     <div class="dashboard-layout">
       <nav class="server-list">
@@ -95,13 +95,14 @@
           <!-- Conteúdo dinâmico aqui -->
         </div>
         <div class="user-panel">
-          <% if (user) { %>
           <img
             src="<%= user.FotoPerfil || '/images/logo.png' %>"
-            alt="Perfil"
+            alt="<%= user.Nome %>"
           />
-          <span class="username"><%= user.Nome %></span>
-          <% } %>
+          <div>
+            <span class="username"><%= user.Nome %></span
+            ><span class="user-tag">#<%= user.id_usuario %></span>
+          </div>
         </div>
       </aside>
       <main class="chat-area">
