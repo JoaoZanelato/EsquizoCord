@@ -63,7 +63,8 @@ router.get('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
 // ROTA POST PARA ENVIAR UMA MENSAGEM DIRETA
 router.post('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
     const friendId = req.params.friendId;
-    const currentUserId = req.session.user.id_usuario;
+    const currentUser = req.session.user; // Usar o objeto de usuário completo da sessão
+    const currentUserId = currentUser.id_usuario;
     const { content, replyingToMessageId } = req.body;
     const pool = req.db;
     const io = req.app.get('io');
@@ -80,16 +81,24 @@ router.post('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
             "INSERT INTO MensagensDiretas (id_remetente, id_destinatario, ConteudoCriptografado, Nonce, id_mensagem_respondida) VALUES (?, ?, ?, ?, ?)",
             [currentUserId, friendId, ciphertext, nonce, repliedToId]
         );
+
+        // --- CORREÇÃO E MELHORIA APLICADA AQUI ---
         const messageData = {
             id_mensagem: result.insertId,
             id_remetente: currentUserId,
             id_destinatario: parseInt(friendId, 10),
             Conteudo: content,
             DataHora: new Date(),
-            id_mensagem_respondida: repliedToId
+            id_mensagem_respondida: repliedToId,
+            // Adiciona os dados do autor diretamente no payload do WebSocket
+            autorNome: currentUser.Nome,
+            autorFoto: currentUser.FotoPerfil,
+            id_usuario: currentUserId // Garante consistência com o objeto de mensagem de grupo
         };
+        // -----------------------------------------
 
         if (repliedToId) {
+            // A query aqui já foi corrigida na sua solicitação anterior para incluir 'autorId'
             const [repliedMsgArr] = await pool.query("SELECT md.ConteudoCriptografado, md.Nonce, u.Nome as autorNome, u.id_usuario as autorId FROM MensagensDiretas md JOIN Usuarios u ON md.id_remetente = u.id_usuario WHERE md.id_mensagem = ?", [repliedToId]);
             if (repliedMsgArr.length > 0) {
                 messageData.repliedTo = {

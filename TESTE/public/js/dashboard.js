@@ -89,27 +89,20 @@ document.addEventListener("DOMContentLoaded", () => {
       if (el) el.remove();
     }
   });
-  socket.on("new_dm", (msg) => {
+ socket.on("new_dm", (msg) => {
+    // A condição verifica se a mensagem pertence à conversa ativa no momento.
     if (
-      currentDmFriendData &&
-      ((msg.id_remetente == currentDmFriendId &&
-        msg.id_destinatario == currentUserId) ||
-        (msg.id_destinatario == currentDmFriendId &&
-          msg.id_remetente == currentUserId))
+        currentDmFriendId &&
+        ((msg.id_remetente == currentDmFriendId && msg.id_destinatario == currentUserId) ||
+        (msg.id_destinatario == currentDmFriendId && msg.id_remetente == currentUserId))
     ) {
-      renderMessage({
-        ...msg,
-        autorNome:
-          msg.id_remetente === currentUserId
-            ? currentUser.Nome
-            : currentDmFriendData.nome,
-        autorFoto:
-          msg.id_remetente === currentUserId
-            ? currentUser.FotoPerfil
-            : currentDmFriendData.foto,
-      });
+        // --- MELHORIA APLICADA AQUI ---
+        // A função renderMessage agora recebe o objeto 'msg' diretamente.
+        // O objeto já conterá 'autorNome' e 'autorFoto' vindos do servidor.
+        renderMessage(msg);
+        // --------------------------------
     }
-  });
+});
 
   // --- FUNÇÕES DE RENDERIZAÇÃO E UI ---
   function openModal(modal) {
@@ -332,13 +325,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function renderDmView(friendId, friendName, friendPhoto) {
+ function renderDmView(friendId, friendName, friendPhoto) {
     if (chatArea) chatArea.classList.remove("friends-view-active");
     currentChatId = null;
     currentGroupData = null;
     currentDmFriendId = friendId;
     currentDmFriendData = { id: friendId, nome: friendName, foto: friendPhoto };
-    socket.emit("join_dm_room", [currentUserId, friendId].sort().join("-"));
+
+    // --- CORREÇÃO APLICADA AQUI ---
+    // Adiciona o prefixo "dm-" para corresponder ao nome da sala no servidor.
+    const roomName = `dm-${[currentUserId, friendId].sort().join("-")}`;
+    socket.emit("join_dm_room", roomName);
+    // --------------------------------
+
     if (chatHeader)
       chatHeader.innerHTML = `<h3><img src="${friendPhoto}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 8px;">${formatUserTag(
         friendName,
@@ -349,7 +348,7 @@ document.addEventListener("DOMContentLoaded", () => {
       chatInput.disabled = false;
     }
     loadAndRenderMessages(`/friends/dm/${friendId}/messages`);
-  }
+}
 
   function renderSearchResults(results, container, isGroupSearch) {
     if (!container) return;
