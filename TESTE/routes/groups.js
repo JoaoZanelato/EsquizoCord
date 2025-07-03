@@ -42,7 +42,7 @@ async function isGroupCreator(req, res, next) {
 // ROTA POST PARA ENVIAR E GUARDAR UMA NOVA MENSAGEM (COM RESPOSTA)
 router.post('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
     const { chatId } = req.params;
-    const { content, replyingToMessageId } = req.body; // Pega o ID da mensagem respondida
+    const { content, replyingToMessageId } = req.body;
     const user = req.session.user;
     const pool = req.db;
     const io = req.app.get('io');
@@ -73,10 +73,12 @@ router.post('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
         };
         
         if (repliedToId) {
-            const [repliedMsgArr] = await pool.query("SELECT m.ConteudoCriptografado, m.Nonce, u.Nome as autorNome FROM Mensagens m JOIN Usuarios u ON m.id_usuario = u.id_usuario WHERE m.id_mensagem = ?", [repliedToId]);
+            // CORREÇÃO AQUI: Adicionado 'u.id_usuario as autorId' à query
+            const [repliedMsgArr] = await pool.query("SELECT m.ConteudoCriptografado, m.Nonce, u.Nome as autorNome, u.id_usuario as autorId FROM Mensagens m JOIN Usuarios u ON m.id_usuario = u.id_usuario WHERE m.id_mensagem = ?", [repliedToId]);
             if(repliedMsgArr.length > 0) {
                  messageData.repliedTo = {
                     autorNome: repliedMsgArr[0].autorNome,
+                    autorId: repliedMsgArr[0].autorId, // E adicionado aqui
                     Conteudo: decrypt(repliedMsgArr[0])
                  }
             }
@@ -141,6 +143,7 @@ router.get('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
     const { chatId } = req.params;
     const pool = req.db;
     try {
+        // CORREÇÃO AQUI: Adicionado 'replied_u.id_usuario as repliedAuthorId' à query
         const query = `
             SELECT 
                 m.id_mensagem, m.ConteudoCriptografado, m.Nonce, m.DataHora, m.id_usuario, 
@@ -148,7 +151,8 @@ router.get('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
                 m.id_mensagem_respondida,
                 replied.ConteudoCriptografado as repliedContent, 
                 replied.Nonce as repliedNonce,
-                replied_u.Nome as repliedAuthorName
+                replied_u.Nome as repliedAuthorName,
+                replied_u.id_usuario as repliedAuthorId
             FROM Mensagens m
             JOIN Usuarios u ON m.id_usuario = u.id_usuario
             LEFT JOIN Mensagens replied ON m.id_mensagem_respondida = replied.id_mensagem
@@ -165,6 +169,7 @@ router.get('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
                 const repliedDecryptedContent = decrypt({ ConteudoCriptografado: msg.repliedContent, Nonce: msg.repliedNonce });
                 repliedTo = {
                     autorNome: msg.repliedAuthorName,
+                    autorId: msg.repliedAuthorId, // E adicionado aqui
                     Conteudo: repliedDecryptedContent
                 };
             }
@@ -258,33 +263,27 @@ router.delete('/messages/:messageId', requireLogin, async (req, res, next) => {
     const io = req.app.get('io');
 
     try {
-        // Primeiro, buscar a mensagem para obter o autor e o chat
         const [messageResult] = await pool.query("SELECT id_usuario, id_chat FROM Mensagens WHERE id_mensagem = ?", [messageId]);
         if (messageResult.length === 0) {
             return res.status(404).json({ message: "Mensagem não encontrada." });
         }
         const message = messageResult[0];
 
-        // Buscar o grupo a que o chat pertence
         const [chatResult] = await pool.query("SELECT id_grupo FROM Chats WHERE id_chat = ?", [message.id_chat]);
         if (chatResult.length === 0) {
             return res.status(404).json({ message: "Grupo não encontrado." });
         }
         const groupId = chatResult[0].id_grupo;
 
-        // Verificar se o usuário é um administrador do grupo
         const [adminResult] = await pool.query("SELECT id_usuario FROM Administradores WHERE id_grupo = ? AND id_usuario = ?", [groupId, userId]);
         const isUserAdmin = adminResult.length > 0;
 
-        // Permitir a exclusão se o usuário for o autor da mensagem ou um administrador
         if (message.id_usuario !== userId && !isUserAdmin) {
             return res.status(403).json({ message: "Você não tem permissão para excluir esta mensagem." });
         }
 
-        // Excluir a mensagem
         await pool.query("DELETE FROM Mensagens WHERE id_mensagem = ?", [messageId]);
 
-        // Emitir evento para todos no grupo
         const roomName = `group-${groupId}`;
         io.to(roomName).emit('group_message_deleted', { messageId: parseInt(messageId, 10), chatId: message.id_chat });
 
