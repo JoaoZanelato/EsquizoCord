@@ -720,16 +720,6 @@ body {
     font-size: 14px;
   }
 
-  /* Adiciona um ícone de "menu" para abrir o painel de canais */
-  .chat-header::before {
-    content: "\f0c9"; /* Código do ícone de menu do Font Awesome */
-    font-family: "Font Awesome 5 Free";
-    font-weight: 900;
-    cursor: pointer;
-    margin-right: 15px;
-    display: inline-block;
-  }
-
   .message-item {
     max-width: 90%;
   }
@@ -779,4 +769,66 @@ body {
   .chat-input-bar {
     padding: 0 10px 15px 10px;
   }
+}
+/* Esconde o botão do menu em telas grandes por padrão */
+.mobile-menu-btn {
+    display: none;
+}
+
+/* Telas de tablets e dispositivos menores (até 768px) */
+@media (max-width: 768px) {
+    .dashboard-layout {
+        overflow-x: hidden; /* Previne scroll horizontal acidental */
+    }
+
+    /* Mostra o botão do menu e o estiliza */
+    .mobile-menu-btn {
+        display: inline-block;
+        background: none;
+        border: none;
+        color: var(--header-primary);
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        margin-right: 15px;
+        line-height: 1; /* Alinha o ícone verticalmente */
+    }
+
+    .channel-list {
+        position: fixed; /* Usa 'fixed' para ficar sobre todo o conteúdo */
+        left: -100%;
+        top: 0;
+        height: 100%;
+        width: 280px; /* Largura do painel */
+        z-index: 1001; /* Garante que fique acima de outros elementos */
+        transition: left 0.3s ease-in-out;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+    }
+    
+    /* Classe para mostrar o painel */
+    .channel-list.open {
+        left: 0;
+    }
+}
+
+/* Telas de telemóveis (até 480px) */
+@media (max-width: 480px) {
+    .server-list {
+       position: fixed;
+       left: -100%;
+       height: 100%;
+       width: 72px;
+       z-index: 1002; /* Z-index maior para ficar sobre o painel de canais */
+       transition: left 0.3s ease-in-out;
+    }
+    
+    .server-list.open {
+        left: 0;
+    }
+
+    /* Em mobile, o painel de canais também desliza da esquerda */
+    .channel-list.open {
+        left: 0;
+        width: 85%; /* Ocupa a maior parte da tela */
+    }
 }
