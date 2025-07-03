@@ -1,100 +1,100 @@
 #!/usr/bin/env node
 
-// MODIFICAÇÃO: Importa o 'app' e o 'sessionMiddleware'
-const { app, sessionMiddleware } = require('../app'); 
+/**
+ * Módulos de dependência.
+ */
+const { app, sessionMiddleware } = require('../app'); // Importa app e sessionMiddleware
 const debug = require('debug')('teste:server');
 const http = require('http');
-const { Server } = require("socket.io");
-// MODIFICAÇÃO: Importa o pacote de ponte
-const sharedsession = require("express-socket.io-session");
+const { Server } = require("socket.io"); // Importa o Server do socket.io
 
+/**
+ * Obtém a porta do ambiente e armazena no Express.
+ */
 const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 
+/**
+ * Cria o servidor HTTP.
+ */
 const server = http.createServer(app);
 
-// --- INÍCIO DA CONFIGURAÇÃO DO SOCKET.IO ---
-const io = new Server(server, {
-  cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"]
-  }
+/**
+ * --- CORREÇÃO PRINCIPAL: INICIALIZAÇÃO E LÓGICA DO SOCKET.IO ---
+ */
+const io = new Server(server);
+
+// Faz com que o socket.io use o mesmo middleware de sessão do Express
+// Isso permite aceder aos dados da sessão (req.session.user) dentro dos eventos do socket
+io.use((socket, next) => {
+  sessionMiddleware(socket.request, {}, next);
 });
 
-// MODIFICAÇÃO: Conecta a sessão do Express com o Socket.IO
-io.use(sharedsession(sessionMiddleware, {
-    autoSave: true
-}));
+// Define o que acontece quando um novo cliente se conecta
+io.on('connection', (socket) => {
+  console.log(`Socket conectado: ${socket.id}`);
+  
+  // Associa o ID do usuário ao socket para referência futura, se necessário
+  const userId = socket.request.session.user ? socket.request.session.user.id_usuario : null;
+  if (userId) {
+    socket.join(`user-${userId}`); // Uma sala privada para cada usuário
+    console.log(`Usuário ${userId} entrou na sua sala pessoal.`);
+  }
 
+  // OUVINTE PARA ENTRAR EM SALAS DE GRUPO
+  socket.on('join_group_room', (groupId) => {
+    const roomName = `group-${groupId}`;
+    socket.join(roomName);
+    console.log(`Socket ${socket.id} (Usuário: ${userId}) entrou na sala do grupo: ${roomName}`);
+  });
+
+  // OUVINTE PARA ENTRAR EM SALAS DE DM (CONVERSA DIRETA)
+  socket.on('join_dm_room', (roomName) => {
+    socket.join(roomName);
+    console.log(`Socket ${socket.id} (Usuário: ${userId}) entrou na sala de DM: ${roomName}`);
+  });
+
+  // O que acontece quando o cliente se desconecta
+  socket.on('disconnect', () => {
+    console.log(`Socket desconectado: ${socket.id}`);
+  });
+});
+
+// Disponibiliza a instância 'io' para todas as rotas da aplicação
+// Isso permite que as rotas (como friends.js) emitam eventos
 app.set('io', io);
 
-const socketRooms = {};
 
-io.on('connection', (socket) => {
-  console.log('Um utilizador conectou-se:', socket.id);
-
-  socket.on('join_group_room', (groupId) => {
-    if (socketRooms[socket.id]) {
-      socket.leave(socketRooms[socket.id]);
-    }
-    const roomName = `group-${groupId}`;
-    socket.join(roomName);
-    socketRooms[socket.id] = roomName;
-    console.log(`Socket ${socket.id} entrou na sala de grupo: ${roomName}`);
-  });
-  
-  socket.on('leave_group_room', (groupId) => {
-    const roomName = `group-${groupId}`;
-    socket.leave(roomName);
-    if (socketRooms[socket.id] === roomName) {
-      delete socketRooms[socket.id];
-    }
-    console.log(`Socket ${socket.id} saiu da sala de grupo: ${roomName}`);
-  });
-
-  socket.on('join_dm_room', (friendId) => {
-    const currentUserId = socket.handshake.session.user.id_usuario;
-
-    if (socketRooms[socket.id]) {
-      socket.leave(socketRooms[socket.id]);
-    }
-    
-    const ids = [currentUserId, parseInt(friendId, 10)].sort();
-    const roomName = `dm-${ids[0]}-${ids[1]}`;
-
-    socket.join(roomName);
-    socketRooms[socket.id] = roomName;
-    console.log(`Socket ${socket.id} entrou na sala de DM: ${roomName}`);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Utilizador desconectou-se:', socket.id);
-    delete socketRooms[socket.id];
-  });
-});
-// --- FIM DA CONFIGURAÇÃO DO SOCKET.IO ---
-
+/**
+ * Servidor a escutar na porta fornecida, em todas as interfaces de rede.
+ */
 server.listen(port);
 server.on('error', onError);
 server.on('listening', onListening);
 
+/**
+ * Normaliza a porta para um número, string ou false.
+ */
 function normalizePort(val) {
   const port = parseInt(val, 10);
-  if (isNaN(port)) { return val; }
-  if (port >= 0) { return port; }
+  if (isNaN(port)) return val; // named pipe
+  if (port >= 0) return port; // port number
   return false;
 }
 
+/**
+ * Event listener para o evento "error" do servidor HTTP.
+ */
 function onError(error) {
-  if (error.syscall !== 'listen') { throw error; }
+  if (error.syscall !== 'listen') throw error;
   const bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
   switch (error.code) {
     case 'EACCES':
-      console.error(bind + ' requires elevated privileges');
+      console.error(bind + ' requer privilégios elevados');
       process.exit(1);
       break;
     case 'EADDRINUSE':
-      console.error(bind + ' is already in use');
+      console.error(bind + ' já está em uso');
       process.exit(1);
       break;
     default:
@@ -102,9 +102,12 @@ function onError(error) {
   }
 }
 
+/**
+ * Event listener para o evento "listening" do servidor HTTP.
+ */
 function onListening() {
   const addr = server.address();
   const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
-  debug('Listening on ' + bind);
-  console.log('Servidor e Socket.IO a postos na porta ' + port);
+  debug('A escutar em ' + bind);
+  console.log(`Servidor a correr em http://localhost:${port}`);
 }
