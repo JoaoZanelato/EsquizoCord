@@ -24,7 +24,8 @@ router.get('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
                 md.id_mensagem_respondida,
                 replied.ConteudoCriptografado as repliedContent,
                 replied.Nonce as repliedNonce,
-                replied_u.Nome as repliedAuthorName
+                replied_u.Nome as repliedAuthorName,
+                replied_u.id_usuario as repliedAuthorId
             FROM MensagensDiretas md
             JOIN Usuarios u ON md.id_remetente = u.id_usuario
             LEFT JOIN MensagensDiretas replied ON md.id_mensagem_respondida = replied.id_mensagem
@@ -41,6 +42,7 @@ router.get('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
                 const repliedDecryptedContent = decrypt({ ConteudoCriptografado: msg.repliedContent, Nonce: msg.repliedNonce });
                 repliedTo = {
                     autorNome: msg.repliedAuthorName,
+                    autorId: msg.repliedAuthorId,
                     Conteudo: repliedDecryptedContent
                 };
             }
@@ -88,10 +90,11 @@ router.post('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
         };
 
         if (repliedToId) {
-            const [repliedMsgArr] = await pool.query("SELECT md.ConteudoCriptografado, md.Nonce, u.Nome as autorNome FROM MensagensDiretas md JOIN Usuarios u ON md.id_remetente = u.id_usuario WHERE md.id_mensagem = ?", [repliedToId]);
+            const [repliedMsgArr] = await pool.query("SELECT md.ConteudoCriptografado, md.Nonce, u.Nome as autorNome, u.id_usuario as autorId FROM MensagensDiretas md JOIN Usuarios u ON md.id_remetente = u.id_usuario WHERE md.id_mensagem = ?", [repliedToId]);
             if (repliedMsgArr.length > 0) {
                 messageData.repliedTo = {
                     autorNome: repliedMsgArr[0].autorNome,
+                    autorId: repliedMsgArr[0].autorId,
                     Conteudo: decrypt(repliedMsgArr[0])
                 };
             }
