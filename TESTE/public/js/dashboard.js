@@ -38,6 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const friends = parseJsonData("friends") || [];
   const pendingRequests = parseJsonData("pendingRequests") || [];
   const sentRequests = parseJsonData("sentRequests") || [];
+  const onlineUserIds = new Set(parseJsonData("onlineUserIds") || []);
   const currentUserId = currentUser ? currentUser.id_usuario : null;
 
   // --- SELEÇÃO DE ELEMENTOS DO DOM ---
@@ -109,6 +110,16 @@ document.addEventListener("DOMContentLoaded", () => {
       // --------------------------------
     }
   });
+  
+  socket.on('user_online', ({ userId }) => {
+    onlineUserIds.add(userId);
+    updateUserStatus(userId, true);
+  });
+
+  socket.on('user_offline', ({ userId }) => {
+    onlineUserIds.delete(userId);
+    updateUserStatus(userId, false);
+  });
 
   // --- FUNÇÕES DE RENDERIZAÇÃO E UI ---
   function openModal(modal) {
@@ -116,6 +127,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function closeModal(modal) {
     if (modal) modal.style.display = "none";
+  }
+  
+  function updateUserStatus(userId, isOnline) {
+    const userElements = document.querySelectorAll(`.friend-item[data-friend-id="${userId}"]`);
+    userElements.forEach(el => {
+        const statusIndicator = el.querySelector('.status-indicator');
+        if (statusIndicator) {
+            statusIndicator.className = `status-indicator ${isOnline ? 'online' : 'offline'}`;
+        }
+    });
   }
 
   function renderMessage(message) {
@@ -227,6 +248,8 @@ document.addEventListener("DOMContentLoaded", () => {
         friendDiv.dataset.friendId = friend.id_usuario;
         friendDiv.dataset.friendName = friend.Nome;
         friendDiv.dataset.friendPhoto = friend.FotoPerfil || "/images/logo.png";
+        
+        const isOnline = onlineUserIds.has(friend.id_usuario);
 
         // Adiciona um ícone de robô se o amigo for a IA
         const nameHTML =
@@ -234,9 +257,12 @@ document.addEventListener("DOMContentLoaded", () => {
             ? `${friend.Nome} <i class="fas fa-robot" title="Inteligência Artificial" style="font-size: 12px; color: var(--text-muted);"></i>`
             : formatUserTag(friend.Nome, friend.id_usuario);
 
-        friendDiv.innerHTML = `<img src="${
-          friend.FotoPerfil || "/images/logo.png"
-        }"><span>${nameHTML}</span>`;
+        friendDiv.innerHTML = `
+          <div class="avatar-container">
+            <img src="${friend.FotoPerfil || "/images/logo.png"}">
+            <span class="status-indicator ${isOnline ? 'online' : 'offline'}"></span>
+          </div>
+          <span>${nameHTML}</span>`;
         channelListContent.appendChild(friendDiv);
       });
     } else {
@@ -338,6 +364,9 @@ document.addEventListener("DOMContentLoaded", () => {
       data.members.forEach((member) => {
         const memberDiv = document.createElement("div");
         memberDiv.className = "friend-item";
+        memberDiv.dataset.friendId = member.id_usuario;
+        
+        const isOnline = onlineUserIds.has(member.id_usuario);
 
         const memberNameHTML =
           member.id_usuario === AI_USER_ID
@@ -352,7 +381,12 @@ document.addEventListener("DOMContentLoaded", () => {
         // Agora, ele sempre usará a foto do perfil vinda do banco de dados para todos os membros, incluindo a IA.
         const memberPhoto = member.FotoPerfil || "/images/logo.png";
 
-        memberDiv.innerHTML = `<img src="${memberPhoto}" alt="${member.Nome}">${memberNameHTML}${adminIconHTML}`;
+        memberDiv.innerHTML = `
+            <div class="avatar-container">
+              <img src="${memberPhoto}" alt="${member.Nome}">
+              <span class="status-indicator ${isOnline ? 'online' : 'offline'}"></span>
+            </div>
+            ${memberNameHTML}${adminIconHTML}`;
 
         channelListContent.appendChild(memberDiv);
       });

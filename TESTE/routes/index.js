@@ -58,6 +58,7 @@ router.get('/dashboard', requireLogin, async (req, res, next) => {
         const pool = req.db;
         const user = req.session.user;
         const AI_USER_ID = 666; // ID da sua IA
+        const onlineUsers = req.app.get('onlineUsers') || new Set();
 
         // Buscar grupos do utilizador
         const [groups] = await pool.query(
@@ -88,7 +89,8 @@ router.get('/dashboard', requireLogin, async (req, res, next) => {
             groups: groups, 
             friends: friends, // A lista de amigos agora inclui a IA
             pendingRequests: pendingRequests,
-            sentRequests: sentRequests
+            sentRequests: sentRequests,
+            onlineUserIds: Array.from(onlineUsers) // Passa a lista de IDs de usuários online
         });
     } catch (error) { next(error); }
 });
@@ -408,4 +410,4 @@ router.post('/redefinir-senha', async (req, res, next) => {
     }
 });
 
-module.exports = router;""
+module.exports = router;

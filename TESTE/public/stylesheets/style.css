@@ -900,3 +900,31 @@ body {
 .author-name, .search-result-name > span:first-child, .friend-item > span, .user-panel .username {
     font-weight: bold;
 }
+.avatar-container {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.friend-item .avatar-container img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.status-indicator {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--background-secondary);
+}
+
+.status-indicator.online {
+  background-color: var(--green-accent);
+}
+
+.status-indicator.offline {
+  background-color: var(--text-muted);
+}

@@ -3,91 +3,119 @@
 /**
  * Módulos de dependência.
  */
-const { app, sessionMiddleware } = require('../app'); // Importa app e sessionMiddleware
+
+// Importa o app e o sessionMiddleware do arquivo app.js
+const { app, sessionMiddleware } = require('../app'); 
 const debug = require('debug')('teste:server');
 const http = require('http');
-const { Server } = require("socket.io"); // Importa o Server do socket.io
+const { Server } = require("socket.io");
 
 /**
- * Obtém a porta do ambiente e armazena no Express.
+ * Obtém a porta do ambiente e a armazena no Express.
  */
+
 const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 
 /**
  * Cria o servidor HTTP.
  */
+
 const server = http.createServer(app);
 
 /**
- * --- CORREÇÃO PRINCIPAL: INICIALIZAÇÃO E LÓGICA DO SOCKET.IO ---
+ * Configuração do Socket.IO
  */
 const io = new Server(server);
 
-// Faz com que o socket.io use o mesmo middleware de sessão do Express
-// Isso permite aceder aos dados da sessão (req.session.user) dentro dos eventos do socket
+// Permite que o Socket.IO acesse as informações de sessão do Express.
+// Isso é crucial para identificar o usuário conectado a um socket específico.
 io.use((socket, next) => {
   sessionMiddleware(socket.request, {}, next);
 });
 
-// Define o que acontece quando um novo cliente se conecta
+// Um Set para armazenar os IDs dos usuários que estão online.
+// Usar um Set é eficiente para adicionar e remover IDs únicos.
+const onlineUsers = new Set();
+
 io.on('connection', (socket) => {
-  console.log(`Socket conectado: ${socket.id}`);
-  
-  // Associa o ID do usuário ao socket para referência futura, se necessário
-  const userId = socket.request.session.user ? socket.request.session.user.id_usuario : null;
-  if (userId) {
-    socket.join(`user-${userId}`); // Uma sala privada para cada usuário
-    console.log(`Usuário ${userId} entrou na sua sala pessoal.`);
+  const session = socket.request.session;
+
+  // Verifica se o socket pertence a um usuário logado
+  if (session && session.user) {
+    const userId = session.user.id_usuario;
+    
+    // Adiciona o ID do usuário ao conjunto de usuários online
+    onlineUsers.add(userId);
+    console.log(`Usuário conectado: ${userId}. Total online: ${onlineUsers.size}`);
+    
+    // Notifica todos os outros clientes que este usuário ficou online
+    socket.broadcast.emit('user_online', { userId });
   }
 
-  // OUVINTE PARA ENTRAR EM SALAS DE GRUPO
-  socket.on('join_group_room', (groupId) => {
-    const roomName = `group-${groupId}`;
-    socket.join(roomName);
-    console.log(`Socket ${socket.id} (Usuário: ${userId}) entrou na sala do grupo: ${roomName}`);
-  });
-
-  // OUVINTE PARA ENTRAR EM SALAS DE DM (CONVERSA DIRETA)
-  socket.on('join_dm_room', (roomName) => {
-    socket.join(roomName);
-    console.log(`Socket ${socket.id} (Usuário: ${userId}) entrou na sala de DM: ${roomName}`);
-  });
-
-  // O que acontece quando o cliente se desconecta
+  // Evento disparado quando o cliente se desconecta
   socket.on('disconnect', () => {
-    console.log(`Socket desconectado: ${socket.id}`);
+    if (session && session.user) {
+      const userId = session.user.id_usuario;
+      
+      // Remove o ID do usuário do conjunto de usuários online
+      onlineUsers.delete(userId);
+      console.log(`Usuário desconectado: ${userId}. Total online: ${onlineUsers.size}`);
+
+      // Notifica todos os outros clientes que este usuário ficou offline
+      socket.broadcast.emit('user_offline', { userId });
+    }
   });
+
+  // Torna a lista de usuários online acessível globalmente no app Express
+  // para que as rotas possam saber quem está online ao renderizar as páginas.
+  app.set('onlineUsers', onlineUsers);
+  // Disponibiliza a instância do 'io' para as rotas, se necessário
+  app.set('io', io);
 });
 
-// Disponibiliza a instância 'io' para todas as rotas da aplicação
-// Isso permite que as rotas (como friends.js) emitam eventos
-app.set('io', io);
-
-
 /**
- * Servidor a escutar na porta fornecida, em todas as interfaces de rede.
+ * Escuta na porta fornecida, em todas as interfaces de rede.
  */
+
 server.listen(port);
 server.on('error', onError);
 server.on('listening', onListening);
 
 /**
- * Normaliza a porta para um número, string ou false.
+ * Normaliza uma porta para um número, string ou false.
  */
+
 function normalizePort(val) {
   const port = parseInt(val, 10);
-  if (isNaN(port)) return val; // named pipe
-  if (port >= 0) return port; // port number
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
   return false;
 }
 
 /**
- * Event listener para o evento "error" do servidor HTTP.
+ * Listener de evento para o evento "error" do servidor HTTP.
  */
+
 function onError(error) {
-  if (error.syscall !== 'listen') throw error;
-  const bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  const bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // Lida com erros específicos de escuta com mensagens amigáveis
   switch (error.code) {
     case 'EACCES':
       console.error(bind + ' requer privilégios elevados');
@@ -103,11 +131,13 @@ function onError(error) {
 }
 
 /**
- * Event listener para o evento "listening" do servidor HTTP.
+ * Listener de evento para o evento "listening" do servidor HTTP.
  */
+
 function onListening() {
   const addr = server.address();
-  const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
-  debug('A escutar em ' + bind);
-  console.log(`Servidor a correr em http://localhost:${port}`);
+  const bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
 }
