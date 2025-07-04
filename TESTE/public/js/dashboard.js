@@ -139,23 +139,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let replyHTML = "";
     if (message.repliedTo && message.repliedTo.Conteudo) {
-      const sanitizedRepliedContent = DOMPurify.sanitize(
-        message.repliedTo.Conteudo
-      );
+      // --- MODIFICAÇÃO AQUI ---
+      const parsedRepliedContent = marked.parse(message.repliedTo.Conteudo);
+      const sanitizedRepliedContent = DOMPurify.sanitize(parsedRepliedContent);
+      // --- FIM DA MODIFICAÇÃO ---
       const replyAuthorTag = formatUserTag(
         message.repliedTo.autorNome,
         message.repliedTo.autorId
       );
-      replyHTML = `<div class="reply-context"><span class="reply-author">${replyAuthorTag}</span><p class="reply-content">${sanitizedRepliedContent}</p></div>`;
+      // Alterado de <p> para <div> para melhor renderização do Markdown
+      replyHTML = `<div class="reply-context"><span class="reply-author">${replyAuthorTag}</span><div class="reply-content">${sanitizedRepliedContent}</div></div>`;
     }
 
     const authorTag = formatUserTag(message.autorNome, message.id_usuario);
-    const sanitizedContent = DOMPurify.sanitize(message.Conteudo);
+    // --- MODIFICAÇÃO AQUI ---
+    const parsedContent = marked.parse(message.Conteudo);
+    const sanitizedContent = DOMPurify.sanitize(parsedContent);
+    // --- FIM DA MODIFICAÇÃO ---
+
+    // Alterado de <p> para <div> para melhor renderização do Markdown
     messageItem.innerHTML = `<img src="${
       message.autorFoto || "/images/logo.png"
     }" alt="${message.autorNome}"><div class="message-content">${replyHTML}${
       !isSentByMe ? `<span class="author-name">${authorTag}</span>` : ""
-    }<p class="message-text">${sanitizedContent}</p></div>${actionsHTML}`;
+    }<div class="message-text">${sanitizedContent}</div></div>${actionsHTML}`;
     chatMessagesContainer.appendChild(messageItem);
     chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
   }
@@ -211,16 +218,8 @@ document.addEventListener("DOMContentLoaded", () => {
     channelListContent.innerHTML =
       '<div class="channel-list-header">Amigos</div>';
 
-    // ATUALIZAÇÃO: O ID da IA foi alterado para 666.
-    const iaFriendId = 666;
-    const iaDiv = document.createElement("div");
-    iaDiv.className = "friend-item";
-    iaDiv.dataset.friendId = iaFriendId;
-    iaDiv.dataset.friendName = "EsquizoIA";
-    iaDiv.dataset.friendPhoto = "/images/IA.png";
-    iaDiv.innerHTML = `<img src="/images/IA.png" alt="EsquizoIA"><span>EsquizoIA <i class= "fas fa-robot" title= "Inteligência Artificial" style="font-size: 12px; color: var(--text-muted);"></i></span>`;
-    channelListContent.appendChild(iaDiv);
-
+    // MODIFICADO: A IA agora é tratada como um amigo normal, vindo do backend.
+    // O bloco de código que criava a IA manualmente foi removido.
     if (friends.length > 0) {
       friends.forEach((friend) => {
         const friendDiv = document.createElement("div");
@@ -228,9 +227,16 @@ document.addEventListener("DOMContentLoaded", () => {
         friendDiv.dataset.friendId = friend.id_usuario;
         friendDiv.dataset.friendName = friend.Nome;
         friendDiv.dataset.friendPhoto = friend.FotoPerfil || "/images/logo.png";
+
+        // Adiciona um ícone de robô se o amigo for a IA
+        const nameHTML =
+          friend.id_usuario === AI_USER_ID
+            ? `${friend.Nome} <i class="fas fa-robot" title="Inteligência Artificial" style="font-size: 12px; color: var(--text-muted);"></i>`
+            : formatUserTag(friend.Nome, friend.id_usuario);
+
         friendDiv.innerHTML = `<img src="${
           friend.FotoPerfil || "/images/logo.png"
-        }"><span>${formatUserTag(friend.Nome, friend.id_usuario)}</span>`;
+        }"><span>${nameHTML}</span>`;
         channelListContent.appendChild(friendDiv);
       });
     } else {
@@ -342,10 +348,9 @@ document.addEventListener("DOMContentLoaded", () => {
           ? '<i class="fas fa-crown admin-icon" title="Administrador"></i>'
           : "";
 
-        const memberPhoto =
-          member.id_usuario === AI_USER_ID
-            ? "/images/IA.png" // Caminho para a imagem da IA
-            : member.FotoPerfil || "/images/logo.png"; // Lógica padrão para outros usuários
+        // --- MODIFICAÇÃO AQUI: Remove o caminho da imagem hardcoded ---
+        // Agora, ele sempre usará a foto do perfil vinda do banco de dados para todos os membros, incluindo a IA.
+        const memberPhoto = member.FotoPerfil || "/images/logo.png";
 
         memberDiv.innerHTML = `<img src="${memberPhoto}" alt="${member.Nome}">${memberNameHTML}${adminIconHTML}`;
 

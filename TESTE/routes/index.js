@@ -57,6 +57,7 @@ router.get('/dashboard', requireLogin, async (req, res, next) => {
     try {
         const pool = req.db;
         const user = req.session.user;
+        const AI_USER_ID = 666; // ID da sua IA
 
         // Buscar grupos do utilizador
         const [groups] = await pool.query(
@@ -64,15 +65,28 @@ router.get('/dashboard', requireLogin, async (req, res, next) => {
             [user.id_usuario]
         );
         
-        // Buscar amigos e pedidos
+        // Buscar amigos
         const [friends] = await pool.query("SELECT u.id_usuario, u.Nome, u.FotoPerfil FROM Usuarios u JOIN Amizades a ON (u.id_usuario = a.id_utilizador_requisitante OR u.id_usuario = a.id_utilizador_requisitado) WHERE (a.id_utilizador_requisitante = ? OR a.id_utilizador_requisitado = ?) AND a.status = 'aceite' AND u.id_usuario != ?", [user.id_usuario, user.id_usuario, user.id_usuario]);
+        
+        // --- ALTERAÇÃO INSERIDA ---
+        // Buscar dados da IA para adicioná-la à lista de amigos
+        const [aiUser] = await pool.query("SELECT id_usuario, Nome, FotoPerfil FROM Usuarios WHERE id_usuario = ?", [AI_USER_ID]);
+
+        // Adicionar a IA no início da lista de amigos se ela for encontrada
+        if (aiUser.length > 0) {
+            if (!friends.some(friend => friend.id_usuario === aiUser[0].id_usuario)) {
+                friends.unshift(aiUser[0]);
+            }
+        }
+        // --- FIM DA ALTERAÇÃO ---
+
         const [pendingRequests] = await pool.query("SELECT u.id_usuario, u.Nome, u.FotoPerfil, a.id_amizade FROM Usuarios u JOIN Amizades a ON u.id_usuario = a.id_utilizador_requisitante WHERE a.id_utilizador_requisitado = ? AND a.status = 'pendente'", [user.id_usuario]);
         const [sentRequests] = await pool.query("SELECT u.id_usuario, u.Nome, u.FotoPerfil, a.id_amizade FROM Usuarios u JOIN Amizades a ON u.id_usuario = a.id_utilizador_requisitado WHERE a.id_utilizador_requisitante = ? AND a.status = 'pendente'", [user.id_usuario]);
 
         res.render('Dashboard', { 
             user: user, 
             groups: groups, 
-            friends: friends,
+            friends: friends, // A lista de amigos agora inclui a IA
             pendingRequests: pendingRequests,
             sentRequests: sentRequests
         });
