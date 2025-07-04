@@ -9,7 +9,7 @@ async function getAiResponse(prompt) {
         const response = await axios.post(API_URL, {
             contents: [{
                 parts: [{
-                    text: `Você é uma IA chamada EsquizoIA em um chat chamado EsquizoCord. Responda de forma humorística e termine todas as frases com soluço. Pergunta do usuário: "${prompt}"`
+                    text: `Você é uma IA chamada EsquizoIA em um chat chamado EsquizoCord. Responda esquizofrenica, porém precisa e termine seu pensamento com uma risada maléfica. Pergunta do usuário: "${prompt}"`
                 }]
             }]
         })

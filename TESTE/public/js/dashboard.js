@@ -58,7 +58,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatArea = document.querySelector(".chat-area");
   const chatHeader = document.getElementById("chat-header"),
     chatMessagesContainer = document.getElementById("chat-messages-container");
-  const chatInput = document.querySelector(".chat-input-bar input");
+  // --- ALTERAÇÃO INSERIDA ---
+  const chatInputBar = document.querySelector(".chat-input-bar");
+  const chatInput = chatInputBar.querySelector("input");
+  // --- FIM DA ALTERAÇÃO ---
+  const AI_USER_ID = 666;
   const replyBar = document.getElementById("reply-bar"),
     replyBarText = document.getElementById("reply-bar-text"),
     cancelReplyBtn = document.getElementById("cancel-reply-btn");
@@ -89,20 +93,22 @@ document.addEventListener("DOMContentLoaded", () => {
       if (el) el.remove();
     }
   });
- socket.on("new_dm", (msg) => {
+  socket.on("new_dm", (msg) => {
     // A condição verifica se a mensagem pertence à conversa ativa no momento.
     if (
-        currentDmFriendId &&
-        ((msg.id_remetente == currentDmFriendId && msg.id_destinatario == currentUserId) ||
-        (msg.id_destinatario == currentDmFriendId && msg.id_remetente == currentUserId))
+      currentDmFriendId &&
+      ((msg.id_remetente == currentDmFriendId &&
+        msg.id_destinatario == currentUserId) ||
+        (msg.id_destinatario == currentDmFriendId &&
+          msg.id_remetente == currentUserId))
     ) {
-        // --- MELHORIA APLICADA AQUI ---
-        // A função renderMessage agora recebe o objeto 'msg' diretamente.
-        // O objeto já conterá 'autorNome' e 'autorFoto' vindos do servidor.
-        renderMessage(msg);
-        // --------------------------------
+      // --- MELHORIA APLICADA AQUI ---
+      // A função renderMessage agora recebe o objeto 'msg' diretamente.
+      // O objeto já conterá 'autorNome' e 'autorFoto' vindos do servidor.
+      renderMessage(msg);
+      // --------------------------------
     }
-});
+  });
 
   // --- FUNÇÕES DE RENDERIZAÇÃO E UI ---
   function openModal(modal) {
@@ -194,6 +200,10 @@ document.addEventListener("DOMContentLoaded", () => {
       .querySelector('.friends-nav-btn[data-tab="friends-list"]')
       ?.classList.add("active");
     renderFriendsList();
+    // --- ALTERAÇÃO INSERIDA ---
+    const mentionBtn = document.getElementById("mention-ai-btn");
+    if (mentionBtn) mentionBtn.style.display = "none";
+    // --- FIM DA ALTERAÇÃO ---
   }
 
   function renderFriendsList() {
@@ -203,35 +213,33 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ATUALIZAÇÃO: O ID da IA foi alterado para 666.
     const iaFriendId = 666;
-    const iaDiv = document.createElement('div');
+    const iaDiv = document.createElement("div");
     iaDiv.className = "friend-item";
     iaDiv.dataset.friendId = iaFriendId;
     iaDiv.dataset.friendName = "EsquizoIA";
-    iaDiv.dataset.friendPhoto = "/images/IA.webp";
-    iaDiv.innerHTML = `<img src="/images/IA.webp" alt="EsquizoIA"><span>EsquizoIA <i class= "fas fa-robot" title= "Inteligência Artificial" style="font-size: 12px; color: var(--text-muted);"></i></span>`;
+    iaDiv.dataset.friendPhoto = "/images/IA.png";
+    iaDiv.innerHTML = `<img src="/images/IA.png" alt="EsquizoIA"><span>EsquizoIA <i class= "fas fa-robot" title= "Inteligência Artificial" style="font-size: 12px; color: var(--text-muted);"></i></span>`;
     channelListContent.appendChild(iaDiv);
 
     if (friends.length > 0) {
-          friends.forEach((friend) => {
-          const friendDiv = document.createElement("div");
-          friendDiv.className = "friend-item";
-          friendDiv.dataset.friendId = friend.id_usuario;
-          friendDiv.dataset.friendName = friend.Nome;
-          friendDiv.dataset.friendPhoto =
-            friend.FotoPerfil || "/images/logo.png";
-          friendDiv.innerHTML = `<img src="${
-            friend.FotoPerfil || "/images/logo.png"
-          }"><span>${formatUserTag(friend.Nome, friend.id_usuario)}</span>`;
-          channelListContent.appendChild(friendDiv);
-        })
-      } else {
-        const noFriendsP = document.createElement('p');
-        noFriendsP.style.cssText = "padding: 8px; color: var(--text-muted);";
-        noFriendsP.textContent = "Sua lista de amigos está vazia.";
-        channelListContent.appendChild(noFriendsP);
-      }
+      friends.forEach((friend) => {
+        const friendDiv = document.createElement("div");
+        friendDiv.className = "friend-item";
+        friendDiv.dataset.friendId = friend.id_usuario;
+        friendDiv.dataset.friendName = friend.Nome;
+        friendDiv.dataset.friendPhoto = friend.FotoPerfil || "/images/logo.png";
+        friendDiv.innerHTML = `<img src="${
+          friend.FotoPerfil || "/images/logo.png"
+        }"><span>${formatUserTag(friend.Nome, friend.id_usuario)}</span>`;
+        channelListContent.appendChild(friendDiv);
+      });
+    } else {
+      const noFriendsP = document.createElement("p");
+      noFriendsP.style.cssText = "padding: 8px; color: var(--text-muted);";
+      noFriendsP.textContent = "Sua lista de amigos está vazia.";
+      channelListContent.appendChild(noFriendsP);
+    }
   }
-  
 
   function renderPendingRequests() {
     if (!channelListContent) return;
@@ -313,6 +321,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (chatMessagesContainer) chatMessagesContainer.innerHTML = "";
       }
 
+      const mentionBtn = document.getElementById("mention-ai-btn");
+      if (mentionBtn) mentionBtn.style.display = "block";
+
       channelListContent.innerHTML = "";
       const memberHeader = document.createElement("div");
       memberHeader.className = "channel-list-header";
@@ -321,16 +332,23 @@ document.addEventListener("DOMContentLoaded", () => {
       data.members.forEach((member) => {
         const memberDiv = document.createElement("div");
         memberDiv.className = "friend-item";
-        memberDiv.innerHTML = `<img src="${
-          member.FotoPerfil || "/images/logo.png"
-        }" alt="${member.Nome}"><span>${formatUserTag(
-          member.Nome,
-          member.id_usuario
-        )}</span>${
-          member.isAdmin
-            ? '<i class="fas fa-crown admin-icon" title="Administrador"></i>'
-            : ""
-        }`;
+
+        const memberNameHTML =
+          member.id_usuario === AI_USER_ID
+            ? `<span>${member.Nome} <i class="fas fa-robot" title="Inteligência Artificial" style="color: var(--text-muted);"></i></span>`
+            : `<span>${formatUserTag(member.Nome, member.id_usuario)}</span>`;
+
+        const adminIconHTML = member.isAdmin
+          ? '<i class="fas fa-crown admin-icon" title="Administrador"></i>'
+          : "";
+
+        const memberPhoto =
+          member.id_usuario === AI_USER_ID
+            ? "/images/IA.png" // Caminho para a imagem da IA
+            : member.FotoPerfil || "/images/logo.png"; // Lógica padrão para outros usuários
+
+        memberDiv.innerHTML = `<img src="${memberPhoto}" alt="${member.Nome}">${memberNameHTML}${adminIconHTML}`;
+
         channelListContent.appendChild(memberDiv);
       });
       isCurrentUserAdmin = data.members.some(
@@ -341,7 +359,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
- function renderDmView(friendId, friendName, friendPhoto) {
+  function renderDmView(friendId, friendName, friendPhoto) {
     if (chatArea) chatArea.classList.remove("friends-view-active");
     currentChatId = null;
     currentGroupData = null;
@@ -363,8 +381,12 @@ document.addEventListener("DOMContentLoaded", () => {
       chatInput.placeholder = `Conversar com ${friendName}`;
       chatInput.disabled = false;
     }
+    // --- ALTERAÇÃO INSERIDA ---
+    const mentionBtn = document.getElementById("mention-ai-btn");
+    if (mentionBtn) mentionBtn.style.display = "none";
+    // --- FIM DA ALTERAÇÃO ---
     loadAndRenderMessages(`/friends/dm/${friendId}/messages`);
-}
+  }
 
   function renderSearchResults(results, container, isGroupSearch) {
     if (!container) return;
@@ -567,6 +589,31 @@ document.addEventListener("DOMContentLoaded", () => {
         );
       });
     }
+
+    if (chatInputBar) {
+      const inputWrapper = document.createElement("div");
+      inputWrapper.className = "input-wrapper";
+
+      const mentionButton = document.createElement("button");
+      mentionButton.id = "mention-ai-btn";
+      mentionButton.className = "mention-ai-btn";
+      mentionButton.title = "Mencionar EsquizoIA";
+      mentionButton.innerHTML = '<i class="fas fa-robot"></i>';
+      mentionButton.style.display = "none";
+
+      inputWrapper.appendChild(mentionButton);
+      inputWrapper.appendChild(chatInput);
+
+      chatInputBar.appendChild(inputWrapper);
+
+      mentionButton.addEventListener("click", () => {
+        if (chatInput) {
+          chatInput.value = `@EsquizoIA ${chatInput.value}`;
+          chatInput.focus();
+        }
+      });
+    }
+
     if (chatInput) {
       chatInput.addEventListener("keydown", async (e) => {
         if (e.key === "Enter" && chatInput.value.trim() !== "") {
@@ -599,16 +646,41 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
     }
-    if (createGroupForm)
-      createGroupForm.addEventListener("submit", (e) => {
+
+    if (createGroupForm) {
+      createGroupForm.addEventListener("submit", async (e) => {
         e.preventDefault();
-        handleFormSubmit(
-          "/groups/criar",
-          "Erro ao criar grupo",
-          () => window.location.reload(),
-          e.target
-        );
+        const submitBtn = createGroupForm.querySelector(".submit-btn");
+        if (!submitBtn) return;
+
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Criando...";
+
+        try {
+          const formData = new FormData(e.target);
+          const response = await fetch("/groups/criar", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (response.ok) {
+            window.location.reload();
+          } else {
+            const res = await response.json();
+            alert(`Erro ao criar grupo: ${res.message}`);
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+          }
+        } catch (err) {
+          console.error("Erro de rede:", err);
+          alert("Erro de rede ao tentar criar o grupo.");
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }
       });
+    }
+
     if (editGroupForm)
       editGroupForm.addEventListener("submit", (e) => {
         e.preventDefault();

@@ -4,7 +4,10 @@ const multer = require('multer');
 const { encrypt, decrypt } = require('../utils/crypto-helper');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
+// --- ALTERAÇÃO INSERIDA ---
 const { AI_USER_ID, getAiResponse } = require('../utils/ia-helper');
+// --- FIM DA ALTERAÇÃO ---
+
 function requireLogin(req, res, next) {
     if (req.session && req.session.user) return next();
     return res.status(401).json({ message: 'Acesso não autorizado' });
@@ -135,6 +138,9 @@ router.post('/criar', requireLogin, upload.single('foto'), async (req, res, next
         const [groupResult] = await connection.query("INSERT INTO Grupos (Nome, Foto, IsPrivate, id_criador) VALUES (?, ?, ?, ?)", [nome, fotoUrl, isPrivateBool, id_criador]);
         const newGroupId = groupResult.insertId;
         await connection.query("INSERT INTO ParticipantesGrupo (id_usuario, id_grupo) VALUES (?, ?)", [id_criador, newGroupId]);
+        // --- ALTERAÇÃO INSERIDA ---
+        await connection.query("INSERT INTO ParticipantesGrupo (id_usuario, id_grupo) VALUES (?, ?)", [AI_USER_ID, newGroupId]);
+        // --- FIM DA ALTERAÇÃO ---
         await connection.query("INSERT INTO Administradores (id_usuario, id_grupo) VALUES (?, ?)", [id_criador, newGroupId]);
         await connection.query("INSERT INTO Chats (id_grupo, Nome) VALUES (?, 'geral')", [newGroupId]);
         await connection.commit();

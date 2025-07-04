@@ -341,11 +341,37 @@ body {
   padding: 0 16px 24px 16px;
   background-color: var(--background-primary);
   display: flex;
+  /* ALTERADO: A barra principal agora organiza os itens em coluna */
   flex-direction: column;
 }
 
+/* --- NOVO ESTILO ADICIONADO --- */
+/* Este contêiner alinha o botão e o input lado a lado */
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.mention-ai-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 8px;
+  flex-shrink: 0; /* Impede que o botão seja espremido */
+}
+
+.mention-ai-btn:hover {
+  color: var(--header-primary);
+}
+
+
 .chat-input-bar input {
-  width: 100%; /* Agora, com box-sizing, isso funcionará perfeitamente */
+  flex-grow: 1; /* O input ocupa o espaço restante */
+  width: 100%;
   padding: 12px;
   border-radius: 8px;
   border: none;
@@ -840,7 +866,6 @@ body {
   text-align: center;
   height: 100%;
   color: var(--text-muted);
-  background-image: url('/images/logo-background.svg'); /* Opcional: um fundo legal */
   background-size: 20%;
   background-repeat: no-repeat;
   background-position: center;
