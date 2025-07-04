@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { encrypt, decrypt } = require('../utils/crypto-helper');
-
+const {getAiResponse, AI_USER_ID} = require('../utils/ia-helper')
 // --- MIDDLEWARE DE AUTENTICAÇÃO ---
 function requireLogin(req, res, next) {
     if (req.session && req.session.user) return next();
@@ -62,7 +62,7 @@ router.get('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
 
 // ROTA POST PARA ENVIAR UMA MENSAGEM DIRETA
 router.post('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
-    const friendId = req.params.friendId;
+    const friendId = parseInt(req.params.friendId, 10);
     const currentUser = req.session.user; // Usar o objeto de usuário completo da sessão
     const currentUserId = currentUser.id_usuario;
     const { content, replyingToMessageId } = req.body;
@@ -86,7 +86,7 @@ router.post('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
         const messageData = {
             id_mensagem: result.insertId,
             id_remetente: currentUserId,
-            id_destinatario: parseInt(friendId, 10),
+            id_destinatario: friendId,
             Conteudo: content,
             DataHora: new Date(),
             id_mensagem_respondida: repliedToId,
@@ -109,13 +109,32 @@ router.post('/dm/:friendId/messages', requireLogin, async (req, res, next) => {
             }
         }
 
-        const ids = [currentUserId, parseInt(friendId, 10)].sort();
+        const ids = [currentUserId, friendId].sort();
         const roomName = `dm-${ids[0]}-${ids[1]}`;
-        io.to(roomName).emit('new_dm', messageData);
+
+        io.to(roomName).emit('new_dm', messageData)
+
+        if (friendId === AI_USER_ID) {
+            const aiResponseText = await getAiResponse(content)
+            const {ciphertext: aiCiphertext, nonce: aiNonce} = encrypt(aiResponseText)
+           
+            const [aiResult] = await pool.query("INSERT INTO MensagensDiretas (id_remetente, id_destinatario, ConteudoCriptografado, Nonce) VALUES (?, ?, ?, ?)", [AI_USER_ID, currentUserId,aiCiphertext, aiNonce])
+            const [aiUserDetails] = await pool.query("SELECT Nome, FotoPerfil FROM Usuarios WHERE id_usuario = ?", [AI_USER_ID])
+            
+            const aiMessageData = {
+                id_mensagem: aiResult.insertId,
+                id_remetente: AI_USER_ID,
+                id_destinatario: currentUserId,
+                Conteudo: aiResponseText,
+                DataHora: new Date(),
+                autorNome: aiUserDetails[0].Nome,
+                autorFoto: aiUserDetails[0].FotoPerfil,
+                id_usuario: AI_USER_ID
+            }
+            io.to(roomName).emit('new_dm', aiMessageData);
+        }
         res.status(201).json(messageData);
-    } catch (error) {
-        next(error);
-    }
+    } catch (error) {next(error);}
 });
 
 // ROTA DELETE PARA EXCLUIR UMA MENSAGEM DIRETA
@@ -161,7 +180,7 @@ router.get('/search', requireLogin, async (req, res, next) => {
         // Exclui o próprio usuário e amigos existentes dos resultados
         const query = `
             SELECT id_usuario, Nome, FotoPerfil FROM Usuarios 
-            WHERE Nome LIKE ? AND id_usuario != ?
+            WHERE Nome LIKE ? AND id_usuario != ? AND is_ai = 0
             AND id_usuario NOT IN (
                 SELECT id_utilizador_requisitado FROM Amizades WHERE id_utilizador_requisitante = ?
                 UNION

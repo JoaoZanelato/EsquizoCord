@@ -4,6 +4,7 @@ const multer = require('multer');
 const { encrypt, decrypt } = require('../utils/crypto-helper');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const { AI_USER_ID, getAiResponse } = require('../utils/ia-helper');
 function requireLogin(req, res, next) {
     if (req.session && req.session.user) return next();
     return res.status(401).json({ message: 'Acesso não autorizado' });
@@ -85,14 +86,40 @@ router.post('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
         }
 
         const [group] = await pool.query("SELECT id_grupo FROM Chats WHERE id_chat = ?", [chatId]);
-        if (group.length > 0) {
-            const roomName = `group-${group[0].id_grupo}`;
-            io.to(roomName).emit('new_group_message', messageData);
+        
+        if (group.length === 0) {
+            return res.status(404).json({message: "Chat não pertence a nenhum grupo. "})
+        }
+        const roomName = `group-${group[0].id_grupo}`;
+        io.to(roomName).emit('new_group_message', messageData);
+        
+        const [aiUsers] = await pool.query("SELECT Nome, FotoPerfil FROM Usuarios WHERE id_usuario = ?", [AI_USER_ID]);
+        
+        if(aiUsers.length > 0) {
+            const aiName = aiUsers[0].Nome
+            const aiPhoto = aiUsers[0].FotoPerfil
+
+            if (content.includes(`@${aiName}`)) {
+                const prompt = content.replace(`@${aiName}`, '').trim()
+                const aiResponseText = await getAiResponse(prompt)
+                const {ciphertext: aiCiphertext, nonce: aiNonce} = encrypt(aiResponseText)
+                
+                const [aiResult] = await pool.query("INSERT INTO Mensagens (id_chat, id_usuario, ConteudoCriptografado, Nonce) VALUES (?, ?, ?, ?)", [chatId, AI_USER_ID, aiCiphertext, aiNonce]) 
+            
+                const aiMessageData = {
+                    id_mensagem: aiResult.insertId,
+                    id_chat: parseInt(chatId, 10),
+                    Conteudo: aiResponseText,
+                    DataHora: new Date(),
+                    id_usuario: AI_USER_ID,
+                    autorNome: aiName,
+                    autorFoto: aiPhoto
+                }
+                io.to(roomName).emit('new_group_message', aiMessageData)
+            }
         }
         res.status(201).json(messageData);
-    } catch (error) {
-        next(error);
-    }
+    } catch (error) {next(error);}
 });
 
 router.post('/criar', requireLogin, upload.single('foto'), async (req, res, next) => {

@@ -200,8 +200,19 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!channelListContent) return;
     channelListContent.innerHTML =
       '<div class="channel-list-header">Amigos</div>';
-    friends.length > 0
-      ? friends.forEach((friend) => {
+
+    
+    const iaFriendId = 3 
+    const iaDiv = document.createElement('div')
+    iaDiv.className = "friend-item"
+    iaDiv.dataset.friendId = iaFriendId
+    iaDiv.dataset.friendName = "EsquizoIa"
+    iaDiv.dataset.friendPhoto = "/IA.webp"
+    iaDiv.innerHTML = `<img src="/images/IA.webp" alt="EsquizoIA"><span>EsquizoIA <i class= "fas fa-robot" title= "Inteligência Artificial" style="font-size: 12px; color: var(--text-muted);"></i></span>`;
+    channelListContent.appendChild(iaDiv);
+
+    if (friends.length > 0) {
+          friends.forEach((friend) => {
           const friendDiv = document.createElement("div");
           friendDiv.className = "friend-item";
           friendDiv.dataset.friendId = friend.id_usuario;
@@ -213,9 +224,14 @@ document.addEventListener("DOMContentLoaded", () => {
           }"><span>${formatUserTag(friend.Nome, friend.id_usuario)}</span>`;
           channelListContent.appendChild(friendDiv);
         })
-      : (channelListContent.innerHTML +=
-          '<p style="padding: 8px; color: var(--text-muted);">Sua lista de amigos está vazia.</p>');
+      } else {
+        const noFriendsP = document.createElement('p');
+        noFriendsP.style.cssText = "padding: 8px; color: var(--text-muted);";
+        noFriendsP.textContent = "Sua lista de amigos está vazia.";
+        channelListContent.appendChild(noFriendsP);
+      }
   }
+  
 
   function renderPendingRequests() {
     if (!channelListContent) return;
