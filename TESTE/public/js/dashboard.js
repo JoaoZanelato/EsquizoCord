@@ -201,13 +201,13 @@ document.addEventListener("DOMContentLoaded", () => {
     channelListContent.innerHTML =
       '<div class="channel-list-header">Amigos</div>';
 
-    
-    const iaFriendId = 3 
-    const iaDiv = document.createElement('div')
-    iaDiv.className = "friend-item"
-    iaDiv.dataset.friendId = iaFriendId
-    iaDiv.dataset.friendName = "EsquizoIa"
-    iaDiv.dataset.friendPhoto = "/IA.webp"
+    // ATUALIZAÇÃO: O ID da IA foi alterado para 666.
+    const iaFriendId = 666;
+    const iaDiv = document.createElement('div');
+    iaDiv.className = "friend-item";
+    iaDiv.dataset.friendId = iaFriendId;
+    iaDiv.dataset.friendName = "EsquizoIA";
+    iaDiv.dataset.friendPhoto = "/images/IA.webp";
     iaDiv.innerHTML = `<img src="/images/IA.webp" alt="EsquizoIA"><span>EsquizoIA <i class= "fas fa-robot" title= "Inteligência Artificial" style="font-size: 12px; color: var(--text-muted);"></i></span>`;
     channelListContent.appendChild(iaDiv);
 

@@ -1,6 +1,6 @@
 const axios = require('axios')
 
-const AI_USER_ID = 3
+const AI_USER_ID = 666
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`
 
 async function getAiResponse(prompt) {
