@@ -117,15 +117,11 @@ router.post("/dm/:friendId/messages", requireLogin, async (req, res, next) => {
         };
       }
     }
-
-    // --- CORREÇÃO APLICADA ---
-    // Cria o nome da sala de forma consistente para garantir que a emissão e a escuta ocorram no mesmo "canal"
+    
     const ids = [currentUserId, friendId].sort();
     const roomName = `dm-${ids[0]}-${ids[1]}`;
 
-    // Emite a mensagem para a sala específica
     io.to(roomName).emit("new_dm", messageData);
-    // --- FIM DA CORREÇÃO ---
 
     if (friendId === AI_USER_ID) {
       const aiResponseText = await getAiResponse(content);
@@ -210,7 +206,7 @@ router.delete(
   }
 );
 
-// --- ROTAS DE AMIZADE (FUNCIONALIDADE RESTAURADA) ---
+// --- ROTAS DE AMIZADE ---
 
 // ROTA GET PARA PROCURAR USUÁRIOS
 router.get("/search", requireLogin, async (req, res, next) => {
@@ -220,22 +216,29 @@ router.get("/search", requireLogin, async (req, res, next) => {
   const pool = req.db;
   try {
     const query = `
-            SELECT id_usuario, Nome, FotoPerfil FROM Usuarios 
-            WHERE Nome LIKE ? AND id_usuario != ? AND is_ai = 0
-            AND id_usuario NOT IN (
-                SELECT id_utilizador_requisitado FROM Amizades WHERE id_utilizador_requisitante = ?
-                UNION
-                SELECT id_utilizador_requisitante FROM Amizades WHERE id_utilizador_requisitado = ?
-            )
-        `;
+      SELECT u.id_usuario, u.Nome, u.FotoPerfil 
+      FROM Usuarios u
+      LEFT JOIN Amizades a ON 
+          (a.id_utilizador_requisitante = u.id_usuario AND a.id_utilizador_requisitado = ?) OR
+          (a.id_utilizador_requisitado = u.id_usuario AND a.id_utilizador_requisitante = ?)
+      WHERE 
+          u.Nome LIKE ?
+          AND u.id_usuario != ? 
+          AND u.id_usuario != ?
+          AND a.id_amizade IS NULL
+    `;
+    
     const [users] = await pool.query(query, [
+      currentUserId,
+      currentUserId,
       `%${q}%`,
       currentUserId,
-      currentUserId,
-      currentUserId,
+      AI_USER_ID, // Exclui a IA da busca
     ]);
+    
     res.json(users);
   } catch (error) {
+    console.error("Erro na rota /friends/search:", error); 
     next(error);
   }
 });
