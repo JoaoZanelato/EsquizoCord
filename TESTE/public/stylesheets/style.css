@@ -893,7 +893,7 @@ body {
 .user-tag {
   color: var(--text-muted);
   font-size: 12px;
-  margin-left: 4px; /* Adiciona um pequeno espaço */
+  margin-left: 4px; 
   font-weight: normal;
 }
 
@@ -927,4 +927,42 @@ body {
 
 .status-indicator.offline {
   background-color: var(--text-muted);
+}
+
+.friend-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.friend-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-grow: 1;
+    cursor: pointer;
+}
+
+.friend-actions {
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.friend-item:hover .friend-actions {
+    visibility: visible;
+    opacity: 1;
+}
+
+.remove-friend-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.remove-friend-btn:hover {
+    color: var(--red-danger);
 }
