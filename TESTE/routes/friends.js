@@ -333,4 +333,34 @@ router.post("/cancel", requireLogin, async (req, res, next) => {
   }
 });
 
+// ROTA DELETE PARA REMOVER UMA AMIZADE
+router.delete('/:friendId', requireLogin, async (req, res, next) => {
+    const { friendId } = req.params;
+    const currentUserId = req.session.user.id_usuario;
+    const pool = req.db;
+
+    if (!friendId) {
+        return res.status(400).json({ message: "ID do amigo é obrigatório." });
+    }
+
+    try {
+        const [result] = await pool.query(
+            `DELETE FROM Amizades 
+             WHERE status = 'aceite' AND 
+                   ((id_utilizador_requisitante = ? AND id_utilizador_requisitado = ?) OR 
+                    (id_utilizador_requisitante = ? AND id_utilizador_requisitado = ?))`,
+            [currentUserId, friendId, friendId, currentUserId]
+        );
+
+        if (result.affectedRows > 0) {
+            res.status(200).json({ message: "Amigo removido com sucesso." });
+        } else {
+            res.status(404).json({ message: "Amizade não encontrada ou você não tem permissão para removê-la." });
+        }
+
+    } catch (error) {
+        next(error);
+    }
+});
+
 module.exports = router;

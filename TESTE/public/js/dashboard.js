@@ -239,8 +239,6 @@ document.addEventListener("DOMContentLoaded", () => {
     channelListContent.innerHTML =
       '<div class="channel-list-header">Amigos</div>';
 
-    // MODIFICADO: A IA agora é tratada como um amigo normal, vindo do backend.
-    // O bloco de código que criava a IA manualmente foi removido.
     if (friends.length > 0) {
       friends.forEach((friend) => {
         const friendDiv = document.createElement("div");
@@ -251,18 +249,23 @@ document.addEventListener("DOMContentLoaded", () => {
         
         const isOnline = onlineUserIds.has(friend.id_usuario);
 
-        // Adiciona um ícone de robô se o amigo for a IA
         const nameHTML =
           friend.id_usuario === AI_USER_ID
             ? `${friend.Nome} <i class="fas fa-robot" title="Inteligência Artificial" style="font-size: 12px; color: var(--text-muted);"></i>`
             : formatUserTag(friend.Nome, friend.id_usuario);
 
+        // --- CÓDIGO MODIFICADO PARA ADICIONAR BOTÃO DE REMOVER ---
         friendDiv.innerHTML = `
-          <div class="avatar-container">
-            <img src="${friend.FotoPerfil || "/images/logo.png"}">
-            <span class="status-indicator ${isOnline ? 'online' : 'offline'}"></span>
+          <div class="friend-info">
+            <div class="avatar-container">
+              <img src="${friend.FotoPerfil || "/images/logo.png"}">
+              <span class="status-indicator ${isOnline ? 'online' : 'offline'}"></span>
+            </div>
+            <span>${nameHTML}</span>
           </div>
-          <span>${nameHTML}</span>`;
+          <div class="friend-actions">
+            <button class="remove-friend-btn" title="Remover Amigo"><i class="fas fa-user-minus"></i></button>
+          </div>`;
         channelListContent.appendChild(friendDiv);
       });
     } else {
@@ -890,6 +893,52 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   }
+
+    channelListContent.addEventListener('click', async (e) => {
+        const removeButton = e.target.closest('.remove-friend-btn');
+        if (removeButton) {
+            const friendItem = removeButton.closest('.friend-item');
+            const friendId = friendItem.dataset.friendId;
+            const friendName = friendItem.dataset.friendName;
+            
+            if (confirm(`Tem certeza de que deseja remover ${friendName} da sua lista de amigos?`)) {
+                try {
+                    const response = await fetch(`/friends/${friendId}`, {
+                        method: 'DELETE'
+                    });
+
+                    const data = await response.json();
+                    if (response.ok) {
+                        alert(data.message);
+                        friendItem.remove();
+                        if (currentDmFriendId === friendId) {
+                           renderFriendsView();
+                        }
+                    } else {
+                        throw new Error(data.message);
+                    }
+                } catch (error) {
+                    console.error("Erro ao remover amigo:", error);
+                    alert(`Não foi possível remover o amigo: ${error.message}`);
+                }
+            }
+        }
+
+        const friendInfo = e.target.closest(".friend-info");
+        if(friendInfo) {
+            const friendItem = friendInfo.closest('.friend-item');
+             if (friendItem) {
+              renderDmView(
+                friendItem.dataset.friendId,
+                friendItem.dataset.friendName,
+                friendItem.dataset.friendPhoto
+              );
+              if (window.innerWidth <= 768) {
+                channelList.classList.remove("open");
+              }
+            }
+        }
+    });
 
   // --- INICIALIZAÇÃO DA APLICAÇÃO ---
   function main() {
