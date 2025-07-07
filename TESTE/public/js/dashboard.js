@@ -130,7 +130,13 @@ document.addEventListener("DOMContentLoaded", () => {
   function closeModal(modal) {
     if (modal) modal.style.display = "none";
   }
-
+  
+function updateAndRenderFriendLists() {
+  // Simula uma nova busca de dados, mas o ideal seria ter rotas que retornem
+  // os dados atualizados de amigos e pedidos.
+  // Para simplificar, vamos apenas recarregar a visualização de "pedidos pendentes".
+  renderPendingRequests();
+}
   function updateUserStatus(userId, isOnline) {
     const userElements = document.querySelectorAll(
       `.friend-item[data-friend-id="${userId}"]`
@@ -567,24 +573,23 @@ document.addEventListener("DOMContentLoaded", () => {
         renderFriendsView();
       });
     }
+    // extraído de TESTE/public/js/dashboard.js
+
     if (friendsNavContainer) {
       friendsNavContainer.addEventListener("click", (e) => {
         if (e.target.tagName === "BUTTON") {
           friendsNavContainer
             .querySelectorAll(".friends-nav-btn")
             .forEach((btn) => btn.classList.remove("active"));
-          e.target.classList.add("active");
+          e.target.classList.add("active"); // <-- A classe 'active' é adicionada aqui
           const tab = e.target.dataset.tab;
+          
           if (tab === "friends-list") renderFriendsList();
-          else if (tab === "pending-requests") renderPendingRequests();
+          else if (tab === "pending-requests") renderPendingRequests(); // <-- A função é chamada aqui
           else if (tab === "add-friend") renderAddFriend();
         }
       });
     }
-    // Este listener agora está no corpo do documento para ser mais abrangente
-    // if (channelListContent) {
-    //   channelListContent.addEventListener("click", (e) => { ... });
-    // }
     if (cancelReplyBtn) {
       cancelReplyBtn.addEventListener("click", () => {
         replyingToMessageId = null;
@@ -845,7 +850,11 @@ document.addEventListener("DOMContentLoaded", () => {
             "",
             { requestId, action },
             "POST",
-            true
+            () => {
+              // Remove o item da lista e atualiza a visualização
+              requestItem.remove();
+              // Opcional: Adicionar o amigo à lista de amigos se for aceito
+            }
           );
       } else if (button.classList.contains("cancel-request-btn")) {
         const requestItem = button.closest(".friend-request-item");
@@ -858,7 +867,10 @@ document.addEventListener("DOMContentLoaded", () => {
             "",
             { requestId },
             "POST",
-            true
+            () => {
+              // Apenas remove o item da interface
+              requestItem.remove();
+            }
           );
       }
     });
