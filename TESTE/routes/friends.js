@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { encrypt, decrypt } = require("../utils/crypto-helper");
 const { getAiResponse, AI_USER_ID } = require("../utils/ia-helper");
+
 // --- MIDDLEWARE DE AUTENTICAÇÃO ---
 function requireLogin(req, res, next) {
   if (req.session && req.session.user) return next();
@@ -70,7 +71,7 @@ router.get("/dm/:friendId/messages", requireLogin, async (req, res, next) => {
 // ROTA POST PARA ENVIAR UMA MENSAGEM DIRETA
 router.post("/dm/:friendId/messages", requireLogin, async (req, res, next) => {
   const friendId = parseInt(req.params.friendId, 10);
-  const currentUser = req.session.user; // Usar o objeto de usuário completo da sessão
+  const currentUser = req.session.user;
   const currentUserId = currentUser.id_usuario;
   const { content, replyingToMessageId } = req.body;
   const pool = req.db;
@@ -91,7 +92,6 @@ router.post("/dm/:friendId/messages", requireLogin, async (req, res, next) => {
       [currentUserId, friendId, ciphertext, nonce, repliedToId]
     );
 
-    // --- CORREÇÃO E MELHORIA APLICADA AQUI ---
     const messageData = {
       id_mensagem: result.insertId,
       id_remetente: currentUserId,
@@ -99,15 +99,12 @@ router.post("/dm/:friendId/messages", requireLogin, async (req, res, next) => {
       Conteudo: content,
       DataHora: new Date(),
       id_mensagem_respondida: repliedToId,
-      // Adiciona os dados do autor diretamente no payload do WebSocket
       autorNome: currentUser.Nome,
       autorFoto: currentUser.FotoPerfil,
-      id_usuario: currentUserId, // Garante consistência com o objeto de mensagem de grupo
+      id_usuario: currentUserId,
     };
-    // -----------------------------------------
 
     if (repliedToId) {
-      // A query aqui já foi corrigida na sua solicitação anterior para incluir 'autorId'
       const [repliedMsgArr] = await pool.query(
         "SELECT md.ConteudoCriptografado, md.Nonce, u.Nome as autorNome, u.id_usuario as autorId FROM MensagensDiretas md JOIN Usuarios u ON md.id_remetente = u.id_usuario WHERE md.id_mensagem = ?",
         [repliedToId]
@@ -121,10 +118,14 @@ router.post("/dm/:friendId/messages", requireLogin, async (req, res, next) => {
       }
     }
 
+    // --- CORREÇÃO APLICADA ---
+    // Cria o nome da sala de forma consistente para garantir que a emissão e a escuta ocorram no mesmo "canal"
     const ids = [currentUserId, friendId].sort();
     const roomName = `dm-${ids[0]}-${ids[1]}`;
 
+    // Emite a mensagem para a sala específica
     io.to(roomName).emit("new_dm", messageData);
+    // --- FIM DA CORREÇÃO ---
 
     if (friendId === AI_USER_ID) {
       const aiResponseText = await getAiResponse(content);
@@ -140,7 +141,6 @@ router.post("/dm/:friendId/messages", requireLogin, async (req, res, next) => {
         [AI_USER_ID]
       );
 
-      // --- ADICIONAR ESTA VERIFICAÇÃO ---
       if (aiUserDetails.length > 0) {
         const aiMessageData = {
           id_mensagem: aiResult.insertId,
@@ -154,7 +154,6 @@ router.post("/dm/:friendId/messages", requireLogin, async (req, res, next) => {
         };
         io.to(roomName).emit("new_dm", aiMessageData);
       } else {
-        // Loga um erro no servidor para que o desenvolvedor saiba que o usuário da IA precisa ser criado
         console.error(
           `ERRO: O usuário da IA com id ${AI_USER_ID} não foi encontrado no banco de dados.`
         );
@@ -211,7 +210,7 @@ router.delete(
   }
 );
 
-// --- ROTAS DE AMIZADE ---
+// --- ROTAS DE AMIZADE (FUNCIONALIDADE RESTAURADA) ---
 
 // ROTA GET PARA PROCURAR USUÁRIOS
 router.get("/search", requireLogin, async (req, res, next) => {
@@ -220,7 +219,6 @@ router.get("/search", requireLogin, async (req, res, next) => {
   if (!q) return res.json([]);
   const pool = req.db;
   try {
-    // Exclui o próprio usuário e amigos existentes dos resultados
     const query = `
             SELECT id_usuario, Nome, FotoPerfil FROM Usuarios 
             WHERE Nome LIKE ? AND id_usuario != ? AND is_ai = 0
@@ -244,7 +242,7 @@ router.get("/search", requireLogin, async (req, res, next) => {
 
 // ROTA POST PARA ENVIAR PEDIDO DE AMIZADE
 router.post("/request", requireLogin, async (req, res, next) => {
-  const { requestedId } = req.body; // <-- ALTERAÇÃO: Recebe o ID do usuário
+  const { requestedId } = req.body;
   const requesterId = req.session.user.id_usuario;
   const pool = req.db;
 

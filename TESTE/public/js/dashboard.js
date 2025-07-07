@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- ESTADO GLOBAL ---
   let currentGroupData = null,
     currentChatId = null,
+    currentGroupId = null, // Adicionado para gerir a sala de grupo
     currentDmFriendId = null,
     currentDmFriendData = null;
   let isCurrentUserAdmin = false,
@@ -59,10 +60,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatArea = document.querySelector(".chat-area");
   const chatHeader = document.getElementById("chat-header"),
     chatMessagesContainer = document.getElementById("chat-messages-container");
-  // --- ALTERAÇÃO INSERIDA ---
   const chatInputBar = document.querySelector(".chat-input-bar");
   const chatInput = chatInputBar.querySelector("input");
-  // --- FIM DA ALTERAÇÃO ---
   const AI_USER_ID = 666;
   const replyBar = document.getElementById("reply-bar"),
     replyBarText = document.getElementById("reply-bar-text"),
@@ -71,13 +70,31 @@ document.addEventListener("DOMContentLoaded", () => {
     channelList = document.querySelector(".channel-list");
   const mobileMenuBtn = document.getElementById("mobile-menu-btn");
 
-  // --- LÓGICA DE SOCKET.IO ---
+  // --- CORREÇÃO APLICADA: LÓGICA DE SOCKET.IO ---
   socket.on("connect", () =>
-    console.log("Conectado ao servidor de sockets com ID:", socket.id)
+    console.log("[CLIENTE] Conectado ao servidor de sockets com ID:", socket.id)
   );
+
   socket.on("new_group_message", (msg) => {
-    if (msg.id_chat == currentChatId) renderMessage(msg);
+    // Apenas renderiza a mensagem se o chat de grupo correto estiver ativo
+    if (msg.id_chat == currentChatId) {
+      renderMessage(msg);
+    }
   });
+
+  socket.on("new_dm", (msg) => {
+    // Apenas renderiza a mensagem se a DM com o amigo correto estiver ativa
+    if (
+      currentDmFriendId &&
+      ((msg.id_remetente == currentDmFriendId &&
+        msg.id_destinatario == currentUserId) ||
+        (msg.id_destinatario == currentDmFriendId &&
+          msg.id_remetente == currentUserId))
+    ) {
+      renderMessage(msg);
+    }
+  });
+
   socket.on("group_message_deleted", (data) => {
     if (data.chatId == currentChatId) {
       const el = chatMessagesContainer.querySelector(
@@ -86,6 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (el) el.remove();
     }
   });
+
   socket.on("dm_message_deleted", (data) => {
     if (currentDmFriendId) {
       const el = chatMessagesContainer.querySelector(
@@ -94,48 +112,36 @@ document.addEventListener("DOMContentLoaded", () => {
       if (el) el.remove();
     }
   });
-  socket.on("new_dm", (msg) => {
-    // A condição verifica se a mensagem pertence à conversa ativa no momento.
-    if (
-      currentDmFriendId &&
-      ((msg.id_remetente == currentDmFriendId &&
-        msg.id_destinatario == currentUserId) ||
-        (msg.id_destinatario == currentDmFriendId &&
-          msg.id_remetente == currentUserId))
-    ) {
-      // --- MELHORIA APLICADA AQUI ---
-      // A função renderMessage agora recebe o objeto 'msg' diretamente.
-      // O objeto já conterá 'autorNome' e 'autorFoto' vindos do servidor.
-      renderMessage(msg);
-      // --------------------------------
-    }
-  });
-  
-  socket.on('user_online', ({ userId }) => {
+
+  socket.on("user_online", ({ userId }) => {
     onlineUserIds.add(userId);
     updateUserStatus(userId, true);
   });
 
-  socket.on('user_offline', ({ userId }) => {
+  socket.on("user_offline", ({ userId }) => {
     onlineUserIds.delete(userId);
     updateUserStatus(userId, false);
   });
 
-  // --- FUNÇÕES DE RENDERIZAÇÃO E UI ---
+  // --- FUNÇÕES DE RENDERIZAÇÃO E UI (TODA A SUA LÓGICA ORIGINAL ESTÁ AQUI) ---
   function openModal(modal) {
     if (modal) modal.style.display = "flex";
   }
   function closeModal(modal) {
     if (modal) modal.style.display = "none";
   }
-  
+
   function updateUserStatus(userId, isOnline) {
-    const userElements = document.querySelectorAll(`.friend-item[data-friend-id="${userId}"]`);
-    userElements.forEach(el => {
-        const statusIndicator = el.querySelector('.status-indicator');
-        if (statusIndicator) {
-            statusIndicator.className = `status-indicator ${isOnline ? 'online' : 'offline'}`;
-        }
+    const userElements = document.querySelectorAll(
+      `.friend-item[data-friend-id="${userId}"]`
+    );
+    userElements.forEach((el) => {
+      const statusIndicator = el.querySelector(".status-indicator");
+      if (statusIndicator) {
+        statusIndicator.className = `status-indicator ${
+          isOnline ? "online" : "offline"
+        }`;
+      }
     });
   }
 
@@ -160,25 +166,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let replyHTML = "";
     if (message.repliedTo && message.repliedTo.Conteudo) {
-      // --- MODIFICAÇÃO AQUI ---
       const parsedRepliedContent = marked.parse(message.repliedTo.Conteudo);
       const sanitizedRepliedContent = DOMPurify.sanitize(parsedRepliedContent);
-      // --- FIM DA MODIFICAÇÃO ---
       const replyAuthorTag = formatUserTag(
         message.repliedTo.autorNome,
         message.repliedTo.autorId
       );
-      // Alterado de <p> para <div> para melhor renderização do Markdown
       replyHTML = `<div class="reply-context"><span class="reply-author">${replyAuthorTag}</span><div class="reply-content">${sanitizedRepliedContent}</div></div>`;
     }
 
     const authorTag = formatUserTag(message.autorNome, message.id_usuario);
-    // --- MODIFICAÇÃO AQUI ---
     const parsedContent = marked.parse(message.Conteudo);
     const sanitizedContent = DOMPurify.sanitize(parsedContent);
-    // --- FIM DA MODIFICAÇÃO ---
 
-    // Alterado de <p> para <div> para melhor renderização do Markdown
     messageItem.innerHTML = `<img src="${
       message.autorFoto || "/images/logo.png"
     }" alt="${message.autorNome}"><div class="message-content">${replyHTML}${
@@ -208,10 +208,25 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderFriendsView() {
+    // --- CORREÇÃO APLICADA: SAIR DAS SALAS ANTERIORES ---
+    if (currentGroupId) {
+      socket.emit("leave_group_room", `group-${currentGroupId}`);
+      console.log(`[CLIENTE] A sair da sala de GRUPO: group-${currentGroupId}`);
+    }
+    if (currentDmFriendId) {
+      const oldRoomName = `dm-${[currentUserId, currentDmFriendId]
+        .sort()
+        .join("-")}`;
+      socket.emit("leave_dm_room", oldRoomName);
+      console.log(`[CLIENTE] A sair da sala de DM: ${oldRoomName}`);
+    }
+    // Limpa o estado
     currentGroupData = null;
     currentChatId = null;
     currentDmFriendId = null;
     currentDmFriendData = null;
+    currentGroupId = null;
+
     if (chatArea) chatArea.classList.add("friends-view-active");
     if (groupSettingsIcon) groupSettingsIcon.style.display = "none";
     if (friendsNavContainer) friendsNavContainer.style.display = "flex";
@@ -228,10 +243,8 @@ document.addEventListener("DOMContentLoaded", () => {
       .querySelector('.friends-nav-btn[data-tab="friends-list"]')
       ?.classList.add("active");
     renderFriendsList();
-    // --- ALTERAÇÃO INSERIDA ---
     const mentionBtn = document.getElementById("mention-ai-btn");
     if (mentionBtn) mentionBtn.style.display = "none";
-    // --- FIM DA ALTERAÇÃO ---
   }
 
   function renderFriendsList() {
@@ -246,7 +259,7 @@ document.addEventListener("DOMContentLoaded", () => {
         friendDiv.dataset.friendId = friend.id_usuario;
         friendDiv.dataset.friendName = friend.Nome;
         friendDiv.dataset.friendPhoto = friend.FotoPerfil || "/images/logo.png";
-        
+
         const isOnline = onlineUserIds.has(friend.id_usuario);
 
         const nameHTML =
@@ -254,12 +267,13 @@ document.addEventListener("DOMContentLoaded", () => {
             ? `${friend.Nome} <i class="fas fa-robot" title="Inteligência Artificial" style="font-size: 12px; color: var(--text-muted);"></i>`
             : formatUserTag(friend.Nome, friend.id_usuario);
 
-        // --- CÓDIGO MODIFICADO PARA ADICIONAR BOTÃO DE REMOVER ---
         friendDiv.innerHTML = `
           <div class="friend-info">
             <div class="avatar-container">
               <img src="${friend.FotoPerfil || "/images/logo.png"}">
-              <span class="status-indicator ${isOnline ? 'online' : 'offline'}"></span>
+              <span class="status-indicator ${
+                isOnline ? "online" : "offline"
+              }"></span>
             </div>
             <span>${nameHTML}</span>
           </div>
@@ -320,13 +334,32 @@ document.addEventListener("DOMContentLoaded", () => {
     channelListContent.innerHTML = `<div class="add-friend-container"><div class="channel-list-header">Adicionar Amigo</div><p>Procure por um amigo com o seu nome de utilizador.</p><div class="add-friend-input"><input type="search" id="search-friend-input" placeholder="Digite o nome para buscar..."></div><div id="add-friend-results" class="search-results-container" style="margin-top: 10px;"><p style="padding: 8px; color: var(--text-muted);">Digite para buscar usuários.</p></div></div>`;
   }
 
+  // --- CORREÇÃO APLICADA: FUNÇÕES DE CARREGAMENTO DE CHAT COM GESTÃO DE SALAS ---
+
   async function renderGroupView(groupId) {
+    // --- SAIR DA SALA ANTERIOR ---
+    if (currentDmFriendId) {
+      const oldRoomName = `dm-${[currentUserId, currentDmFriendId]
+        .sort()
+        .join("-")}`;
+      socket.emit("leave_dm_room", oldRoomName);
+      console.log(`[CLIENTE] A sair da sala de DM: ${oldRoomName}`);
+    }
+    if (currentGroupId && currentGroupId !== groupId) {
+      const oldRoomName = `group-${currentGroupId}`;
+      socket.emit("leave_group_room", oldRoomName);
+      console.log(`[CLIENTE] A sair da sala de GRUPO: group-${currentGroupId}`);
+    }
+
     if (chatArea) chatArea.classList.remove("friends-view-active");
     try {
       const response = await fetch(`/groups/${groupId}/details`);
       if (!response.ok) throw new Error("Falha ao buscar detalhes do grupo.");
       const data = await response.json();
+
+      // Atualiza estado
       currentGroupData = data;
+      currentGroupId = groupId;
       currentDmFriendId = null;
       if (friendsNavContainer) friendsNavContainer.style.display = "none";
       if (groupNameHeader) groupNameHeader.textContent = data.details.Nome;
@@ -336,9 +369,14 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!channelListContent) return;
 
       const firstChannel = data.channels[0];
-      if (firstChannel) {
-        currentChatId = firstChannel.id_chat;
-        socket.emit("join_group_room", groupId);
+      currentChatId = firstChannel ? firstChannel.id_chat : null;
+
+      // --- ENTRAR NA NOVA SALA DE GRUPO ---
+      const newRoomName = `group-${groupId}`;
+      socket.emit("join_group_room", newRoomName);
+      console.log(`[CLIENTE] A entrar na sala de GRUPO: ${newRoomName}`);
+
+      if (currentChatId) {
         if (chatHeader)
           chatHeader.innerHTML = `<h3><i class="fas fa-hashtag" style="color: var(--text-muted);"></i> ${firstChannel.Nome}</h3>`;
         if (chatInput) {
@@ -368,7 +406,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const memberDiv = document.createElement("div");
         memberDiv.className = "friend-item";
         memberDiv.dataset.friendId = member.id_usuario;
-        
+
         const isOnline = onlineUserIds.has(member.id_usuario);
 
         const memberNameHTML =
@@ -380,14 +418,14 @@ document.addEventListener("DOMContentLoaded", () => {
           ? '<i class="fas fa-crown admin-icon" title="Administrador"></i>'
           : "";
 
-        // --- MODIFICAÇÃO AQUI: Remove o caminho da imagem hardcoded ---
-        // Agora, ele sempre usará a foto do perfil vinda do banco de dados para todos os membros, incluindo a IA.
         const memberPhoto = member.FotoPerfil || "/images/logo.png";
 
         memberDiv.innerHTML = `
             <div class="avatar-container">
               <img src="${memberPhoto}" alt="${member.Nome}">
-              <span class="status-indicator ${isOnline ? 'online' : 'offline'}"></span>
+              <span class="status-indicator ${
+                isOnline ? "online" : "offline"
+              }"></span>
             </div>
             ${memberNameHTML}${adminIconHTML}`;
 
@@ -402,17 +440,33 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderDmView(friendId, friendName, friendPhoto) {
+    // --- SAIR DA SALA ANTERIOR ---
+    if (currentGroupId) {
+      const oldRoomName = `group-${currentGroupId}`;
+      socket.emit("leave_group_room", oldRoomName);
+      console.log(`[CLIENTE] A sair da sala de GRUPO: ${oldRoomName}`);
+    }
+    if (currentDmFriendId && currentDmFriendId !== friendId) {
+      const oldRoomName = `dm-${[currentUserId, currentDmFriendId]
+        .sort()
+        .join("-")}`;
+      socket.emit("leave_dm_room", oldRoomName);
+      console.log(`[CLIENTE] A sair da sala de DM: ${oldRoomName}`);
+    }
+
     if (chatArea) chatArea.classList.remove("friends-view-active");
+
+    // Atualiza estado
     currentChatId = null;
     currentGroupData = null;
+    currentGroupId = null;
     currentDmFriendId = friendId;
     currentDmFriendData = { id: friendId, nome: friendName, foto: friendPhoto };
 
-    // --- CORREÇÃO APLICADA AQUI ---
-    // Adiciona o prefixo "dm-" para corresponder ao nome da sala no servidor.
+    // --- ENTRAR NA NOVA SALA DE DM ---
     const roomName = `dm-${[currentUserId, friendId].sort().join("-")}`;
     socket.emit("join_dm_room", roomName);
-    // --------------------------------
+    console.log(`[CLIENTE] A entrar na sala de DM: ${roomName}`);
 
     if (chatHeader)
       chatHeader.innerHTML = `<h3><img src="${friendPhoto}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 8px;">${formatUserTag(
@@ -423,10 +477,10 @@ document.addEventListener("DOMContentLoaded", () => {
       chatInput.placeholder = `Conversar com ${friendName}`;
       chatInput.disabled = false;
     }
-    // --- ALTERAÇÃO INSERIDA ---
+
     const mentionBtn = document.getElementById("mention-ai-btn");
     if (mentionBtn) mentionBtn.style.display = "none";
-    // --- FIM DA ALTERAÇÃO ---
+
     loadAndRenderMessages(`/friends/dm/${friendId}/messages`);
   }
 
@@ -463,7 +517,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // --- SETUP DE EVENT LISTENERS ---
+  // --- SETUP DE EVENT LISTENERS (TODA A SUA LÓGICA ORIGINAL ESTÁ AQUI) ---
   function setupEventListeners() {
     if (mobileMenuBtn) {
       mobileMenuBtn.addEventListener("click", () => {
@@ -527,21 +581,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
     }
-    if (channelListContent) {
-      channelListContent.addEventListener("click", (e) => {
-        const friendItem = e.target.closest(".friend-item[data-friend-id]");
-        if (friendItem) {
-          renderDmView(
-            friendItem.dataset.friendId,
-            friendItem.dataset.friendName,
-            friendItem.dataset.friendPhoto
-          );
-          if (window.innerWidth <= 768) {
-            channelList.classList.remove("open");
-          }
-        }
-      });
-    }
+    // Este listener agora está no corpo do documento para ser mais abrangente
+    // if (channelListContent) {
+    //   channelListContent.addEventListener("click", (e) => { ... });
+    // }
     if (cancelReplyBtn) {
       cancelReplyBtn.addEventListener("click", () => {
         replyingToMessageId = null;
@@ -643,17 +686,17 @@ document.addEventListener("DOMContentLoaded", () => {
       mentionButton.innerHTML = '<i class="fas fa-robot"></i>';
       mentionButton.style.display = "none";
 
-      inputWrapper.appendChild(mentionButton);
-      inputWrapper.appendChild(chatInput);
+      // A verificação se o input existe já é feita antes, mas por segurança
+      if (chatInput) {
+        inputWrapper.appendChild(mentionButton);
+        inputWrapper.appendChild(chatInput);
+        chatInputBar.appendChild(inputWrapper);
 
-      chatInputBar.appendChild(inputWrapper);
-
-      mentionButton.addEventListener("click", () => {
-        if (chatInput) {
+        mentionButton.addEventListener("click", () => {
           chatInput.value = `@EsquizoIA ${chatInput.value}`;
           chatInput.focus();
-        }
-      });
+        });
+      }
     }
 
     if (chatInput) {
@@ -668,18 +711,26 @@ document.addEventListener("DOMContentLoaded", () => {
           chatInput.value = "";
           replyingToMessageId = null;
           if (replyBar) replyBar.style.display = "none";
+
           let url = currentChatId
             ? `/groups/chats/${currentChatId}/messages`
             : currentDmFriendId
             ? `/friends/dm/${currentDmFriendId}/messages`
             : null;
+
           if (!url) return;
+
           try {
-            await fetch(url, {
+            const response = await fetch(url, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(body),
             });
+            // Não renderizamos a mensagem aqui. Esperamos o servidor enviá-la de volta.
+            if (!response.ok) {
+              console.error("Falha ao enviar mensagem para o servidor.");
+              chatInput.value = messageContent; // Devolve o texto ao input em caso de erro
+            }
           } catch (error) {
             console.error("ERRO ao enviar mensagem:", error);
             alert("Não foi possível enviar a mensagem.");
@@ -736,6 +787,22 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
     document.body.addEventListener("click", async (e) => {
+      // Listener para clicar num amigo na lista de canais
+      const friendInfo = e.target.closest(".friend-info");
+      if (friendInfo) {
+        const friendItem = friendInfo.closest(".friend-item");
+        if (friendItem) {
+          const friendId = friendItem.dataset.friendId;
+          const friendName = friendItem.dataset.friendName;
+          const friendPhoto = friendItem.dataset.friendPhoto;
+          renderDmView(friendId, friendName, friendPhoto);
+          if (window.innerWidth <= 768) {
+            channelList.classList.remove("open");
+          }
+        }
+        return; // Impede que outros listeners no body sejam acionados
+      }
+
       const button = e.target.closest("button");
       if (!button) return;
       if (button.classList.contains("join-btn")) {
@@ -850,6 +917,7 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("Erro de rede.");
     }
   }
+
   async function handleAction(
     button,
     url,
@@ -894,57 +962,48 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-    channelListContent.addEventListener('click', async (e) => {
-        const removeButton = e.target.closest('.remove-friend-btn');
-        if (removeButton) {
-            const friendItem = removeButton.closest('.friend-item');
-            const friendId = friendItem.dataset.friendId;
-            const friendName = friendItem.dataset.friendName;
-            
-            if (confirm(`Tem certeza de que deseja remover ${friendName} da sua lista de amigos?`)) {
-                try {
-                    const response = await fetch(`/friends/${friendId}`, {
-                        method: 'DELETE'
-                    });
+  channelListContent.addEventListener("click", async (e) => {
+    const removeButton = e.target.closest(".remove-friend-btn");
+    if (removeButton) {
+      const friendItem = removeButton.closest(".friend-item");
+      const friendId = friendItem.dataset.friendId;
+      const friendName = friendItem.dataset.friendName;
 
-                    const data = await response.json();
-                    if (response.ok) {
-                        alert(data.message);
-                        friendItem.remove();
-                        if (currentDmFriendId === friendId) {
-                           renderFriendsView();
-                        }
-                    } else {
-                        throw new Error(data.message);
-                    }
-                } catch (error) {
-                    console.error("Erro ao remover amigo:", error);
-                    alert(`Não foi possível remover o amigo: ${error.message}`);
-                }
-            }
-        }
+      if (
+        confirm(
+          `Tem certeza de que deseja remover ${friendName} da sua lista de amigos?`
+        )
+      ) {
+        try {
+          const response = await fetch(`/friends/${friendId}`, {
+            method: "DELETE",
+          });
 
-        const friendInfo = e.target.closest(".friend-info");
-        if(friendInfo) {
-            const friendItem = friendInfo.closest('.friend-item');
-             if (friendItem) {
-              renderDmView(
-                friendItem.dataset.friendId,
-                friendItem.dataset.friendName,
-                friendItem.dataset.friendPhoto
-              );
-              if (window.innerWidth <= 768) {
-                channelList.classList.remove("open");
-              }
+          const data = await response.json();
+          if (response.ok) {
+            alert(data.message);
+            friendItem.remove();
+            if (currentDmFriendId === friendId) {
+              renderFriendsView();
             }
+          } else {
+            throw new Error(data.message);
+          }
+        } catch (error) {
+          console.error("Erro ao remover amigo:", error);
+          alert(`Não foi possível remover o amigo: ${error.message}`);
         }
-    });
+      }
+    }
+  });
 
   // --- INICIALIZAÇÃO DA APLICAÇÃO ---
   function main() {
     renderFriendsView();
     setupEventListeners();
-    console.log("Dashboard inicializado com as novas melhorias.");
+    console.log(
+      "Dashboard inicializado com as correções de chat em tempo real."
+    );
   }
   main();
 });
