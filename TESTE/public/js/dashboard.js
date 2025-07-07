@@ -21,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const data = body.dataset[attribute];
     if (!data) return null;
     try {
+      // Decodifica entidades HTML antes de fazer o parse do JSON
       const decodedData = new DOMParser().parseFromString(data, "text/html")
         .documentElement.textContent;
       return JSON.parse(decodedData);
@@ -41,6 +42,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const sentRequests = parseJsonData("sentRequests") || [];
   const onlineUserIds = new Set(parseJsonData("onlineUserIds") || []);
   const currentUserId = currentUser ? currentUser.id_usuario : null;
+  
+  // CORREÇÃO: Identifica a IA dinamicamente a partir dos dados recebidos
+  const aiUser = friends.find(f => f.Nome === 'EsquizoIA');
+  const AI_USER_ID = aiUser ? aiUser.id_usuario : null;
+
 
   // --- SELEÇÃO DE ELEMENTOS DO DOM ---
   const createGroupModal = document.getElementById("create-group-modal"),
@@ -62,7 +68,6 @@ document.addEventListener("DOMContentLoaded", () => {
     chatMessagesContainer = document.getElementById("chat-messages-container");
   const chatInputBar = document.querySelector(".chat-input-bar");
   const chatInput = chatInputBar.querySelector("input");
-  const AI_USER_ID = 666;
   const replyBar = document.getElementById("reply-bar"),
     replyBarText = document.getElementById("reply-bar-text"),
     cancelReplyBtn = document.getElementById("cancel-reply-btn");
@@ -70,20 +75,18 @@ document.addEventListener("DOMContentLoaded", () => {
     channelList = document.querySelector(".channel-list");
   const mobileMenuBtn = document.getElementById("mobile-menu-btn");
 
-  // --- CORREÇÃO APLICADA: LÓGICA DE SOCKET.IO ---
+  // --- LÓGICA DE SOCKET.IO ---
   socket.on("connect", () =>
     console.log("[CLIENTE] Conectado ao servidor de sockets com ID:", socket.id)
   );
 
   socket.on("new_group_message", (msg) => {
-    // Apenas renderiza a mensagem se o chat de grupo correto estiver ativo
     if (msg.id_chat == currentChatId) {
       renderMessage(msg);
     }
   });
 
   socket.on("new_dm", (msg) => {
-    // Apenas renderiza a mensagem se a DM com o amigo correto estiver ativa
     if (
       currentDmFriendId &&
       ((msg.id_remetente == currentDmFriendId &&
@@ -123,20 +126,14 @@ document.addEventListener("DOMContentLoaded", () => {
     updateUserStatus(userId, false);
   });
 
-  // --- FUNÇÕES DE RENDERIZAÇÃO E UI (TODA A SUA LÓGICA ORIGINAL ESTÁ AQUI) ---
+  // --- FUNÇÕES DE RENDERIZAÇÃO E UI ---
   function openModal(modal) {
     if (modal) modal.style.display = "flex";
   }
   function closeModal(modal) {
     if (modal) modal.style.display = "none";
   }
-  
-function updateAndRenderFriendLists() {
-  // Simula uma nova busca de dados, mas o ideal seria ter rotas que retornem
-  // os dados atualizados de amigos e pedidos.
-  // Para simplificar, vamos apenas recarregar a visualização de "pedidos pendentes".
-  renderPendingRequests();
-}
+
   function updateUserStatus(userId, isOnline) {
     const userElements = document.querySelectorAll(
       `.friend-item[data-friend-id="${userId}"]`
@@ -214,19 +211,15 @@ function updateAndRenderFriendLists() {
   }
 
   function renderFriendsView() {
-    // --- CORREÇÃO APLICADA: SAIR DAS SALAS ANTERIORES ---
     if (currentGroupId) {
       socket.emit("leave_group_room", `group-${currentGroupId}`);
-      console.log(`[CLIENTE] A sair da sala de GRUPO: group-${currentGroupId}`);
     }
     if (currentDmFriendId) {
       const oldRoomName = `dm-${[currentUserId, currentDmFriendId]
         .sort()
         .join("-")}`;
       socket.emit("leave_dm_room", oldRoomName);
-      console.log(`[CLIENTE] A sair da sala de DM: ${oldRoomName}`);
     }
-    // Limpa o estado
     currentGroupData = null;
     currentChatId = null;
     currentDmFriendId = null;
@@ -267,7 +260,8 @@ function updateAndRenderFriendLists() {
         friendDiv.dataset.friendPhoto = friend.FotoPerfil || "/images/logo.png";
 
         const isOnline = onlineUserIds.has(friend.id_usuario);
-
+        
+        // CORREÇÃO: Verifica se o amigo é a IA usando o ID dinâmico
         const nameHTML =
           friend.id_usuario === AI_USER_ID
             ? `${friend.Nome} <i class="fas fa-robot" title="Inteligência Artificial" style="font-size: 12px; color: var(--text-muted);"></i>`
@@ -340,21 +334,16 @@ function updateAndRenderFriendLists() {
     channelListContent.innerHTML = `<div class="add-friend-container"><div class="channel-list-header">Adicionar Amigo</div><p>Procure por um amigo com o seu nome de utilizador.</p><div class="add-friend-input"><input type="search" id="search-friend-input" placeholder="Digite o nome para buscar..."></div><div id="add-friend-results" class="search-results-container" style="margin-top: 10px;"><p style="padding: 8px; color: var(--text-muted);">Digite para buscar usuários.</p></div></div>`;
   }
 
-  // --- CORREÇÃO APLICADA: FUNÇÕES DE CARREGAMENTO DE CHAT COM GESTÃO DE SALAS ---
-
   async function renderGroupView(groupId) {
-    // --- SAIR DA SALA ANTERIOR ---
     if (currentDmFriendId) {
       const oldRoomName = `dm-${[currentUserId, currentDmFriendId]
         .sort()
         .join("-")}`;
       socket.emit("leave_dm_room", oldRoomName);
-      console.log(`[CLIENTE] A sair da sala de DM: ${oldRoomName}`);
     }
     if (currentGroupId && currentGroupId !== groupId) {
       const oldRoomName = `group-${currentGroupId}`;
       socket.emit("leave_group_room", oldRoomName);
-      console.log(`[CLIENTE] A sair da sala de GRUPO: group-${currentGroupId}`);
     }
 
     if (chatArea) chatArea.classList.remove("friends-view-active");
@@ -363,7 +352,6 @@ function updateAndRenderFriendLists() {
       if (!response.ok) throw new Error("Falha ao buscar detalhes do grupo.");
       const data = await response.json();
 
-      // Atualiza estado
       currentGroupData = data;
       currentGroupId = groupId;
       currentDmFriendId = null;
@@ -377,10 +365,8 @@ function updateAndRenderFriendLists() {
       const firstChannel = data.channels[0];
       currentChatId = firstChannel ? firstChannel.id_chat : null;
 
-      // --- ENTRAR NA NOVA SALA DE GRUPO ---
       const newRoomName = `group-${groupId}`;
       socket.emit("join_group_room", newRoomName);
-      console.log(`[CLIENTE] A entrar na sala de GRUPO: ${newRoomName}`);
 
       if (currentChatId) {
         if (chatHeader)
@@ -414,7 +400,8 @@ function updateAndRenderFriendLists() {
         memberDiv.dataset.friendId = member.id_usuario;
 
         const isOnline = onlineUserIds.has(member.id_usuario);
-
+        
+        // CORREÇÃO: Verifica se o membro é a IA usando o ID dinâmico
         const memberNameHTML =
           member.id_usuario === AI_USER_ID
             ? `<span>${member.Nome} <i class="fas fa-robot" title="Inteligência Artificial" style="color: var(--text-muted);"></i></span>`
@@ -446,33 +433,27 @@ function updateAndRenderFriendLists() {
   }
 
   function renderDmView(friendId, friendName, friendPhoto) {
-    // --- SAIR DA SALA ANTERIOR ---
     if (currentGroupId) {
       const oldRoomName = `group-${currentGroupId}`;
       socket.emit("leave_group_room", oldRoomName);
-      console.log(`[CLIENTE] A sair da sala de GRUPO: ${oldRoomName}`);
     }
     if (currentDmFriendId && currentDmFriendId !== friendId) {
       const oldRoomName = `dm-${[currentUserId, currentDmFriendId]
         .sort()
         .join("-")}`;
       socket.emit("leave_dm_room", oldRoomName);
-      console.log(`[CLIENTE] A sair da sala de DM: ${oldRoomName}`);
     }
 
     if (chatArea) chatArea.classList.remove("friends-view-active");
 
-    // Atualiza estado
     currentChatId = null;
     currentGroupData = null;
     currentGroupId = null;
     currentDmFriendId = friendId;
     currentDmFriendData = { id: friendId, nome: friendName, foto: friendPhoto };
 
-    // --- ENTRAR NA NOVA SALA DE DM ---
     const roomName = `dm-${[currentUserId, friendId].sort().join("-")}`;
     socket.emit("join_dm_room", roomName);
-    console.log(`[CLIENTE] A entrar na sala de DM: ${roomName}`);
 
     if (chatHeader)
       chatHeader.innerHTML = `<h3><img src="${friendPhoto}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 8px;">${formatUserTag(
@@ -523,7 +504,7 @@ function updateAndRenderFriendLists() {
     });
   }
 
-  // --- SETUP DE EVENT LISTENERS (TODA A SUA LÓGICA ORIGINAL ESTÁ AQUI) ---
+  // --- SETUP DE EVENT LISTENERS ---
   function setupEventListeners() {
     if (mobileMenuBtn) {
       mobileMenuBtn.addEventListener("click", () => {
@@ -573,7 +554,6 @@ function updateAndRenderFriendLists() {
         renderFriendsView();
       });
     }
-    // extraído de TESTE/public/js/dashboard.js
 
     if (friendsNavContainer) {
       friendsNavContainer.addEventListener("click", (e) => {
@@ -581,11 +561,11 @@ function updateAndRenderFriendLists() {
           friendsNavContainer
             .querySelectorAll(".friends-nav-btn")
             .forEach((btn) => btn.classList.remove("active"));
-          e.target.classList.add("active"); // <-- A classe 'active' é adicionada aqui
+          e.target.classList.add("active");
           const tab = e.target.dataset.tab;
           
           if (tab === "friends-list") renderFriendsList();
-          else if (tab === "pending-requests") renderPendingRequests(); // <-- A função é chamada aqui
+          else if (tab === "pending-requests") renderPendingRequests();
           else if (tab === "add-friend") renderAddFriend();
         }
       });
@@ -691,7 +671,6 @@ function updateAndRenderFriendLists() {
       mentionButton.innerHTML = '<i class="fas fa-robot"></i>';
       mentionButton.style.display = "none";
 
-      // A verificação se o input existe já é feita antes, mas por segurança
       if (chatInput) {
         inputWrapper.appendChild(mentionButton);
         inputWrapper.appendChild(chatInput);
@@ -731,10 +710,9 @@ function updateAndRenderFriendLists() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(body),
             });
-            // Não renderizamos a mensagem aqui. Esperamos o servidor enviá-la de volta.
             if (!response.ok) {
               console.error("Falha ao enviar mensagem para o servidor.");
-              chatInput.value = messageContent; // Devolve o texto ao input em caso de erro
+              chatInput.value = messageContent; 
             }
           } catch (error) {
             console.error("ERRO ao enviar mensagem:", error);
@@ -792,7 +770,6 @@ function updateAndRenderFriendLists() {
       });
 
     document.body.addEventListener("click", async (e) => {
-      // Listener para clicar num amigo na lista de canais
       const friendInfo = e.target.closest(".friend-info");
       if (friendInfo) {
         const friendItem = friendInfo.closest(".friend-item");
@@ -805,7 +782,7 @@ function updateAndRenderFriendLists() {
             channelList.classList.remove("open");
           }
         }
-        return; // Impede que outros listeners no body sejam acionados
+        return; 
       }
 
       const button = e.target.closest("button");
@@ -851,9 +828,7 @@ function updateAndRenderFriendLists() {
             { requestId, action },
             "POST",
             () => {
-              // Remove o item da lista e atualiza a visualização
               requestItem.remove();
-              // Opcional: Adicionar o amigo à lista de amigos se for aceito
             }
           );
       } else if (button.classList.contains("cancel-request-btn")) {
@@ -868,7 +843,6 @@ function updateAndRenderFriendLists() {
             { requestId },
             "POST",
             () => {
-              // Apenas remove o item da interface
               requestItem.remove();
             }
           );
@@ -1013,9 +987,6 @@ function updateAndRenderFriendLists() {
   function main() {
     renderFriendsView();
     setupEventListeners();
-    console.log(
-      "Dashboard inicializado com as correções de chat em tempo real."
-    );
   }
   main();
 });

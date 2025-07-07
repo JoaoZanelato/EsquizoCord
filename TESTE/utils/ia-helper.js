@@ -1,6 +1,6 @@
 const axios = require('axios')
 
-const AI_USER_ID = 0
+const AI_USER_ID = 1
 // ATUALIZAÇÃO: O modelo foi alterado de 'gemini-pro' para 'gemini-1.5-flash-latest' que é uma versão mais recente e compatível.
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`
 

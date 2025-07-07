@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const multer = require('multer');
 const saltRounds = 10;
+const { AI_USER_ID } = require('../utils/ia-helper');
 
 // Módulos para verificação de e-mail e recuperação de senha
 const crypto = require('crypto');
@@ -57,7 +58,6 @@ router.get('/dashboard', requireLogin, async (req, res, next) => {
     try {
         const pool = req.db;
         const user = req.session.user;
-        const AI_USER_ID = 666; // ID da sua IA
         const onlineUsers = req.app.get('onlineUsers') || new Set();
 
         // Buscar grupos do utilizador
