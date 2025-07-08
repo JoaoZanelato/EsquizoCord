@@ -245,100 +245,155 @@ router.get("/search", requireLogin, async (req, res, next) => {
 
 // ROTA POST PARA ENVIAR PEDIDO DE AMIZADE
 router.post("/request", requireLogin, async (req, res, next) => {
-  const { requestedId } = req.body;
-  const requesterId = req.session.user.id_usuario;
-  const pool = req.db;
+    const { requestedId } = req.body;
+    const requesterUser = req.session.user;
+    const requesterId = requesterUser.id_usuario;
+    const pool = req.db;
+    const io = req.app.get("io");
 
-  if (!requestedId) {
-    return res.status(400).json({ message: "ID do usuário é obrigatório." });
-  }
-
-  if (requesterId == requestedId) {
-    return res
-      .status(400)
-      .json({ message: "Você não pode adicionar a si mesmo." });
-  }
-
-  try {
-    const [existing] = await pool.query(
-      "SELECT * FROM Amizades WHERE (id_utilizador_requisitante = ? AND id_utilizador_requisitado = ?) OR (id_utilizador_requisitante = ? AND id_utilizador_requisitado = ?)",
-      [requesterId, requestedId, requestedId, requesterId]
-    );
-
-    if (existing.length > 0) {
-      return res
-        .status(409)
-        .json({
-          message: "Já existe um pedido de amizade com este utilizador.",
-        });
+    if (!requestedId) {
+        return res.status(400).json({ message: "ID do usuário é obrigatório." });
     }
 
-    await pool.query(
-      "INSERT INTO Amizades (id_utilizador_requisitante, id_utilizador_requisitado, status) VALUES (?, ?, 'pendente')",
-      [requesterId, requestedId]
-    );
-    res.status(201).json({ message: "Pedido de amizade enviado!" });
-  } catch (error) {
-    next(error);
-  }
+    if (requesterId == requestedId) {
+        return res.status(400).json({ message: "Você não pode adicionar a si mesmo." });
+    }
+
+    try {
+        const [existing] = await pool.query(
+            "SELECT * FROM Amizades WHERE (id_utilizador_requisitante = ? AND id_utilizador_requisitado = ?) OR (id_utilizador_requisitante = ? AND id_utilizador_requisitado = ?)",
+            [requesterId, requestedId, requestedId, requesterId]
+        );
+
+        if (existing.length > 0) {
+            return res.status(409).json({
+                message: "Já existe um pedido de amizade com este utilizador.",
+            });
+        }
+
+        const [insertResult] = await pool.query(
+            "INSERT INTO Amizades (id_utilizador_requisitante, id_utilizador_requisitado, status) VALUES (?, ?, 'pendente')",
+            [requesterId, requestedId]
+        );
+        const newFriendshipId = insertResult.insertId;
+
+        // Emitir evento para o usuário que recebeu o pedido
+        const newRequestForTarget = {
+            id_amizade: newFriendshipId,
+            id_usuario: requesterId,
+            Nome: requesterUser.Nome,
+            FotoPerfil: requesterUser.FotoPerfil,
+        };
+        io.to(`user-${requestedId}`).emit("friend_request_received", newRequestForTarget);
+
+        // Buscar dados do usuário que recebeu o pedido para retornar ao requisitante
+        const [requestedUser] = await pool.query("SELECT id_usuario, Nome, FotoPerfil FROM Usuarios WHERE id_usuario = ?", [requestedId]);
+
+        // Retornar o novo objeto de pedido enviado para o requisitante
+        const newSentRequest = {
+            id_amizade: newFriendshipId,
+            id_usuario: requestedUser[0].id_usuario,
+            Nome: requestedUser[0].Nome,
+            FotoPerfil: requestedUser[0].FotoPerfil
+        };
+
+        res.status(201).json({ message: "Pedido de amizade enviado!", sentRequest: newSentRequest });
+    } catch (error) {
+        next(error);
+    }
 });
 
 // ROTA POST PARA RESPONDER A UM PEDIDO
 router.post("/respond", requireLogin, async (req, res, next) => {
-  const { requestId, action } = req.body;
-  const currentUserId = req.session.user.id_usuario;
-  if (!requestId || !["aceite", "recusada"].includes(action)) {
-    return res.status(400).json({ message: "Pedido inválido." });
-  }
-  const pool = req.db;
-  try {
-    if (action === "aceite") {
-      await pool.query(
-        "UPDATE Amizades SET status = 'aceite' WHERE id_amizade = ? AND id_utilizador_requisitado = ?",
-        [requestId, currentUserId]
-      );
-    } else {
-      await pool.query(
-        "DELETE FROM Amizades WHERE id_amizade = ? AND id_utilizador_requisitado = ?",
-        [requestId, currentUserId]
-      );
+    const { requestId, action } = req.body;
+    const currentUser = req.session.user;
+    const currentUserId = currentUser.id_usuario;
+    const pool = req.db;
+    const io = req.app.get("io");
+
+    if (!requestId || !["aceite", "recusada"].includes(action)) {
+        return res.status(400).json({ message: "Pedido inválido." });
     }
-    res.status(200).json({ message: `Pedido ${action} com sucesso.` });
-  } catch (error) {
-    next(error);
-  }
+
+    try {
+        const [requestDetails] = await pool.query(
+            "SELECT id_utilizador_requisitante FROM Amizades WHERE id_amizade = ? AND id_utilizador_requisitado = ?",
+            [requestId, currentUserId]
+        );
+
+        if (requestDetails.length === 0) {
+            return res.status(404).json({ message: "Pedido não encontrado ou você não pode responder a ele." });
+        }
+        const requesterId = requestDetails[0].id_utilizador_requisitante;
+
+        if (action === "aceite") {
+            await pool.query(
+                "UPDATE Amizades SET status = 'aceite' WHERE id_amizade = ?",
+                [requestId]
+            );
+
+            // Emitir evento para o usuário que enviou o pedido
+            const newFriendData = {
+                id_usuario: currentUserId,
+                Nome: currentUser.Nome,
+                FotoPerfil: currentUser.FotoPerfil,
+            };
+            io.to(`user-${requesterId}`).emit("friend_request_accepted", { newFriend: newFriendData, requestId: parseInt(requestId) });
+
+        } else { // 'recusada'
+            await pool.query("DELETE FROM Amizades WHERE id_amizade = ?", [requestId]);
+            // Opcional: Notificar o requisitante que o pedido foi recusado.
+        }
+
+        res.status(200).json({ message: `Pedido ${action} com sucesso.` });
+
+    } catch (error) {
+        next(error);
+    }
 });
 
 // ROTA POST PARA CANCELAR UM PEDIDO ENVIADO
 router.post("/cancel", requireLogin, async (req, res, next) => {
-  const { requestId } = req.body;
-  const currentUserId = req.session.user.id_usuario;
-  if (!requestId) {
-    return res.status(400).json({ message: "ID do pedido é obrigatório." });
-  }
-  const pool = req.db;
-  try {
-    const [result] = await pool.query(
-      "DELETE FROM Amizades WHERE id_amizade = ? AND id_utilizador_requisitante = ?",
-      [requestId, currentUserId]
-    );
-    if (result.affectedRows > 0) {
-      res.status(200).json({ message: "Pedido de amizade cancelado." });
-    } else {
-      res
-        .status(403)
-        .json({ message: "Não autorizado a cancelar este pedido." });
+    const { requestId } = req.body;
+    const currentUserId = req.session.user.id_usuario;
+    const pool = req.db;
+    const io = req.app.get("io");
+
+    if (!requestId) {
+        return res.status(400).json({ message: "ID do pedido é obrigatório." });
     }
-  } catch (error) {
-    next(error);
-  }
+
+    try {
+        const [requestDetails] = await pool.query(
+            "SELECT id_utilizador_requisitado FROM Amizades WHERE id_amizade = ? AND id_utilizador_requisitante = ?",
+            [requestId, currentUserId]
+        );
+
+        if (requestDetails.length === 0) {
+            return res.status(403).json({ message: "Não autorizado a cancelar este pedido." });
+        }
+        const requestedId = requestDetails[0].id_utilizador_requisitado;
+
+        const [result] = await pool.query("DELETE FROM Amizades WHERE id_amizade = ?", [requestId]);
+
+        if (result.affectedRows > 0) {
+            // Emitir evento para o usuário que recebeu o pedido, para que ele seja removido da sua lista
+            io.to(`user-${requestedId}`).emit("request_cancelled", { requestId: parseInt(requestId) });
+            res.status(200).json({ message: "Pedido de amizade cancelado." });
+        } else {
+            res.status(404).json({ message: "Pedido não encontrado." });
+        }
+    } catch (error) {
+        next(error);
+    }
 });
 
 // ROTA DELETE PARA REMOVER UMA AMIZADE
 router.delete('/:friendId', requireLogin, async (req, res, next) => {
-    const { friendId } = req.params;
+    const friendId = req.params.friendId;
     const currentUserId = req.session.user.id_usuario;
     const pool = req.db;
+    const io = req.app.get("io");
 
     if (!friendId) {
         return res.status(400).json({ message: "ID do amigo é obrigatório." });
@@ -354,6 +409,8 @@ router.delete('/:friendId', requireLogin, async (req, res, next) => {
         );
 
         if (result.affectedRows > 0) {
+            // Emitir evento para o amigo que foi removido
+            io.to(`user-${friendId}`).emit("friend_removed", { removerId: currentUserId });
             res.status(200).json({ message: "Amigo removido com sucesso." });
         } else {
             res.status(404).json({ message: "Amizade não encontrada ou você não tem permissão para removê-la." });

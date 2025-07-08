@@ -37,13 +37,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const currentUser = parseJsonData("user");
   const groups = parseJsonData("groups") || [];
-  const friends = parseJsonData("friends") || [];
-  const pendingRequests = parseJsonData("pendingRequests") || [];
-  const sentRequests = parseJsonData("sentRequests") || [];
+  let friends = parseJsonData("friends") || [];
+  let pendingRequests = parseJsonData("pendingRequests") || [];
+  let sentRequests = parseJsonData("sentRequests") || [];
   const onlineUserIds = new Set(parseJsonData("onlineUserIds") || []);
   const currentUserId = currentUser ? currentUser.id_usuario : null;
   
-  // CORREÇÃO: Identifica a IA dinamicamente a partir dos dados recebidos
   const aiUser = friends.find(f => f.Nome === 'EsquizoIA');
   const AI_USER_ID = aiUser ? aiUser.id_usuario : null;
 
@@ -76,9 +75,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const mobileMenuBtn = document.getElementById("mobile-menu-btn");
 
   // --- LÓGICA DE SOCKET.IO ---
-  socket.on("connect", () =>
-    console.log("[CLIENTE] Conectado ao servidor de sockets com ID:", socket.id)
-  );
+  socket.on("connect", () => {
+    console.log("[CLIENTE] Conectado ao servidor de sockets com ID:", socket.id);
+    if(currentUser) {
+      // Entra em uma sala específica do usuário para receber notificações diretas
+      socket.emit('join_user_room', `user-${currentUser.id_usuario}`);
+    }
+  });
 
   socket.on("new_group_message", (msg) => {
     if (msg.id_chat == currentChatId) {
@@ -124,6 +127,53 @@ document.addEventListener("DOMContentLoaded", () => {
   socket.on("user_offline", ({ userId }) => {
     onlineUserIds.delete(userId);
     updateUserStatus(userId, false);
+  });
+
+  socket.on("friend_request_received", (newRequest) => {
+    pendingRequests.push(newRequest);
+    if (document.querySelector('.friends-nav-btn[data-tab="pending-requests"].active')) {
+      renderPendingRequests();
+    }
+    alert(`Você recebeu um novo pedido de amizade de ${newRequest.Nome}!`);
+  });
+
+  socket.on("friend_request_accepted", ({ newFriend, requestId }) => {
+    sentRequests = sentRequests.filter(req => req.id_amizade !== requestId);
+    friends.push(newFriend);
+
+    if (document.querySelector('.friends-nav-btn[data-tab="friends-list"].active')) {
+      renderFriendsList();
+    }
+    if (document.querySelector('.friends-nav-btn[data-tab="pending-requests"].active')) {
+      renderPendingRequests();
+    }
+    alert(`${newFriend.Nome} aceitou seu pedido de amizade!`);
+  });
+  
+  socket.on("friend_removed", ({ removerId }) => {
+      const friendIndex = friends.findIndex(f => f.id_usuario === removerId);
+      if (friendIndex > -1) {
+          const removedFriend = friends.splice(friendIndex, 1)[0];
+          alert(`${removedFriend.Nome} desfez a amizade com você.`);
+          
+          if (currentDmFriendId === removerId) {
+              renderFriendsView();
+          } else {
+              if (document.querySelector('.friends-nav-btn[data-tab="friends-list"].active')) {
+                  renderFriendsList();
+              }
+          }
+      }
+  });
+
+  socket.on("request_cancelled", ({ requestId }) => {
+      const pendingIndex = pendingRequests.findIndex(req => req.id_amizade === requestId);
+      if (pendingIndex > -1) {
+          pendingRequests.splice(pendingIndex, 1);
+          if (document.querySelector('.friends-nav-btn[data-tab="pending-requests"].active')) {
+              renderPendingRequests();
+          }
+      }
   });
 
   // --- FUNÇÕES DE RENDERIZAÇÃO E UI ---
@@ -261,7 +311,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const isOnline = onlineUserIds.has(friend.id_usuario);
         
-        // CORREÇÃO: Verifica se o amigo é a IA usando o ID dinâmico
         const nameHTML =
           friend.id_usuario === AI_USER_ID
             ? `${friend.Nome} <i class="fas fa-robot" title="Inteligência Artificial" style="font-size: 12px; color: var(--text-muted);"></i>`
@@ -293,8 +342,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderPendingRequests() {
     if (!channelListContent) return;
     channelListContent.innerHTML =
-      '<div class="channel-list-header">Pedidos Recebidos</div>';
-    pendingRequests && pendingRequests.length > 0
+      '<div class="channel-list-header">PEDIDOS RECEBIDOS</div>';
+    (pendingRequests && pendingRequests.length > 0
       ? pendingRequests.forEach((req) => {
           const reqDiv = document.createElement("div");
           reqDiv.className = "friend-request-item";
@@ -308,11 +357,11 @@ document.addEventListener("DOMContentLoaded", () => {
           channelListContent.appendChild(reqDiv);
         })
       : (channelListContent.innerHTML +=
-          '<p style="padding: 8px; color: var(--text-muted);">Nenhum pedido recebido.</p>');
+          '<p style="padding: 8px; color: var(--text-muted);">Nenhum pedido recebido.</p>'));
 
     channelListContent.innerHTML +=
-      '<div class="channel-list-header" style="margin-top: 20px;">Pedidos Enviados</div>';
-    sentRequests && sentRequests.length > 0
+      '<div class="channel-list-header" style="margin-top: 20px;">PEDIDOS ENVIADOS</div>';
+    (sentRequests && sentRequests.length > 0
       ? sentRequests.forEach((req) => {
           const reqDiv = document.createElement("div");
           reqDiv.className = "friend-request-item";
@@ -326,7 +375,7 @@ document.addEventListener("DOMContentLoaded", () => {
           channelListContent.appendChild(reqDiv);
         })
       : (channelListContent.innerHTML +=
-          '<p style="padding: 8px; color: var(--text-muted);">Nenhum pedido enviado.</p>');
+          '<p style="padding: 8px; color: var(--text-muted);">Nenhum pedido enviado.</p>'));
   }
 
   function renderAddFriend() {
@@ -401,7 +450,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const isOnline = onlineUserIds.has(member.id_usuario);
         
-        // CORREÇÃO: Verifica se o membro é a IA usando o ID dinâmico
         const memberNameHTML =
           member.id_usuario === AI_USER_ID
             ? `<span>${member.Nome} <i class="fas fa-robot" title="Inteligência Artificial" style="color: var(--text-muted);"></i></span>`
@@ -648,14 +696,14 @@ document.addEventListener("DOMContentLoaded", () => {
           )
         )
           return;
-        await handleAction(
+        handleAction(
           deleteGroupButton,
           `/groups/${groupId}`,
           "Excluindo...",
           "Excluir Grupo",
           null,
           "DELETE",
-          true
+          () => window.location.reload()
         );
       });
     }
@@ -796,20 +844,29 @@ document.addEventListener("DOMContentLoaded", () => {
           "Entrar",
           null,
           "POST",
-          true
+          () => window.location.reload()
         );
       } else if (button.classList.contains("add-friend-btn")) {
         const userId = button.dataset.userId;
+        const onSuccess = (data) => {
+            if (data.sentRequest) {
+                sentRequests.push(data.sentRequest);
+            }
+            if (document.querySelector('.friends-nav-btn[data-tab="pending-requests"].active')) {
+                renderPendingRequests();
+            }
+            button.textContent = "Enviado";
+            button.disabled = true;
+        };
         handleAction(
           button,
           "/friends/request",
           "Enviando...",
           "Adicionar",
           { requestedId: userId },
-          "POST"
+          "POST",
+          onSuccess
         );
-        button.textContent = "Enviado";
-        button.disabled = true;
       } else if (
         button.classList.contains("accept-btn") ||
         button.classList.contains("reject-btn")
@@ -819,6 +876,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const action = button.classList.contains("accept-btn")
           ? "aceite"
           : "recusada";
+        const onSuccess = () => {
+          pendingRequests = pendingRequests.filter(req => req.id_amizade !== parseInt(requestId));
+          if(action === 'aceite') window.location.reload(); // Recarrega para ver o novo amigo
+          else requestItem.remove();
+        }
         if (requestId)
           handleAction(
             button,
@@ -827,13 +889,15 @@ document.addEventListener("DOMContentLoaded", () => {
             "",
             { requestId, action },
             "POST",
-            () => {
-              requestItem.remove();
-            }
+            onSuccess
           );
       } else if (button.classList.contains("cancel-request-btn")) {
         const requestItem = button.closest(".friend-request-item");
         const requestId = requestItem?.dataset.requestId;
+        const onSuccess = () => {
+          sentRequests = sentRequests.filter(req => req.id_amizade !== parseInt(requestId));
+          requestItem.remove();
+        };
         if (requestId)
           handleAction(
             button,
@@ -842,9 +906,7 @@ document.addEventListener("DOMContentLoaded", () => {
             "",
             { requestId },
             "POST",
-            () => {
-              requestItem.remove();
-            }
+            onSuccess
           );
       }
     });
@@ -911,7 +973,7 @@ document.addEventListener("DOMContentLoaded", () => {
     defaultText,
     body = null,
     method = "POST",
-    reload = false
+    onSuccess = null
   ) {
     if (!button) return;
     button.disabled = true;
@@ -924,24 +986,25 @@ document.addEventListener("DOMContentLoaded", () => {
         options.body = JSON.stringify(body);
       }
       const response = await fetch(url, options);
-      if (
-        response.status === 204 ||
-        response.headers.get("content-length") === "0"
-      ) {
-        if (reload) window.location.reload();
-        return;
+      
+      const contentType = response.headers.get("content-type");
+      let data;
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+          data = await response.json();
       }
-      const data = await response.json();
+
       if (response.ok) {
-        if (reload) window.location.reload();
-        else if (data.message) alert(data.message);
+        if (onSuccess && typeof onSuccess === 'function') {
+          onSuccess(data);
+        } else if (data && data.message) {
+          alert(data.message);
+        }
       } else {
-        throw new Error(data.message || "Erro desconhecido");
+        throw new Error(data ? data.message : `Erro ${response.status}`);
       }
     } catch (err) {
       alert(err.message);
-    } finally {
-      if (!reload) {
+      if (button.isConnected) {
         button.disabled = false;
         button.textContent = defaultText || originalText;
       }
@@ -969,7 +1032,8 @@ document.addEventListener("DOMContentLoaded", () => {
           if (response.ok) {
             alert(data.message);
             friendItem.remove();
-            if (currentDmFriendId === friendId) {
+            friends = friends.filter(f => f.id_usuario !== parseInt(friendId));
+            if (currentDmFriendId == friendId) {
               renderFriendsView();
             }
           } else {
