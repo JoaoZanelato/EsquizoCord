@@ -88,12 +88,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  socket.on("new_dm", (msg) => {
-    const isChattingWithSender = currentDmFriendId && msg.id_remetente == currentDmFriendId;
-    if (isChattingWithSender) {
-        renderMessage(msg);
+ socket.on("new_dm", (msg) => {
+    // CORREÇÃO: Verifica se a mensagem pertence à conversa ativa no momento
+    const isCorrectConversation = currentDmFriendId &&
+        ((msg.id_remetente == currentUserId && msg.id_destinatario == currentDmFriendId) ||
+         (msg.id_remetente == currentDmFriendId && msg.id_destinatario == currentUserId));
+
+    if (isCorrectConversation) {
+      renderMessage(msg);
     } else if (msg.id_remetente !== currentUserId) {
-        showNotification(null, true); 
+      // Mostra notificação apenas para mensagens recebidas em outras conversas
+      showNotification(null, true); 
     }
   });
 
