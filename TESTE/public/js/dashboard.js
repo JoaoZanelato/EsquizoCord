@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- ESTADO GLOBAL ---
   let currentGroupData = null,
     currentChatId = null,
-    currentGroupId = null, // Adicionado para gerir a sala de grupo
+    currentGroupId = null,
     currentDmFriendId = null,
     currentDmFriendData = null;
   let isCurrentUserAdmin = false,
@@ -21,7 +21,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const data = body.dataset[attribute];
     if (!data) return null;
     try {
-      // Decodifica entidades HTML antes de fazer o parse do JSON
       const decodedData = new DOMParser().parseFromString(data, "text/html")
         .documentElement.textContent;
       return JSON.parse(decodedData);
@@ -42,10 +41,9 @@ document.addEventListener("DOMContentLoaded", () => {
   let sentRequests = parseJsonData("sentRequests") || [];
   const onlineUserIds = new Set(parseJsonData("onlineUserIds") || []);
   const currentUserId = currentUser ? currentUser.id_usuario : null;
-  
+
   const aiUser = friends.find(f => f.Nome === 'EsquizoIA');
   const AI_USER_ID = aiUser ? aiUser.id_usuario : null;
-
 
   // --- SELEÇÃO DE ELEMENTOS DO DOM ---
   const createGroupModal = document.getElementById("create-group-modal"),
@@ -78,7 +76,6 @@ document.addEventListener("DOMContentLoaded", () => {
   socket.on("connect", () => {
     console.log("[CLIENTE] Conectado ao servidor de sockets com ID:", socket.id);
     if(currentUser) {
-      // Entra em uma sala específica do usuário para receber notificações diretas
       socket.emit('join_user_room', `user-${currentUser.id_usuario}`);
     }
   });
@@ -86,18 +83,17 @@ document.addEventListener("DOMContentLoaded", () => {
   socket.on("new_group_message", (msg) => {
     if (msg.id_chat == currentChatId) {
       renderMessage(msg);
+    } else {
+      showNotification(msg.groupId);
     }
   });
 
   socket.on("new_dm", (msg) => {
-    if (
-      currentDmFriendId &&
-      ((msg.id_remetente == currentDmFriendId &&
-        msg.id_destinatario == currentUserId) ||
-        (msg.id_destinatario == currentDmFriendId &&
-          msg.id_remetente == currentUserId))
-    ) {
-      renderMessage(msg);
+    const isChattingWithSender = currentDmFriendId && msg.id_remetente == currentDmFriendId;
+    if (isChattingWithSender) {
+        renderMessage(msg);
+    } else if (msg.id_remetente !== currentUserId) {
+        showNotification(null, true); 
     }
   });
 
@@ -134,7 +130,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (document.querySelector('.friends-nav-btn[data-tab="pending-requests"].active')) {
       renderPendingRequests();
     }
-    alert(`Você recebeu um novo pedido de amizade de ${newRequest.Nome}!`);
+    showNotification(null, true);
   });
 
   socket.on("friend_request_accepted", ({ newFriend, requestId }) => {
@@ -147,15 +143,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (document.querySelector('.friends-nav-btn[data-tab="pending-requests"].active')) {
       renderPendingRequests();
     }
-    alert(`${newFriend.Nome} aceitou seu pedido de amizade!`);
+    showNotification(null, true);
   });
   
   socket.on("friend_removed", ({ removerId }) => {
       const friendIndex = friends.findIndex(f => f.id_usuario === removerId);
       if (friendIndex > -1) {
-          const removedFriend = friends.splice(friendIndex, 1)[0];
-          alert(`${removedFriend.Nome} desfez a amizade com você.`);
-          
+          friends.splice(friendIndex, 1)[0];
           if (currentDmFriendId === removerId) {
               renderFriendsView();
           } else {
@@ -176,7 +170,30 @@ document.addEventListener("DOMContentLoaded", () => {
       }
   });
 
-  // --- FUNÇÕES DE RENDERIZAÇÃO E UI ---
+  // --- FUNÇÕES DE NOTIFICAÇÃO E UI ---
+  function showNotification(targetId, isDm = false) {
+      const targetElement = isDm 
+          ? homeButton 
+          : document.querySelector(`.server-icon[data-group-id="${targetId}"]`);
+
+      if (targetElement && !targetElement.querySelector('.notification-badge')) {
+          const badge = document.createElement('span');
+          badge.className = 'notification-badge';
+          targetElement.appendChild(badge);
+      }
+  }
+
+  function removeNotification(targetId, isDm = false) {
+      const targetElement = isDm 
+          ? homeButton 
+          : document.querySelector(`.server-icon[data-group-id="${targetId}"]`);
+      
+      const badge = targetElement?.querySelector('.notification-badge');
+      if (badge) {
+          badge.remove();
+      }
+  }
+
   function openModal(modal) {
     if (modal) modal.style.display = "flex";
   }
@@ -261,6 +278,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderFriendsView() {
+    removeNotification(null, true);
+
     if (currentGroupId) {
       socket.emit("leave_group_room", `group-${currentGroupId}`);
     }
@@ -384,6 +403,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function renderGroupView(groupId) {
+    removeNotification(groupId);
+
     if (currentDmFriendId) {
       const oldRoomName = `dm-${[currentUserId, currentDmFriendId]
         .sort()
@@ -481,6 +502,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderDmView(friendId, friendName, friendPhoto) {
+    removeNotification(null, true);
+
     if (currentGroupId) {
       const oldRoomName = `group-${currentGroupId}`;
       socket.emit("leave_group_room", oldRoomName);
@@ -791,8 +814,17 @@ document.addEventListener("DOMContentLoaded", () => {
           if (response.ok) {
             window.location.reload();
           } else {
-            const res = await response.json();
-            alert(`Erro ao criar grupo: ${res.message}`);
+             // ** ALTERAÇÃO: MELHORIA NO TRATAMENTO DE ERRO **
+            const contentType = response.headers.get("content-type");
+            let errorMsg;
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                const err = await response.json();
+                errorMsg = err.message;
+            } else {
+                errorMsg = await response.text();
+                console.error("Erro não-JSON recebido do servidor:", errorMsg);
+            }
+            alert(`Erro ao criar grupo: ${errorMsg}`);
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;
           }
@@ -878,7 +910,7 @@ document.addEventListener("DOMContentLoaded", () => {
           : "recusada";
         const onSuccess = () => {
           pendingRequests = pendingRequests.filter(req => req.id_amizade !== parseInt(requestId));
-          if(action === 'aceite') window.location.reload(); // Recarrega para ver o novo amigo
+          if(action === 'aceite') window.location.reload(); 
           else requestItem.remove();
         }
         if (requestId)
@@ -976,9 +1008,10 @@ document.addEventListener("DOMContentLoaded", () => {
     onSuccess = null
   ) {
     if (!button) return;
-    button.disabled = true;
+    const isButtonStillAttached = () => document.body.contains(button);
+    if(isButtonStillAttached()) button.disabled = true;
     const originalText = button.textContent;
-    if (button.tagName === "BUTTON") button.textContent = loadingText;
+    if (isButtonStillAttached() && button.tagName === "BUTTON") button.textContent = loadingText;
     try {
       const options = { method, headers: {} };
       if (body) {
@@ -996,18 +1029,21 @@ document.addEventListener("DOMContentLoaded", () => {
       if (response.ok) {
         if (onSuccess && typeof onSuccess === 'function') {
           onSuccess(data);
-        } else if (data && data.message) {
-          alert(data.message);
         }
       } else {
         throw new Error(data ? data.message : `Erro ${response.status}`);
       }
     } catch (err) {
-      alert(err.message);
-      if (button.isConnected) {
+      if(!onSuccess) alert(err.message);
+      if (isButtonStillAttached()) {
         button.disabled = false;
         button.textContent = defaultText || originalText;
       }
+    } finally {
+        if (!onSuccess && isButtonStillAttached()) {
+             button.disabled = false;
+             button.textContent = defaultText || originalText;
+        }
     }
   }
 

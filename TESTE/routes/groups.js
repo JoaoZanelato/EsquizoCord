@@ -1,12 +1,11 @@
+console.log("-> routes/groups.js foi carregado"); // <-- ADICIONADO PARA DEBUG
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const { encrypt, decrypt } = require('../utils/crypto-helper');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
-// --- ALTERAÇÃO INSERIDA ---
 const { AI_USER_ID, getAiResponse } = require('../utils/ia-helper');
-// --- FIM DA ALTERAÇÃO ---
 
 function requireLogin(req, res, next) {
     if (req.session && req.session.user) return next();
@@ -59,6 +58,12 @@ router.post('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
     const repliedToId = replyingToMessageId || null;
 
     try {
+        const [groupRows] = await pool.query("SELECT id_grupo FROM Chats WHERE id_chat = ?", [chatId]);
+        if (groupRows.length === 0) {
+            return res.status(404).json({message: "Chat não pertence a nenhum grupo."});
+        }
+        const groupId = groupRows[0].id_grupo;
+
         const [result] = await pool.query(
             "INSERT INTO Mensagens (id_chat, id_usuario, ConteudoCriptografado, Nonce, id_mensagem_respondida) VALUES (?, ?, ?, ?, ?)",
             [chatId, user.id_usuario, ciphertext, nonce, repliedToId]
@@ -68,6 +73,7 @@ router.post('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
         const messageData = {
             id_mensagem: messageId,
             id_chat: parseInt(chatId, 10),
+            groupId: groupId,
             Conteudo: content,
             DataHora: new Date(),
             id_usuario: user.id_usuario,
@@ -77,23 +83,17 @@ router.post('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
         };
         
         if (repliedToId) {
-            // CORREÇÃO AQUI: Adicionado 'u.id_usuario as autorId' à query
             const [repliedMsgArr] = await pool.query("SELECT m.ConteudoCriptografado, m.Nonce, u.Nome as autorNome, u.id_usuario as autorId FROM Mensagens m JOIN Usuarios u ON m.id_usuario = u.id_usuario WHERE m.id_mensagem = ?", [repliedToId]);
             if(repliedMsgArr.length > 0) {
                  messageData.repliedTo = {
                     autorNome: repliedMsgArr[0].autorNome,
-                    autorId: repliedMsgArr[0].autorId, // E adicionado aqui
+                    autorId: repliedMsgArr[0].autorId,
                     Conteudo: decrypt(repliedMsgArr[0])
                  }
             }
         }
-
-        const [group] = await pool.query("SELECT id_grupo FROM Chats WHERE id_chat = ?", [chatId]);
         
-        if (group.length === 0) {
-            return res.status(404).json({message: "Chat não pertence a nenhum grupo. "})
-        }
-        const roomName = `group-${group[0].id_grupo}`;
+        const roomName = `group-${groupId}`;
         io.to(roomName).emit('new_group_message', messageData);
         
         const [aiUsers] = await pool.query("SELECT Nome, FotoPerfil FROM Usuarios WHERE id_usuario = ?", [AI_USER_ID]);
@@ -112,6 +112,7 @@ router.post('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
                 const aiMessageData = {
                     id_mensagem: aiResult.insertId,
                     id_chat: parseInt(chatId, 10),
+                    groupId: groupId,
                     Conteudo: aiResponseText,
                     DataHora: new Date(),
                     id_usuario: AI_USER_ID,
@@ -138,9 +139,7 @@ router.post('/criar', requireLogin, upload.single('foto'), async (req, res, next
         const [groupResult] = await connection.query("INSERT INTO Grupos (Nome, Foto, IsPrivate, id_criador) VALUES (?, ?, ?, ?)", [nome, fotoUrl, isPrivateBool, id_criador]);
         const newGroupId = groupResult.insertId;
         await connection.query("INSERT INTO ParticipantesGrupo (id_usuario, id_grupo) VALUES (?, ?)", [id_criador, newGroupId]);
-        // --- ALTERAÇÃO INSERIDA ---
         await connection.query("INSERT INTO ParticipantesGrupo (id_usuario, id_grupo) VALUES (?, ?)", [AI_USER_ID, newGroupId]);
-        // --- FIM DA ALTERAÇÃO ---
         await connection.query("INSERT INTO Administradores (id_usuario, id_grupo) VALUES (?, ?)", [id_criador, newGroupId]);
         await connection.query("INSERT INTO Chats (id_grupo, Nome) VALUES (?, 'geral')", [newGroupId]);
         await connection.commit();
@@ -176,7 +175,6 @@ router.get('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
     const { chatId } = req.params;
     const pool = req.db;
     try {
-        // CORREÇÃO AQUI: Adicionado 'replied_u.id_usuario as repliedAuthorId' à query
         const query = `
             SELECT 
                 m.id_mensagem, m.ConteudoCriptografado, m.Nonce, m.DataHora, m.id_usuario, 
@@ -202,7 +200,7 @@ router.get('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
                 const repliedDecryptedContent = decrypt({ ConteudoCriptografado: msg.repliedContent, Nonce: msg.repliedNonce });
                 repliedTo = {
                     autorNome: msg.repliedAuthorName,
-                    autorId: msg.repliedAuthorId, // E adicionado aqui
+                    autorId: msg.repliedAuthorId,
                     Conteudo: repliedDecryptedContent
                 };
             }
@@ -326,4 +324,5 @@ router.delete('/messages/:messageId', requireLogin, async (req, res, next) => {
         next(error);
     }
 });
+
 module.exports = router;
