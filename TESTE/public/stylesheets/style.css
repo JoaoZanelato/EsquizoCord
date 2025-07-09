@@ -1055,3 +1055,11 @@ body {
 .form-footer-actions span {
   color: var(--text-muted);
 }
+
+#delete-password-input {
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid var(--background-tertiary);
+  background-color: var(--background-tertiary);
+  color: var(--text-normal);
+}

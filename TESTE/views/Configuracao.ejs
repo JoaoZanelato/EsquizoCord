@@ -209,7 +209,7 @@
                 <span>&nbsp;•&nbsp;</span>
                 <a href="/sair">Sair</a>
                 <span>&nbsp;•&nbsp;</span>
-                <button type="button" id="show-delete-account-modal-btn" class="delete-account-link">Excluir Conta</button>
+                <button type="button" id="show-delete-confirmation-btn" class="delete-account-link">Excluir Conta</button>
             </div>
         <% } else { %>
             <h2>Utilizador não encontrado.</h2>
@@ -233,17 +233,14 @@
         }
     </script>
 
-<div id="delete-account-modal" class="modal-overlay">  <div class="modal-content" style="max-width: 460px;">
-    <h3>Excluir Conta</h3>
-    <p>
-      Tem certeza de que deseja excluir sua conta? <br>
-      <strong>Esta ação é irreversível.</strong> Todos os seus dados, mensagens e grupos criados serão permanentemente apagados.
-    </p>
-    <div class="modal-actions" style="justify-content: flex-end;">
-      <button id="cancel-delete-account-btn" class="cancel-btn">Cancelar</button>
-      <button id="confirm-delete-account-btn" class="delete-btn">Excluir Conta</button>
+<div id="delete-confirmation-section" style="display: none; margin-top: 20px; border-top: 1px solid var(--background-secondary); padding-top: 20px;">
+    <p>Para confirmar a exclusão permanente da sua conta, digite sua senha.</p>
+    <input type="password" id="delete-password-input" placeholder="Digite sua senha" style="width:100%; margin-bottom: 10px;">
+    <div style="display: flex; gap: 10px;">
+        <button type="button" id="confirm-delete-btn" class="delete-btn">Confirmar</button>
+        <button type="button" id="cancel-delete-btn" class="cancel-btn">Cancelar</button>
     </div>
-  </div>
+    <p id="delete-error-message" style="color: var(--red-danger); font-size: 14px; margin-top: 10px; display: none;"></p>
 </div>
 
 <script>
