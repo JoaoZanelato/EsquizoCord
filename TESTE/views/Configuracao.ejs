@@ -204,12 +204,12 @@
                 </select>
                 <button type="submit">Salvar Alterações</button>
             </form>
-            <div class="actions-container">
+            <div class="form-footer-actions">
                 <a href="/dashboard">Ir para o Dashboard</a>
                 <span>&nbsp;•&nbsp;</span>
                 <a href="/sair">Sair</a>
                 <span>&nbsp;•&nbsp;</span>
-                <button type="button" id="show-delete-confirmation-btn" class="delete-account-link">Excluir Conta</button>
+                <button type="button" id="show-delete-account-modal-btn" class="delete-account-link">Excluir Conta</button>
             </div>
         <% } else { %>
             <h2>Utilizador não encontrado.</h2>
@@ -243,65 +243,83 @@
     <p id="delete-error-message" style="color: var(--red-danger); font-size: 14px; margin-top: 10px; display: none;"></p>
 </div>
 
-<script>
+<div id="delete-account-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 460px;">
+      <h3 style="text-align: left; font-size: 20px; line-height: 24px;">Excluir Conta</h3>
+      <p style="text-align: left; font-size: 16px; color: var(--text-normal); margin-bottom: 20px;">
+        Tem certeza de que deseja excluir sua conta? <br>
+        <strong>Esta ação é irreversível.</strong> Todos os seus dados, mensagens e grupos criados serão permanentemente apagados.
+      </p>
+      <div class="modal-actions" style="justify-content: flex-end;">
+        <button id="cancel-delete-account-btn" class="cancel-btn">Cancelar</button>
+        <button id="confirm-delete-account-btn" class="delete-btn">Excluir Conta</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const showConfirmationBtn = document.getElementById('show-delete-confirmation-btn');
-        const confirmationSection = document.getElementById('delete-confirmation-section');
-        const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
-        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
-        const passwordInput = document.getElementById('delete-password-input');
-        const errorMessage = document.getElementById('delete-error-message');
+        const deleteAccountModal = document.getElementById('delete-account-modal');
+        const showDeleteBtn = document.getElementById('show-delete-account-modal-btn');
+        const cancelDeleteBtn = document.getElementById('cancel-delete-account-btn');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-account-btn');
+
+        const openModal = (modal) => {
+            if (modal) modal.style.display = 'flex';
+        };
+        const closeModal = (modal) => {
+            if (modal) modal.style.display = 'none';
+        };
 
 
-        showConfirmationBtn.addEventListener('click', () => {
-            confirmationSection.style.display = 'block';
-            showConfirmationBtn.style.display = 'none'; 
-        });
-
-
-        cancelDeleteBtn.addEventListener('click', () => {
-            confirmationSection.style.display = 'none';
-            showConfirmationBtn.style.display = 'inline'; 
-            errorMessage.style.display = 'none';
-            passwordInput.value = '';
-        });
-
-        confirmDeleteBtn.addEventListener('click', async () => {
-            const senha = passwordInput.value;
-            if (!senha) {
-                errorMessage.textContent = 'Por favor, insira sua senha.';
-                errorMessage.style.display = 'block';
-                return;
-            }
-            
-            errorMessage.style.display = 'none';
-            const originalText = confirmDeleteBtn.textContent;
-            confirmDeleteBtn.disabled = true;
-            confirmDeleteBtn.textContent = 'Excluindo...';
-
-            try {
-                const response = await fetch('/users/me', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ senha: senha })
-                });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    alert(result.message);
-                    window.location.href = '/login';
-                } else {
-                    throw new Error(result.message || 'Ocorreu um erro.');
+        if (showDeleteBtn) {
+            showDeleteBtn.addEventListener('click', () => {
+                openModal(deleteAccountModal);
+            });
+        }
+        
+        if (cancelDeleteBtn) {
+            cancelDeleteBtn.addEventListener('click', () => {
+                closeModal(deleteAccountModal);
+            });
+        }
+        
+        if (deleteAccountModal) {
+            deleteAccountModal.addEventListener('click', (e) => {
+                if (e.target === deleteAccountModal) {
+                    closeModal(deleteAccountModal);
                 }
-            } catch (error) {
-                errorMessage.textContent = error.message;
-                errorMessage.style.display = 'block';
-                confirmDeleteBtn.disabled = false;
-                confirmDeleteBtn.textContent = originalText;
-            }
-        });
+            });
+        }
+
+        if (confirmDeleteBtn) {
+            confirmDeleteBtn.addEventListener('click', async () => {
+                const originalText = confirmDeleteBtn.textContent;
+                confirmDeleteBtn.disabled = true;
+                confirmDeleteBtn.textContent = 'Excluindo...';
+
+                try {
+                    const response = await fetch('/users/me', {
+                        method: 'DELETE'
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        alert(result.message);
+                        window.location.href = '/login';
+                    } else {
+                        throw new Error(result.message || 'Ocorreu um erro ao tentar excluir a conta.');
+                    }
+                } catch (error) {
+                    alert(error.message);
+                    confirmDeleteBtn.disabled = false;
+                    confirmDeleteBtn.textContent = originalText;
+                }
+            });
+        }
     });
 </script>
+
 </body>
 </html>
