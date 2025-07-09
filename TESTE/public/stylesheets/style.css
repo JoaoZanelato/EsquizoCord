@@ -407,6 +407,16 @@ body {
 .modal-content h3 {
   text-align: center;
   margin-top: 0;
+  text-align: left; 
+  font-size: 20px; 
+  line-height: 24px; 
+  margin-bottom: 20px;
+}
+.modal-content p {
+  text-align: left;
+  font-size: 16px;
+  color: var(--text-normal);
+  margin-bottom: 20px;
 }
 .modal-content label {
   font-weight: bold;
@@ -442,7 +452,10 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-top: auto;
+  margin-top: 20px;
+  justify-content: flex-end;
 }
+
 .modal-actions button {
   padding: 10px 24px;
   border: none;
@@ -463,6 +476,18 @@ body {
 .delete-btn {
   background-color: var(--red-danger);
   color: white;
+}
+.modal-actions .cancel-btn {
+  background: none;
+  color: var(--header-primary);
+  margin-right: 10px;
+}
+.modal-actions .delete-btn {
+  background-color: var(--red-danger);
+  color: white;
+}
+.modal-actions .delete-btn:hover {
+  background-color: var(--red-danger-hover);
 }
 #search-results,
 .friend-requests-container {

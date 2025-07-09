@@ -211,5 +211,16 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/dashboard.js"></script>
+
+    <div id="remove-friend-modal" class="modal-overlay">
+      <div class="modal-content" style="max-width: 460px;">
+        <h3 id="remove-friend-modal-title" style="text-align: left; font-size: 20px; line-height: 24px; margin-bottom: 20px;"></h3>
+        <p id="remove-friend-modal-text" style="text-align: left; font-size: 16px; color: var(--text-normal); margin-bottom: 20px;"></p>
+        <div class="modal-actions" style="justify-content: flex-end;">
+          <button id="cancel-remove-friend-btn" class="cancel-btn">Cancelar</button>
+          <button id="confirm-remove-friend-btn" class="delete-btn">Remover Amigo</button>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

@@ -71,6 +71,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const serverList = document.querySelector(".server-list"),
     channelList = document.querySelector(".channel-list");
   const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+  const removeFriendModal = document.getElementById('remove-friend-modal');
+  const removeFriendModalTitle = document.getElementById('remove-friend-modal-title');
+  const removeFriendModalText = document.getElementById('remove-friend-modal-text');
+  const cancelRemoveFriendBtn = document.getElementById('cancel-remove-friend-btn');
+  const confirmRemoveFriendBtn = document.getElementById('confirm-remove-friend-btn');
 
   // --- LÓGICA DE SOCKET.IO ---
   socket.on("connect", () => {
@@ -319,6 +324,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const mentionBtn = document.getElementById("mention-ai-btn");
     if (mentionBtn) mentionBtn.style.display = "none";
   }
+
+let friendToRemove = { id: null, name: null, element: null };
+
+function openRemoveFriendModal(friendId, friendName, element) {
+  friendToRemove = { id: friendId, name: friendName, element };
+  
+  if (removeFriendModalTitle) removeFriendModalTitle.innerHTML = `Remover '${friendName}'`;
+  if (removeFriendModalText) removeFriendModalText.innerHTML = `Tem certeza de que deseja remover <strong>${friendName}</strong> da sua lista de amigos?`;
+
+  openModal(removeFriendModal);
+}
+
+function closeRemoveFriendModal() {
+  closeModal(removeFriendModal);
+  friendToRemove = { id: null, name: null, element: null };
+}
 
   function renderFriendsList() {
     if (!channelListContent) return;
@@ -1052,41 +1073,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  channelListContent.addEventListener("click", async (e) => {
-    const removeButton = e.target.closest(".remove-friend-btn");
-    if (removeButton) {
-      const friendItem = removeButton.closest(".friend-item");
-      const friendId = friendItem.dataset.friendId;
-      const friendName = friendItem.dataset.friendName;
+channelListContent.addEventListener("click", async (e) => {
+  const removeButton = e.target.closest(".remove-friend-btn");
+  if (removeButton) {
+    const friendItem = removeButton.closest(".friend-item");
+    const friendId = friendItem.dataset.friendId;
+    const friendName = friendItem.dataset.friendName;
 
-      if (
-        confirm(
-          `Tem certeza de que deseja remover ${friendName} da sua lista de amigos?`
-        )
-      ) {
-        try {
-          const response = await fetch(`/friends/${friendId}`, {
-            method: "DELETE",
-          });
-
-          const data = await response.json();
-          if (response.ok) {
-            alert(data.message);
-            friendItem.remove();
-            friends = friends.filter(f => f.id_usuario !== parseInt(friendId));
-            if (currentDmFriendId == friendId) {
-              renderFriendsView();
-            }
-          } else {
-            throw new Error(data.message);
-          }
-        } catch (error) {
-          console.error("Erro ao remover amigo:", error);
-          alert(`Não foi possível remover o amigo: ${error.message}`);
-        }
-      }
-    }
-  });
+    openRemoveFriendModal(friendId, friendName, friendItem);
+  }
+});
 
   // --- INICIALIZAÇÃO DA APLICAÇÃO ---
   function main() {
