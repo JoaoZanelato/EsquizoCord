@@ -214,6 +214,12 @@
         <% } %>
     </div>
 
+    <div style="margin-top: 40px; border-top: 1px solid var(--background-tertiary); padding-top: 20px;">
+        <h4 style="color: var(--red-danger);">Zona de Perigo</h4>
+        <p style="color: var(--text-muted); font-size: 14px;">A exclusão da sua conta é uma ação permanente e não pode ser desfeita.</p>
+        <button type="button" id="show-delete-account-modal-btn" class="delete-btn">Excluir Conta</button>
+    </div>
+
     <script>
         const fotoPerfilInput = document.getElementById('fotoPerfil');
         const previewImage = event => {
@@ -229,5 +235,83 @@
             fotoPerfilInput.addEventListener('change', previewImage);
         }
     </script>
+
+<div id="delete-account-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 460px;">
+      <h3 style="text-align: left; font-size: 20px; line-height: 24px;">Excluir Conta</h3>
+      <p style="text-align: left; font-size: 16px; color: var(--text-normal); margin-bottom: 20px;">
+        Tem certeza de que deseja excluir sua conta? <br>
+        <strong>Esta ação é irreversível.</strong> Todos os seus dados, mensagens e grupos criados serão permanentemente apagados.
+      </p>
+      <div class="modal-actions" style="justify-content: flex-end;">
+        <button id="cancel-delete-account-btn" class="cancel-btn">Cancelar</button>
+        <button id="confirm-delete-account-btn" class="delete-btn">Excluir Conta</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const deleteAccountModal = document.getElementById('delete-account-modal');
+        const showDeleteBtn = document.getElementById('show-delete-account-modal-btn');
+        const cancelDeleteBtn = document.getElementById('cancel-delete-account-btn');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-account-btn');
+
+        const openModal = (modal) => {
+            if (modal) modal.style.display = 'flex';
+        };
+        const closeModal = (modal) => {
+            if (modal) modal.style.display = 'none';
+        };
+
+
+        if (showDeleteBtn) {
+            showDeleteBtn.addEventListener('click', () => {
+                openModal(deleteAccountModal);
+            });
+        }
+        
+        if (cancelDeleteBtn) {
+            cancelDeleteBtn.addEventListener('click', () => {
+                closeModal(deleteAccountModal);
+            });
+        }
+        
+        if (deleteAccountModal) {
+            deleteAccountModal.addEventListener('click', (e) => {
+                if (e.target === deleteAccountModal) {
+                    closeModal(deleteAccountModal);
+                }
+            });
+        }
+
+        if (confirmDeleteBtn) {
+            confirmDeleteBtn.addEventListener('click', async () => {
+                const originalText = confirmDeleteBtn.textContent;
+                confirmDeleteBtn.disabled = true;
+                confirmDeleteBtn.textContent = 'Excluindo...';
+
+                try {
+                    const response = await fetch('/users/me', {
+                        method: 'DELETE'
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        alert(result.message);
+                        window.location.href = '/login';
+                    } else {
+                        throw new Error(result.message || 'Ocorreu um erro.');
+                    }
+                } catch (error) {
+                    alert('Erro ao excluir a conta: ' + error.message);
+                    confirmDeleteBtn.disabled = false;
+                    confirmDeleteBtn.textContent = originalText;
+                }
+            });
+        }
+    });
+</script>
 </body>
 </html>
