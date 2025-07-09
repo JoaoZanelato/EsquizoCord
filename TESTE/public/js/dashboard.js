@@ -1073,16 +1073,58 @@ function closeRemoveFriendModal() {
     }
   }
 
-channelListContent.addEventListener("click", async (e) => {
-  const removeButton = e.target.closest(".remove-friend-btn");
-  if (removeButton) {
-    const friendItem = removeButton.closest(".friend-item");
-    const friendId = friendItem.dataset.friendId;
-    const friendName = friendItem.dataset.friendName;
+  channelListContent.addEventListener("click", async (e) => {
+    const removeButton = e.target.closest(".remove-friend-btn");
+    if (removeButton) {
+      const friendItem = removeButton.closest(".friend-item");
+      const friendId = friendItem.dataset.friendId;
+      const friendName = friendItem.dataset.friendName;
 
-    openRemoveFriendModal(friendId, friendName, friendItem);
+      openRemoveFriendModal(friendId, friendName, friendItem);
+    }
+  });
+
+  // --- EVENT LISTENERS PARA OS BOTÕES DO MODAL (CONFIRMAR E CANCELAR) ---
+  if (cancelRemoveFriendBtn) {
+    cancelRemoveFriendBtn.addEventListener('click', closeRemoveFriendModal);
   }
-});
+
+  if (confirmRemoveFriendBtn) {
+    confirmRemoveFriendBtn.addEventListener('click', async () => {
+      const { id, element } = friendToRemove;
+      if (!id) return;
+      
+      const originalText = confirmRemoveFriendBtn.textContent;
+      confirmRemoveFriendBtn.disabled = true;
+      confirmRemoveFriendBtn.textContent = 'Removendo...';
+
+      try {
+        const response = await fetch(`/friends/${id}`, {
+          method: "DELETE",
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          closeRemoveFriendModal();
+          if (element) element.remove(); 
+          friends = friends.filter(f => f.id_usuario !== parseInt(id));
+          if (currentDmFriendId == id) {
+            renderFriendsView();
+          }
+        } else {
+          throw new Error(data.message);
+        }
+      } catch (error) {
+        console.error("Erro ao remover amigo:", error);
+        alert(`Não foi possível remover o amigo: ${error.message}`);
+      } finally {
+        if(document.body.contains(confirmRemoveFriendBtn)) {
+            confirmRemoveFriendBtn.disabled = false;
+            confirmRemoveFriendBtn.textContent = originalText;
+        }
+      }
+    });
+  }
 
   // --- INICIALIZAÇÃO DA APLICAÇÃO ---
   function main() {
