@@ -1021,3 +1021,37 @@ body {
     border: 2px solid var(--background-tertiary);
     pointer-events: none; /* Garante que o clique vá para o ícone, não para o badge */
 }
+
+.form-footer-actions {
+  display: flex;
+  align-items: center;
+  margin-top: 40px;
+  padding: 20px;
+  border-top: 1px solid var(--background-secondary);
+}
+
+.form-footer-actions a,
+.form-footer-actions button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.form-footer-actions a:hover,
+.form-footer-actions button:hover {
+  text-decoration: underline;
+}
+
+.form-footer-actions .delete-account-link {
+  color: var(--red-danger);
+}
+
+.form-footer-actions span {
+  color: var(--text-muted);
+}

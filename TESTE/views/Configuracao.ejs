@@ -206,18 +206,15 @@
             </form>
             <div class="actions-container">
                 <a href="/dashboard">Ir para o Dashboard</a>
+                <span>&nbsp;•&nbsp;</span>
                 <a href="/sair">Sair</a>
+                <span>&nbsp;•&nbsp;</span>
+                <button type="button" id="show-delete-account-modal-btn" class="delete-account-link">Excluir Conta</button>
             </div>
         <% } else { %>
             <h2>Utilizador não encontrado.</h2>
             <a href="/login" class="back-link">Voltar ao Login</a>
         <% } %>
-    </div>
-
-    <div style="margin-top: 40px; border-top: 1px solid var(--background-tertiary); padding-top: 20px;">
-        <h4 style="color: var(--red-danger);">Zona de Perigo</h4>
-        <p style="color: var(--text-muted); font-size: 14px;">A exclusão da sua conta é uma ação permanente e não pode ser desfeita.</p>
-        <button type="button" id="show-delete-account-modal-btn" class="delete-btn">Excluir Conta</button>
     </div>
 
     <script>
@@ -249,54 +246,35 @@
   </div>
 </div>
 
-  <script>
+<script>
     document.addEventListener('DOMContentLoaded', () => {
         const deleteAccountModal = document.getElementById('delete-account-modal');
         const showDeleteBtn = document.getElementById('show-delete-account-modal-btn');
         const cancelDeleteBtn = document.getElementById('cancel-delete-account-btn');
         const confirmDeleteBtn = document.getElementById('confirm-delete-account-btn');
 
-        const openModal = (modal) => {
-            if (modal) modal.style.display = 'flex';
-        };
-        const closeModal = (modal) => {
-            if (modal) modal.style.display = 'none';
-        };
-
+        const openModal = (modal) => { if (modal) modal.style.display = 'flex'; };
+        const closeModal = (modal) => { if (modal) modal.style.display = 'none'; };
 
         if (showDeleteBtn) {
-            showDeleteBtn.addEventListener('click', () => {
-                openModal(deleteAccountModal);
-            });
+            showDeleteBtn.addEventListener('click', () => openModal(deleteAccountModal));
         }
-        
         if (cancelDeleteBtn) {
-            cancelDeleteBtn.addEventListener('click', () => {
-                closeModal(deleteAccountModal);
-            });
+            cancelDeleteBtn.addEventListener('click', () => closeModal(deleteAccountModal));
         }
-        
         if (deleteAccountModal) {
             deleteAccountModal.addEventListener('click', (e) => {
-                if (e.target === deleteAccountModal) {
-                    closeModal(deleteAccountModal);
-                }
+                if (e.target === deleteAccountModal) closeModal(deleteAccountModal);
             });
         }
-
         if (confirmDeleteBtn) {
             confirmDeleteBtn.addEventListener('click', async () => {
-                const originalText = confirmDeleteBtn.textContent;
                 confirmDeleteBtn.disabled = true;
                 confirmDeleteBtn.textContent = 'Excluindo...';
 
                 try {
-                    const response = await fetch('/users/me', {
-                        method: 'DELETE'
-                    });
-
+                    const response = await fetch('/users/me', { method: 'DELETE' });
                     const result = await response.json();
-
                     if (response.ok) {
                         alert(result.message);
                         window.location.href = '/login';
@@ -306,7 +284,7 @@
                 } catch (error) {
                     alert('Erro ao excluir a conta: ' + error.message);
                     confirmDeleteBtn.disabled = false;
-                    confirmDeleteBtn.textContent = originalText;
+                    confirmDeleteBtn.textContent = 'Excluir Conta';
                 }
             });
         }
