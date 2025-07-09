@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const onlineUserIds = new Set(parseJsonData("onlineUserIds") || []);
   const currentUserId = currentUser ? currentUser.id_usuario : null;
 
-  const aiUser = friends.find(f => f.Nome === 'EsquizoIA');
+  const aiUser = friends.find((f) => f.Nome === "EsquizoIA");
   const AI_USER_ID = aiUser ? aiUser.id_usuario : null;
 
   // --- SELEÇÃO DE ELEMENTOS DO DOM ---
@@ -71,17 +71,34 @@ document.addEventListener("DOMContentLoaded", () => {
   const serverList = document.querySelector(".server-list"),
     channelList = document.querySelector(".channel-list");
   const mobileMenuBtn = document.getElementById("mobile-menu-btn");
-  const removeFriendModal = document.getElementById('remove-friend-modal');
-  const removeFriendModalTitle = document.getElementById('remove-friend-modal-title');
-  const removeFriendModalText = document.getElementById('remove-friend-modal-text');
-  const cancelRemoveFriendBtn = document.getElementById('cancel-remove-friend-btn');
-  const confirmRemoveFriendBtn = document.getElementById('confirm-remove-friend-btn');
+  const removeFriendModal = document.getElementById("remove-friend-modal");
+  const removeFriendModalTitle = document.getElementById(
+    "remove-friend-modal-title"
+  );
+  const removeFriendModalText = document.getElementById(
+    "remove-friend-modal-text"
+  );
+  const cancelRemoveFriendBtn = document.getElementById(
+    "cancel-remove-friend-btn"
+  );
+  const confirmRemoveFriendBtn = document.getElementById(
+    "confirm-remove-friend-btn"
+  );
+  const deleteTrigger = document.getElementById("delete-account-trigger");
+  const deleteContainer = document.getElementById(
+    "delete-confirmation-container"
+  );
+  const confirmDeleteBtn = document.getElementById("confirm-delete-btn");
+  const passwordInput = document.getElementById("delete-password-input");
 
   // --- LÓGICA DE SOCKET.IO ---
   socket.on("connect", () => {
-    console.log("[CLIENTE] Conectado ao servidor de sockets com ID:", socket.id);
-    if(currentUser) {
-      socket.emit('join_user_room', `user-${currentUser.id_usuario}`);
+    console.log(
+      "[CLIENTE] Conectado ao servidor de sockets com ID:",
+      socket.id
+    );
+    if (currentUser) {
+      socket.emit("join_user_room", `user-${currentUser.id_usuario}`);
     }
   });
 
@@ -93,17 +110,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
- socket.on("new_dm", (msg) => {
+  socket.on("new_dm", (msg) => {
     // CORREÇÃO: Verifica se a mensagem pertence à conversa ativa no momento
-    const isCorrectConversation = currentDmFriendId &&
-        ((msg.id_remetente == currentUserId && msg.id_destinatario == currentDmFriendId) ||
-         (msg.id_remetente == currentDmFriendId && msg.id_destinatario == currentUserId));
+    const isCorrectConversation =
+      currentDmFriendId &&
+      ((msg.id_remetente == currentUserId &&
+        msg.id_destinatario == currentDmFriendId) ||
+        (msg.id_remetente == currentDmFriendId &&
+          msg.id_destinatario == currentUserId));
 
     if (isCorrectConversation) {
       renderMessage(msg);
     } else if (msg.id_remetente !== currentUserId) {
       // Mostra notificação apenas para mensagens recebidas em outras conversas
-      showNotification(null, true); 
+      showNotification(null, true);
     }
   });
 
@@ -137,71 +157,91 @@ document.addEventListener("DOMContentLoaded", () => {
 
   socket.on("friend_request_received", (newRequest) => {
     pendingRequests.push(newRequest);
-    if (document.querySelector('.friends-nav-btn[data-tab="pending-requests"].active')) {
+    if (
+      document.querySelector(
+        '.friends-nav-btn[data-tab="pending-requests"].active'
+      )
+    ) {
       renderPendingRequests();
     }
     showNotification(null, true);
   });
 
   socket.on("friend_request_accepted", ({ newFriend, requestId }) => {
-    sentRequests = sentRequests.filter(req => req.id_amizade !== requestId);
+    sentRequests = sentRequests.filter((req) => req.id_amizade !== requestId);
     friends.push(newFriend);
 
-    if (document.querySelector('.friends-nav-btn[data-tab="friends-list"].active')) {
+    if (
+      document.querySelector('.friends-nav-btn[data-tab="friends-list"].active')
+    ) {
       renderFriendsList();
     }
-    if (document.querySelector('.friends-nav-btn[data-tab="pending-requests"].active')) {
+    if (
+      document.querySelector(
+        '.friends-nav-btn[data-tab="pending-requests"].active'
+      )
+    ) {
       renderPendingRequests();
     }
     showNotification(null, true);
   });
-  
+
   socket.on("friend_removed", ({ removerId }) => {
-      const friendIndex = friends.findIndex(f => f.id_usuario === removerId);
-      if (friendIndex > -1) {
-          friends.splice(friendIndex, 1)[0];
-          if (currentDmFriendId === removerId) {
-              renderFriendsView();
-          } else {
-              if (document.querySelector('.friends-nav-btn[data-tab="friends-list"].active')) {
-                  renderFriendsList();
-              }
-          }
+    const friendIndex = friends.findIndex((f) => f.id_usuario === removerId);
+    if (friendIndex > -1) {
+      friends.splice(friendIndex, 1)[0];
+      if (currentDmFriendId === removerId) {
+        renderFriendsView();
+      } else {
+        if (
+          document.querySelector(
+            '.friends-nav-btn[data-tab="friends-list"].active'
+          )
+        ) {
+          renderFriendsList();
+        }
       }
+    }
   });
 
   socket.on("request_cancelled", ({ requestId }) => {
-      const pendingIndex = pendingRequests.findIndex(req => req.id_amizade === requestId);
-      if (pendingIndex > -1) {
-          pendingRequests.splice(pendingIndex, 1);
-          if (document.querySelector('.friends-nav-btn[data-tab="pending-requests"].active')) {
-              renderPendingRequests();
-          }
+    const pendingIndex = pendingRequests.findIndex(
+      (req) => req.id_amizade === requestId
+    );
+    if (pendingIndex > -1) {
+      pendingRequests.splice(pendingIndex, 1);
+      if (
+        document.querySelector(
+          '.friends-nav-btn[data-tab="pending-requests"].active'
+        )
+      ) {
+        renderPendingRequests();
       }
+    }
   });
 
   // --- FUNÇÕES DE NOTIFICAÇÃO E UI ---
   function showNotification(targetId, isDm = false) {
-      const targetElement = isDm 
-          ? homeButton 
-          : document.querySelector(`.server-icon[data-group-id="${targetId}"]`);
+    const targetElement = isDm
+      ? homeButton
+      : document.querySelector(`.server-icon[data-group-id="${targetId}"]`);
 
-      if (targetElement && !targetElement.querySelector('.notification-badge')) {
-          const badge = document.createElement('span');
-          badge.className = 'notification-badge';
-          targetElement.appendChild(badge);
-      }
+    if (targetElement && !targetElement.querySelector(".notification-badge")) {
+      const badge = document.createElement("span");
+      badge.className = "notification-badge";
+      targetElement.appendChild(badge);
+    }
   }
 
   function removeNotification(targetId, isDm = false) {
-      const targetElement = isDm 
-          ? homeButton 
-          : document.querySelector(`.server-icon[data-group-id="${targetId}"]`);
-      
-      const badge = targetElement?.querySelector('.notification-badge');
-      if (badge) {
-          badge.remove();
-      }
+    const targetElement = isDm
+      ? homeButton
+      : document.querySelector(`.server-icon[data-group-id="${targetId}"]`);
+
+    const badge = targetElement?.querySelector(".notification-badge");
+    if (badge) {
+      badge.remove();
+    }
   }
 
   function openModal(modal) {
@@ -325,21 +365,23 @@ document.addEventListener("DOMContentLoaded", () => {
     if (mentionBtn) mentionBtn.style.display = "none";
   }
 
-let friendToRemove = { id: null, name: null, element: null };
+  let friendToRemove = { id: null, name: null, element: null };
 
-function openRemoveFriendModal(friendId, friendName, element) {
-  friendToRemove = { id: friendId, name: friendName, element };
-  
-  if (removeFriendModalTitle) removeFriendModalTitle.innerHTML = `Remover '${friendName}'`;
-  if (removeFriendModalText) removeFriendModalText.innerHTML = `Tem certeza de que deseja remover <strong>${friendName}</strong> da sua lista de amigos?`;
+  function openRemoveFriendModal(friendId, friendName, element) {
+    friendToRemove = { id: friendId, name: friendName, element };
 
-  openModal(removeFriendModal);
-}
+    if (removeFriendModalTitle)
+      removeFriendModalTitle.innerHTML = `Remover '${friendName}'`;
+    if (removeFriendModalText)
+      removeFriendModalText.innerHTML = `Tem certeza de que deseja remover <strong>${friendName}</strong> da sua lista de amigos?`;
 
-function closeRemoveFriendModal() {
-  closeModal(removeFriendModal);
-  friendToRemove = { id: null, name: null, element: null };
-}
+    openModal(removeFriendModal);
+  }
+
+  function closeRemoveFriendModal() {
+    closeModal(removeFriendModal);
+    friendToRemove = { id: null, name: null, element: null };
+  }
 
   function renderFriendsList() {
     if (!channelListContent) return;
@@ -355,7 +397,7 @@ function closeRemoveFriendModal() {
         friendDiv.dataset.friendPhoto = friend.FotoPerfil || "/images/logo.png";
 
         const isOnline = onlineUserIds.has(friend.id_usuario);
-        
+
         const nameHTML =
           friend.id_usuario === AI_USER_ID
             ? `${friend.Nome} <i class="fas fa-robot" title="Inteligência Artificial" style="font-size: 12px; color: var(--text-muted);"></i>`
@@ -388,7 +430,7 @@ function closeRemoveFriendModal() {
     if (!channelListContent) return;
     channelListContent.innerHTML =
       '<div class="channel-list-header">PEDIDOS RECEBIDOS</div>';
-    (pendingRequests && pendingRequests.length > 0
+    pendingRequests && pendingRequests.length > 0
       ? pendingRequests.forEach((req) => {
           const reqDiv = document.createElement("div");
           reqDiv.className = "friend-request-item";
@@ -402,11 +444,11 @@ function closeRemoveFriendModal() {
           channelListContent.appendChild(reqDiv);
         })
       : (channelListContent.innerHTML +=
-          '<p style="padding: 8px; color: var(--text-muted);">Nenhum pedido recebido.</p>'));
+          '<p style="padding: 8px; color: var(--text-muted);">Nenhum pedido recebido.</p>');
 
     channelListContent.innerHTML +=
       '<div class="channel-list-header" style="margin-top: 20px;">PEDIDOS ENVIADOS</div>';
-    (sentRequests && sentRequests.length > 0
+    sentRequests && sentRequests.length > 0
       ? sentRequests.forEach((req) => {
           const reqDiv = document.createElement("div");
           reqDiv.className = "friend-request-item";
@@ -420,7 +462,7 @@ function closeRemoveFriendModal() {
           channelListContent.appendChild(reqDiv);
         })
       : (channelListContent.innerHTML +=
-          '<p style="padding: 8px; color: var(--text-muted);">Nenhum pedido enviado.</p>'));
+          '<p style="padding: 8px; color: var(--text-muted);">Nenhum pedido enviado.</p>');
   }
 
   function renderAddFriend() {
@@ -496,7 +538,7 @@ function closeRemoveFriendModal() {
         memberDiv.dataset.friendId = member.id_usuario;
 
         const isOnline = onlineUserIds.has(member.id_usuario);
-        
+
         const memberNameHTML =
           member.id_usuario === AI_USER_ID
             ? `<span>${member.Nome} <i class="fas fa-robot" title="Inteligência Artificial" style="color: var(--text-muted);"></i></span>`
@@ -660,7 +702,7 @@ function closeRemoveFriendModal() {
             .forEach((btn) => btn.classList.remove("active"));
           e.target.classList.add("active");
           const tab = e.target.dataset.tab;
-          
+
           if (tab === "friends-list") renderFriendsList();
           else if (tab === "pending-requests") renderPendingRequests();
           else if (tab === "add-friend") renderAddFriend();
@@ -809,7 +851,7 @@ function closeRemoveFriendModal() {
             });
             if (!response.ok) {
               console.error("Falha ao enviar mensagem para o servidor.");
-              chatInput.value = messageContent; 
+              chatInput.value = messageContent;
             }
           } catch (error) {
             console.error("ERRO ao enviar mensagem:", error);
@@ -840,15 +882,15 @@ function closeRemoveFriendModal() {
           if (response.ok) {
             window.location.reload();
           } else {
-             // ** ALTERAÇÃO: MELHORIA NO TRATAMENTO DE ERRO **
+            // ** ALTERAÇÃO: MELHORIA NO TRATAMENTO DE ERRO **
             const contentType = response.headers.get("content-type");
             let errorMsg;
             if (contentType && contentType.indexOf("application/json") !== -1) {
-                const err = await response.json();
-                errorMsg = err.message;
+              const err = await response.json();
+              errorMsg = err.message;
             } else {
-                errorMsg = await response.text();
-                console.error("Erro não-JSON recebido do servidor:", errorMsg);
+              errorMsg = await response.text();
+              console.error("Erro não-JSON recebido do servidor:", errorMsg);
             }
             alert(`Erro ao criar grupo: ${errorMsg}`);
             submitBtn.disabled = false;
@@ -888,7 +930,7 @@ function closeRemoveFriendModal() {
             channelList.classList.remove("open");
           }
         }
-        return; 
+        return;
       }
 
       const button = e.target.closest("button");
@@ -907,14 +949,18 @@ function closeRemoveFriendModal() {
       } else if (button.classList.contains("add-friend-btn")) {
         const userId = button.dataset.userId;
         const onSuccess = (data) => {
-            if (data.sentRequest) {
-                sentRequests.push(data.sentRequest);
-            }
-            if (document.querySelector('.friends-nav-btn[data-tab="pending-requests"].active')) {
-                renderPendingRequests();
-            }
-            button.textContent = "Enviado";
-            button.disabled = true;
+          if (data.sentRequest) {
+            sentRequests.push(data.sentRequest);
+          }
+          if (
+            document.querySelector(
+              '.friends-nav-btn[data-tab="pending-requests"].active'
+            )
+          ) {
+            renderPendingRequests();
+          }
+          button.textContent = "Enviado";
+          button.disabled = true;
         };
         handleAction(
           button,
@@ -935,10 +981,12 @@ function closeRemoveFriendModal() {
           ? "aceite"
           : "recusada";
         const onSuccess = () => {
-          pendingRequests = pendingRequests.filter(req => req.id_amizade !== parseInt(requestId));
-          if(action === 'aceite') window.location.reload(); 
+          pendingRequests = pendingRequests.filter(
+            (req) => req.id_amizade !== parseInt(requestId)
+          );
+          if (action === "aceite") window.location.reload();
           else requestItem.remove();
-        }
+        };
         if (requestId)
           handleAction(
             button,
@@ -953,7 +1001,9 @@ function closeRemoveFriendModal() {
         const requestItem = button.closest(".friend-request-item");
         const requestId = requestItem?.dataset.requestId;
         const onSuccess = () => {
-          sentRequests = sentRequests.filter(req => req.id_amizade !== parseInt(requestId));
+          sentRequests = sentRequests.filter(
+            (req) => req.id_amizade !== parseInt(requestId)
+          );
           requestItem.remove();
         };
         if (requestId)
@@ -1035,9 +1085,10 @@ function closeRemoveFriendModal() {
   ) {
     if (!button) return;
     const isButtonStillAttached = () => document.body.contains(button);
-    if(isButtonStillAttached()) button.disabled = true;
+    if (isButtonStillAttached()) button.disabled = true;
     const originalText = button.textContent;
-    if (isButtonStillAttached() && button.tagName === "BUTTON") button.textContent = loadingText;
+    if (isButtonStillAttached() && button.tagName === "BUTTON")
+      button.textContent = loadingText;
     try {
       const options = { method, headers: {} };
       if (body) {
@@ -1045,31 +1096,31 @@ function closeRemoveFriendModal() {
         options.body = JSON.stringify(body);
       }
       const response = await fetch(url, options);
-      
+
       const contentType = response.headers.get("content-type");
       let data;
       if (contentType && contentType.indexOf("application/json") !== -1) {
-          data = await response.json();
+        data = await response.json();
       }
 
       if (response.ok) {
-        if (onSuccess && typeof onSuccess === 'function') {
+        if (onSuccess && typeof onSuccess === "function") {
           onSuccess(data);
         }
       } else {
         throw new Error(data ? data.message : `Erro ${response.status}`);
       }
     } catch (err) {
-      if(!onSuccess) alert(err.message);
+      if (!onSuccess) alert(err.message);
       if (isButtonStillAttached()) {
         button.disabled = false;
         button.textContent = defaultText || originalText;
       }
     } finally {
-        if (!onSuccess && isButtonStillAttached()) {
-             button.disabled = false;
-             button.textContent = defaultText || originalText;
-        }
+      if (!onSuccess && isButtonStillAttached()) {
+        button.disabled = false;
+        button.textContent = defaultText || originalText;
+      }
     }
   }
 
@@ -1086,17 +1137,17 @@ function closeRemoveFriendModal() {
 
   // --- EVENT LISTENERS PARA OS BOTÕES DO MODAL (CONFIRMAR E CANCELAR) ---
   if (cancelRemoveFriendBtn) {
-    cancelRemoveFriendBtn.addEventListener('click', closeRemoveFriendModal);
+    cancelRemoveFriendBtn.addEventListener("click", closeRemoveFriendModal);
   }
 
   if (confirmRemoveFriendBtn) {
-    confirmRemoveFriendBtn.addEventListener('click', async () => {
+    confirmRemoveFriendBtn.addEventListener("click", async () => {
       const { id, element } = friendToRemove;
       if (!id) return;
-      
+
       const originalText = confirmRemoveFriendBtn.textContent;
       confirmRemoveFriendBtn.disabled = true;
-      confirmRemoveFriendBtn.textContent = 'Removendo...';
+      confirmRemoveFriendBtn.textContent = "Removendo...";
 
       try {
         const response = await fetch(`/friends/${id}`, {
@@ -1106,8 +1157,8 @@ function closeRemoveFriendModal() {
         const data = await response.json();
         if (response.ok) {
           closeRemoveFriendModal();
-          if (element) element.remove(); 
-          friends = friends.filter(f => f.id_usuario !== parseInt(id));
+          if (element) element.remove();
+          friends = friends.filter((f) => f.id_usuario !== parseInt(id));
           if (currentDmFriendId == id) {
             renderFriendsView();
           }
@@ -1118,10 +1169,57 @@ function closeRemoveFriendModal() {
         console.error("Erro ao remover amigo:", error);
         alert(`Não foi possível remover o amigo: ${error.message}`);
       } finally {
-        if(document.body.contains(confirmRemoveFriendBtn)) {
-            confirmRemoveFriendBtn.disabled = false;
-            confirmRemoveFriendBtn.textContent = originalText;
+        if (document.body.contains(confirmRemoveFriendBtn)) {
+          confirmRemoveFriendBtn.disabled = false;
+          confirmRemoveFriendBtn.textContent = originalText;
         }
+      }
+    });
+  }
+
+  // Mostra/oculta a área de confirmação
+  if (deleteTrigger) {
+    deleteTrigger.addEventListener("click", (e) => {
+      e.preventDefault();
+      const isVisible = deleteContainer.style.display === "block";
+      deleteContainer.style.display = isVisible ? "none" : "block";
+    });
+  }
+
+  // Lida com o clique final de exclusão
+  if (confirmDeleteBtn) {
+    confirmDeleteBtn.addEventListener("click", async () => {
+      const senha = passwordInput.value;
+      if (!senha) {
+        alert("Por favor, insira sua senha para confirmar.");
+        return;
+      }
+
+      // Confirmação final para evitar acidentes
+      if (
+        !confirm(
+          "Você tem ABSOLUTA CERTEZA? Esta ação é permanente e todos os seus dados serão apagados."
+        )
+      ) {
+        return;
+      }
+
+      try {
+        const response = await fetch("/users/me", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ senha: senha }),
+        });
+
+        const result = await response.json();
+        alert(result.message);
+
+        if (response.ok) {
+          window.location.href = "/"; // Redireciona para a home
+        }
+      } catch (err) {
+        alert("Ocorreu um erro ao tentar excluir a conta.");
+        console.error(err);
       }
     });
   }

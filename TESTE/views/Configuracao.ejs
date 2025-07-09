@@ -1,325 +1,351 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configurações - EsquizoCord</title>
-    <link rel="icon" type="image/png" href="/images/logo.png">
+    <link rel="stylesheet" href="/stylesheets/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* Base para resetar estilos e definir box-sizing */
-        *, *::before, *::after { box-sizing: border-box; }
-
-        /* DEFINIÇÕES DE CORES BASE (TEMA PADRÃO) */
-        :root {
-            --background-primary: #36393f;
-            --background-secondary: #2f3136;
-            --background-tertiary: #202225;
-            --header-primary: #fff;
-            --text-normal: #dcddde;
-            --text-muted: #72767d;
-            --brand-experiment: #660080; /* Roxo principal */
-            --brand-hover: #572364;
-            --purple-accent: #cc00ff;
-            --red-danger: #f04747;
-        }
-
-        /* --- DEFINIÇÕES DOS TEMAS ESPECÍFICOS --- */
-        
-        /* Tema Padrão Roxo (ID 1) */
-        .theme-1 {
-            --brand-experiment: #660080;
-            --brand-hover: #572364;
-            --purple-accent: #cc00ff;
-        }
-        /* Tema Azul Noturno (ID 2) */
-        .theme-2 {
-            --brand-experiment: #3498DB;
-            --brand-hover: #2980B9;
-            --purple-accent: #5DADE2;
-        }
-        /* Tema Verde Floresta (ID 3) */
-        .theme-3 {
-            --brand-experiment: #28A745;
-            --brand-hover: #218838;
-            --purple-accent: #86A189;
-        }
-        /* Tema Dark (ID 4) */
-        .theme-4 {
-            --brand-experiment: #3498DB;
-            --brand-hover: #2980B9;
-        }
-        /* Tema Light (ID 5) */
-        .theme-5 {
-            --background-primary: #F0F2F5;
-            --background-secondary: #FFFFFF;
-            --header-primary: #1C1E21;
-            --text-normal: #050505;
-            --text-muted: #65676B;
-            --brand-experiment: #0D6EFD;
-            --brand-hover: #0a58ca;
-        }
-
-        /* --- ESTILOS GERAIS DA PÁGINA --- */
+        /* Estilos específicos da página de configuração */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-image: url("/images/background.png");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            overflow-y: auto;
+        }
+
+        .config-layout {
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            padding: 40px 0;
-            margin: 0;
-            background-image: url('/images/background.png');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            color: var(--text-normal); 
+            padding: 20px;
+        }
+
+        .config-card {
+            position: relative; /* Necessário para posicionar o botão de voltar */
+            background-color: var(--background-primary);
+            padding: 24px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Botão para voltar ao Dashboard */
+        .back-to-dashboard-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: var(--background-secondary);
+            color: var(--text-normal);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            text-decoration: none;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        .back-to-dashboard-btn:hover {
             background-color: var(--background-tertiary);
         }
-        .config-container {
-            text-align: left;
+
+        .config-card h2 {
+            margin-top: 0;
+            margin-bottom: 24px;
+            color: var(--header-primary);
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: var(--text-muted);
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid var(--background-secondary);
             background-color: var(--background-secondary);
             color: var(--text-normal);
-            padding: 40px 50px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            max-width: 500px;
-            width: 90%;
+            font-size: 14px;
         }
-        h2 {
-            text-align: center;
-            margin-bottom: 25px;
-            font-size: 28px;
-            font-weight: 600;
-            color: var(--header-primary);
-        }
-        form {
-            display: flex;
-            flex-direction: column;
-        }
-        label {
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: var(--text-muted);
-        }
-        input, textarea, select {
-            padding: 12px;
-            margin-bottom: 20px;
-            border: 1px solid var(--background-tertiary);
-            border-radius: 8px;
-            background-color: var(--background-primary);
-            color: var(--text-normal);
-            font-size: 16px;
-            font-family: inherit;
-        }
-        input:focus, textarea:focus, select:focus {
-            outline: none;
-            border-color: var(--brand-experiment);
-            box-shadow: 0 0 5px var(--brand-experiment);
-        }
-        textarea {
-            resize: vertical;
+        
+        .form-group textarea {
             min-height: 80px;
+            resize: vertical;
         }
-        button[type="submit"] {
-            padding: 12px;
-            background-color: var(--brand-experiment);
-            color: var(--header-primary);
-            border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600;
-            transition: background-color 0.3s ease;
-        }
-        button[type="submit"]:hover {
-            background-color: var(--brand-hover);
-        }
-        .profile-pic-section {
+
+        .profile-photo-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
-        #profilePicPreview {
-            width: 120px;
-            height: 120px;
+
+        .profile-photo-container img {
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
             object-fit: cover;
-            border: 3px solid var(--text-muted);
-            margin-bottom: 10px;
-            background-color: var(--background-secondary);
+            margin-bottom: 12px;
+            border: 2px solid var(--brand-experiment);
         }
-        .file-upload-label {
-            display: inline-block;
-            padding: 8px 15px;
-            background-color: var(--brand-experiment);
-            color: var(--header-primary);
-            border-radius: 5px;
+
+        .profile-photo-container .change-photo-btn {
+            background: none;
+            border: none;
+            color: var(--purple-accent);
             cursor: pointer;
-            font-weight: normal;
             font-size: 14px;
-            margin-bottom: 20px;
+            font-weight: 500;
         }
-        .file-upload-label:hover {
+
+        .submit-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--brand-experiment);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .submit-btn:hover {
             background-color: var(--brand-hover);
         }
-        #fotoPerfil {
-            display: none;
+        
+        .form-footer-actions {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-top: 24px;
+          padding-top: 20px;
+          border-top: 1px solid var(--background-secondary);
         }
-        .actions-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 20px;
-        }
-        .actions-container a {
+        
+        .form-footer-actions a {
             color: var(--text-muted);
             text-decoration: none;
             font-size: 14px;
+            padding: 8px;
         }
-        .actions-container a:hover {
+        .form-footer-actions a:hover {
             text-decoration: underline;
+        }
+
+        .delete-account-link {
+          background: none;
+          border: none;
+          padding: 8px 12px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          color: var(--red-danger);
+          text-decoration: none;
+          border-radius: 4px;
+          transition: background-color 0.2s, color 0.2s;
+        }
+
+        .delete-account-link:hover {
+          background-color: var(--red-danger);
+          color: white;
+          text-decoration: none;
+        }
+
+        #delete-confirmation-container {
+          display: none;
+          width: 100%;
+          margin-top: 20px;
+          padding: 16px;
+          background-color: var(--background-tertiary);
+          border-radius: 5px;
+          border: 1px solid var(--red-danger);
+        }
+
+        #delete-confirmation-container p {
+          margin: 0 0 12px 0;
+          color: var(--text-normal);
+          font-size: 14px;
+          line-height: 1.4;
+        }
+
+        .delete-input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #delete-password-input {
+          flex-grow: 1;
+          padding: 10px;
+          border-radius: 4px;
+          border: 1px solid var(--background-primary);
+          background-color: var(--background-primary);
+          color: var(--text-normal);
+        }
+
+        #confirm-delete-btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--red-danger);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #confirm-delete-btn:hover {
+            background-color: var(--red-danger-hover);
         }
     </style>
 </head>
-<body class="theme-<%= user && user.id_tema ? user.id_tema : '1' %>">
-    <div class="config-container">
-        <% if (user) { %>
+<body class="theme-<%= user.id_tema || 1 %>">
+
+    <div class="config-layout">
+        <div class="config-card">
+            
+            <a href="/dashboard" class="back-to-dashboard-btn" title="Voltar ao Dashboard">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+
             <h2>Configurações de <%= user.Nome %></h2>
-            <form method="POST" action="/configuracao" enctype="multipart/form-data">
-                <div class="profile-pic-section">
-                    <img src="<%= user.FotoPerfil || '/images/logo.png' %>" alt="Foto de Perfil" id="profilePicPreview">
-                    <label for="fotoPerfil" class="file-upload-label">Alterar Foto</label>
-                    <input type="file" id="fotoPerfil" name="fotoPerfil" accept="image/png, image/jpeg">
+
+            <form action="/configuracao" method="POST" enctype="multipart/form-data">
+
+                <div class="profile-photo-container">
+                    <img src="<%= user.FotoPerfil || '/images/logo.png' %>" alt="Foto de Perfil" id="preview-image">
+                    <label for="fotoPerfil" class="change-photo-btn">Alterar Foto</label>
+                    <input type="file" id="fotoPerfil" name="fotoPerfil" style="display: none;" accept="image/*">
                 </div>
-                <label for="nome">Nome:</label>
-                <input type="text" id="nome" name="nome" value="<%= user.Nome %>" required autocomplete="name">
-                <label for="biografia">Biografia:</label>
-                <textarea id="biografia" name="biografia" placeholder="Fale um pouco sobre você..."><%= user.Biografia || '' %></textarea>
-                <label for="tema">Tema:</label>
-                <select id="tema" name="id_tema">
-                    <% if (themes) { %>
+
+                <div class="form-group">
+                    <label for="nome">Nome</label>
+                    <input type="text" id="nome" name="nome" value="<%= user.Nome %>" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="biografia">Biografia</label>
+                    <textarea id="biografia" name="biografia" placeholder="Fale um pouco sobre você..."><%= user.Biografia || '' %></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="id_tema">Tema</label>
+                    <select id="id_tema" name="id_tema">
+                        <option value="null">Padrão</option>
                         <% themes.forEach(theme => { %>
-                            <option value="<%= theme.id_tema %>" <%= (user.id_tema == theme.id_tema) ? 'selected' : '' %>>
+                            <option value="<%= theme.id_tema %>" <%= user.id_tema == theme.id_tema ? 'selected' : '' %>>
                                 <%= theme.nome_tema %>
                             </option>
                         <% }); %>
-                    <% } %>
-                </select>
-                <button type="submit">Salvar Alterações</button>
+                    </select>
+                </div>
+
+                <button type="submit" class="submit-btn">Salvar Alterações</button>
             </form>
+
             <div class="form-footer-actions">
-                <a href="/dashboard">Ir para o Dashboard</a>
-                <span>&nbsp;•&nbsp;</span>
-                <a href="/sair">Sair</a>
-                <span>&nbsp;•&nbsp;</span>
-                <button type="button" id="show-delete-account-modal-btn" class="delete-account-link">Excluir Conta</button>
+              <a href="/sair">Sair da Conta</a>
+              <a href="#" class="delete-account-link" id="delete-account-trigger">Excluir Conta</a>
             </div>
-        <% } else { %>
-            <h2>Utilizador não encontrado.</h2>
-            <a href="/login" class="back-link">Voltar ao Login</a>
-        <% } %>
+
+            <div id="delete-confirmation-container">
+              <p><b>Ação Irreversível.</b> Para confirmar a exclusão de sua conta, digite sua senha abaixo.</p>
+              <div class="delete-input-wrapper">
+                <input type="password" id="delete-password-input" placeholder="Sua senha" required>
+                <button id="confirm-delete-btn">Confirmar Exclusão</button>
+              </div>
+            </div>
+
+        </div>
     </div>
 
     <script>
-        const fotoPerfilInput = document.getElementById('fotoPerfil');
-        const previewImage = event => {
-            if (event.target.files && event.target.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.querySelector("#profilePicPreview").src = e.target.result;
-                }
-                reader.readAsDataURL(event.target.files[0]);
-            }
-        };
-        if(fotoPerfilInput) {
-            fotoPerfilInput.addEventListener('change', previewImage);
-        }
-    </script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const deleteTrigger = document.getElementById('delete-account-trigger');
+            const deleteContainer = document.getElementById('delete-confirmation-container');
+            const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+            const passwordInput = document.getElementById('delete-password-input');
+            const fotoPerfilInput = document.getElementById('fotoPerfil');
+            const previewImage = document.getElementById('preview-image');
 
-<div id="delete-confirmation-section" style="display: none; margin-top: 20px; border-top: 1px solid var(--background-secondary); padding-top: 20px;">
-    <p>Para confirmar a exclusão permanente da sua conta, digite sua senha.</p>
-    <input type="password" id="delete-password-input" placeholder="Digite sua senha" style="width:100%; margin-bottom: 10px;">
-    <div style="display: flex; gap: 10px;">
-        <button type="button" id="confirm-delete-btn" class="delete-btn">Confirmar</button>
-        <button type="button" id="cancel-delete-btn" class="cancel-btn">Cancelar</button>
-    </div>
-    <p id="delete-error-message" style="color: var(--red-danger); font-size: 14px; margin-top: 10px; display: none;"></p>
-</div>
-
-<div id="delete-account-modal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 460px;">
-      <h3 style="text-align: left; font-size: 20px; line-height: 24px;">Excluir Conta</h3>
-      <p style="text-align: left; font-size: 16px; color: var(--text-normal); margin-bottom: 20px;">
-        Tem certeza de que deseja excluir sua conta? <br>
-        <strong>Esta ação é irreversível.</strong> Todos os seus dados, mensagens e grupos criados serão permanentemente apagados.
-      </p>
-      <div class="modal-actions" style="justify-content: flex-end;">
-        <button id="cancel-delete-account-btn" class="cancel-btn">Cancelar</button>
-        <button id="confirm-delete-account-btn" class="delete-btn">Excluir Conta</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const deleteAccountModal = document.getElementById('delete-account-modal');
-        const showDeleteBtn = document.getElementById('show-delete-account-modal-btn');
-        const cancelDeleteBtn = document.getElementById('cancel-delete-account-btn');
-        const confirmDeleteBtn = document.getElementById('confirm-delete-account-btn');
-
-        const openModal = (modal) => {
-            if (modal) modal.style.display = 'flex';
-        };
-        const closeModal = (modal) => {
-            if (modal) modal.style.display = 'none';
-        };
-
-
-        if (showDeleteBtn) {
-            showDeleteBtn.addEventListener('click', () => {
-                openModal(deleteAccountModal);
-            });
-        }
-        
-        if (cancelDeleteBtn) {
-            cancelDeleteBtn.addEventListener('click', () => {
-                closeModal(deleteAccountModal);
-            });
-        }
-        
-        if (deleteAccountModal) {
-            deleteAccountModal.addEventListener('click', (e) => {
-                if (e.target === deleteAccountModal) {
-                    closeModal(deleteAccountModal);
-                }
-            });
-        }
-
-        if (confirmDeleteBtn) {
-            confirmDeleteBtn.addEventListener('click', async () => {
-                const originalText = confirmDeleteBtn.textContent;
-                confirmDeleteBtn.disabled = true;
-                confirmDeleteBtn.textContent = 'Excluindo...';
-
-                try {
-                    const response = await fetch('/users/me', {
-                        method: 'DELETE'
-                    });
-
-                    const result = await response.json();
-
-                    if (response.ok) {
-                        alert(result.message);
-                        window.location.href = '/login';
-                    } else {
-                        throw new Error(result.message || 'Ocorreu um erro ao tentar excluir a conta.');
+            if(fotoPerfilInput && previewImage) {
+                fotoPerfilInput.addEventListener('change', function(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        previewImage.src = URL.createObjectURL(file);
                     }
-                } catch (error) {
-                    alert(error.message);
-                    confirmDeleteBtn.disabled = false;
-                    confirmDeleteBtn.textContent = originalText;
-                }
-            });
-        }
-    });
-</script>
+                });
+            }
+
+            if (deleteTrigger) {
+                deleteTrigger.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const isVisible = deleteContainer.style.display === 'block';
+                    deleteContainer.style.display = isVisible ? 'none' : 'block';
+                });
+            }
+
+            if (confirmDeleteBtn) {
+                confirmDeleteBtn.addEventListener('click', async () => {
+                    const senha = passwordInput.value;
+                    if (!senha) {
+                        alert('Por favor, insira sua senha para confirmar.');
+                        return;
+                    }
+                    
+                    if (!confirm('Você tem ABSOLUTA CERTEZA? Esta ação é permanente e todos os seus dados serão apagados.')) {
+                        return;
+                    }
+
+                    try {
+                        confirmDeleteBtn.disabled = true;
+                        confirmDeleteBtn.textContent = 'Excluindo...';
+
+                        const response = await fetch('/users/me', {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ senha: senha })
+                        });
+
+                        const result = await response.json();
+                        alert(result.message);
+
+                        if (response.ok) {
+                            window.location.href = '/';
+                        }
+                    } catch (err) {
+                        alert('Ocorreu um erro ao tentar excluir a conta.');
+                        console.error(err);
+                    } finally {
+                        confirmDeleteBtn.disabled = false;
+                        confirmDeleteBtn.textContent = 'Confirmar Exclusão';
+                    }
+                });
+            }
+        });
+    </script>
 
 </body>
 </html>

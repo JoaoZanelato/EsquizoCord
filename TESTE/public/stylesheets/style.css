@@ -1022,44 +1022,83 @@ body {
     pointer-events: none; /* Garante que o clique vá para o ícone, não para o badge */
 }
 
+/* Container para as ações no rodapé do formulário de configurações (Sair, Excluir) */
 .form-footer-actions {
   display: flex;
+  justify-content: space-between; /* Alinha "Sair" e "Excluir" nas extremidades */
   align-items: center;
-  margin-top: 40px;
-  padding: 20px;
+  margin-top: 24px;
+  padding-top: 20px;
   border-top: 1px solid var(--background-secondary);
 }
 
-.form-footer-actions a,
-.form-footer-actions button {
+/* Estilo para o link de "Excluir Conta" */
+.delete-account-link {
   background: none;
   border: none;
-  padding: 0;
-  margin: 0;
+  padding: 8px 12px;
   font-size: 14px;
-  font-family: inherit;
+  font-weight: 500;
   cursor: pointer;
-  color: var(--text-muted);
+  color: var(--red-danger); /* Cor de perigo para a ação */
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.delete-account-link:hover {
+  background-color: var(--red-danger);
+  color: white;
   text-decoration: none;
 }
 
-.form-footer-actions a:hover,
-.form-footer-actions button:hover {
-  text-decoration: underline;
+
+/* --- Seção de confirmação de exclusão (que aparece após clicar) --- */
+#delete-confirmation-container {
+  display: none; /* Começa oculto */
+  width: 100%;
+  margin-top: 20px;
+  padding: 16px;
+  background-color: var(--background-tertiary);
+  border-radius: 5px;
+  border: 1px solid var(--red-danger);
 }
 
-.form-footer-actions .delete-account-link {
-  color: var(--red-danger);
+#delete-confirmation-container p {
+  margin: 0 0 12px 0;
+  color: var(--text-normal);
+  font-size: 14px;
+  line-height: 1.4;
 }
 
-.form-footer-actions span {
-  color: var(--text-muted);
+/* Container para o input de senha e o botão final */
+.delete-input-wrapper {
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
 #delete-password-input {
+  flex-grow: 1;
   padding: 10px;
   border-radius: 4px;
-  border: 1px solid var(--background-tertiary);
-  background-color: var(--background-tertiary);
+  border: 1px solid var(--background-primary);
+  background-color: var(--background-primary);
   color: var(--text-normal);
+}
+
+/* Botão final para confirmar a exclusão */
+#confirm-delete-btn {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--red-danger);
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#confirm-delete-btn:hover {
+    background-color: var(--red-danger-hover);
 }
