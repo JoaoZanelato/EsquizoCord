@@ -245,46 +245,62 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const deleteAccountModal = document.getElementById('delete-account-modal');
-        const showDeleteBtn = document.getElementById('show-delete-account-modal-btn');
-        const cancelDeleteBtn = document.getElementById('cancel-delete-account-btn');
-        const confirmDeleteBtn = document.getElementById('confirm-delete-account-btn');
+        const showConfirmationBtn = document.getElementById('show-delete-confirmation-btn');
+        const confirmationSection = document.getElementById('delete-confirmation-section');
+        const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        const passwordInput = document.getElementById('delete-password-input');
+        const errorMessage = document.getElementById('delete-error-message');
 
-        const openModal = (modal) => { if (modal) modal.style.display = 'flex'; };
-        const closeModal = (modal) => { if (modal) modal.style.display = 'none'; };
 
-        if (showDeleteBtn) {
-            showDeleteBtn.addEventListener('click', () => openModal(deleteAccountModal));
-        }
-        if (cancelDeleteBtn) {
-            cancelDeleteBtn.addEventListener('click', () => closeModal(deleteAccountModal));
-        }
-        if (deleteAccountModal) {
-            deleteAccountModal.addEventListener('click', (e) => {
-                if (e.target === deleteAccountModal) closeModal(deleteAccountModal);
-            });
-        }
-        if (confirmDeleteBtn) {
-            confirmDeleteBtn.addEventListener('click', async () => {
-                confirmDeleteBtn.disabled = true;
-                confirmDeleteBtn.textContent = 'Excluindo...';
+        showConfirmationBtn.addEventListener('click', () => {
+            confirmationSection.style.display = 'block';
+            showConfirmationBtn.style.display = 'none'; 
+        });
 
-                try {
-                    const response = await fetch('/users/me', { method: 'DELETE' });
-                    const result = await response.json();
-                    if (response.ok) {
-                        alert(result.message);
-                        window.location.href = '/login';
-                    } else {
-                        throw new Error(result.message || 'Ocorreu um erro.');
-                    }
-                } catch (error) {
-                    alert('Erro ao excluir a conta: ' + error.message);
-                    confirmDeleteBtn.disabled = false;
-                    confirmDeleteBtn.textContent = 'Excluir Conta';
+
+        cancelDeleteBtn.addEventListener('click', () => {
+            confirmationSection.style.display = 'none';
+            showConfirmationBtn.style.display = 'inline'; 
+            errorMessage.style.display = 'none';
+            passwordInput.value = '';
+        });
+
+        confirmDeleteBtn.addEventListener('click', async () => {
+            const senha = passwordInput.value;
+            if (!senha) {
+                errorMessage.textContent = 'Por favor, insira sua senha.';
+                errorMessage.style.display = 'block';
+                return;
+            }
+            
+            errorMessage.style.display = 'none';
+            const originalText = confirmDeleteBtn.textContent;
+            confirmDeleteBtn.disabled = true;
+            confirmDeleteBtn.textContent = 'Excluindo...';
+
+            try {
+                const response = await fetch('/users/me', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ senha: senha })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.message);
+                    window.location.href = '/login';
+                } else {
+                    throw new Error(result.message || 'Ocorreu um erro.');
                 }
-            });
-        }
+            } catch (error) {
+                errorMessage.textContent = error.message;
+                errorMessage.style.display = 'block';
+                confirmDeleteBtn.disabled = false;
+                confirmDeleteBtn.textContent = originalText;
+            }
+        });
     });
 </script>
 </body>
