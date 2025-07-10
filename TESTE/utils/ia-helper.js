@@ -2,9 +2,8 @@
 const axios = require('axios');
 
 const AI_USER_ID = 1;
-// CORREÇÃO: Voltando a usar o modelo 'gemini-1.5-flash-latest' que é o correto para a API v1beta.
-// O erro 404 ocorreu porque 'gemini-pro' não é um nome válido para esta versão da API.
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`;
+// ALTERAÇÃO: A URL foi atualizada para usar o modelo 'gemini-2.0-flash' conforme solicitado.
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
 
 async function getAiResponse(prompt) {
     try {
