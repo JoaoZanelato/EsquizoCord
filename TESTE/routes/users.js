@@ -81,4 +81,26 @@ router.delete('/me', requireLogin, async (req, res, next) => {
   }
 });
 
+// ROTA GET PARA BUSCAR UM PERFIL DE USUÁRIO PÚBLICO
+router.get('/:id/profile', requireLogin, async (req, res, next) => {
+    const { id } = req.params;
+    const pool = req.db;
+
+    try {
+        const [users] = await pool.query(
+            "SELECT id_usuario, Nome, FotoPerfil, Biografia FROM Usuarios WHERE id_usuario = ?", 
+            [id]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({ message: 'Usuário não encontrado.' });
+        }
+
+        res.json(users[0]);
+
+    } catch (error) {
+        next(error);
+    }
+});
+
 module.exports = router;

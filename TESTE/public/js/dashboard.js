@@ -41,6 +41,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let sentRequests = parseJsonData("sentRequests") || [];
   const onlineUserIds = new Set(parseJsonData("onlineUserIds") || []);
   const currentUserId = currentUser ? currentUser.id_usuario : null;
+  const viewProfileModal = document.getElementById('view-profile-modal');
+  const profileModalAvatar = document.getElementById('profile-modal-avatar');
+  const profileModalName = document.getElementById('profile-modal-name');
+  const profileModalBio = document.getElementById('profile-modal-bio');
 
   const aiUser = friends.find((f) => f.Nome === "EsquizoIA");
   const AI_USER_ID = aiUser ? aiUser.id_usuario : null;
@@ -407,13 +411,12 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="friend-info">
             <div class="avatar-container">
               <img src="${friend.FotoPerfil || "/images/logo.png"}">
-              <span class="status-indicator ${
-                isOnline ? "online" : "offline"
-              }"></span>
+              <span class="status-indicator ${isOnline ? "online" : "offline"}"></span>
             </div>
             <span>${nameHTML}</span>
           </div>
           <div class="friend-actions">
+            <button class="view-profile-btn" title="Ver Perfil" data-friend-id="${friend.id_usuario}"><i class="fas fa-eye"></i></button>
             <button class="remove-friend-btn" title="Remover Amigo"><i class="fas fa-user-minus"></i></button>
           </div>`;
         channelListContent.appendChild(friendDiv);
@@ -1223,6 +1226,52 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  // Função para buscar e mostrar o perfil do usuário
+async function showUserProfile(userId) {
+    try {
+        const response = await fetch(`/users/${userId}/profile`);
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || 'Não foi possível buscar o perfil.');
+        }
+        const profileData = await response.json();
+
+        // Popula o modal com os dados do usuário
+        profileModalAvatar.src = profileData.FotoPerfil || '/images/logo.png';
+        profileModalName.innerHTML = formatUserTag(profileData.Nome, profileData.id_usuario);
+        profileModalBio.textContent = profileData.Biografia || 'Este usuário ainda não escreveu nada sobre si...';
+
+        openModal(viewProfileModal);
+
+    } catch (error) {
+        console.error('Erro ao exibir perfil:', error);
+        alert(error.message);
+    }
+}
+
+// Adicionar um event listener para fechar o modal
+viewProfileModal.addEventListener('click', (e) => {
+    if (e.target === viewProfileModal || e.target.closest('.close-profile-btn')) {
+        closeModal(viewProfileModal);
+    }
+});
+
+// Altere o event listener de 'channelListContent' para incluir a nova ação
+channelListContent.addEventListener('click', async (e) => {
+    const removeButton = e.target.closest(".remove-friend-btn");
+    const viewProfileButton = e.target.closest(".view-profile-btn"); // <- Adicione esta linha
+
+    if (removeButton) {
+        const friendItem = removeButton.closest(".friend-item");
+        const friendId = friendItem.dataset.friendId;
+        const friendName = friendItem.dataset.friendName;
+        openRemoveFriendModal(friendId, friendName, friendItem);
+    } else if (viewProfileButton) { // <- Adicione este bloco
+        const friendId = viewProfileButton.dataset.friendId;
+        showUserProfile(friendId);
+    }
+});
 
   // --- INICIALIZAÇÃO DA APLICAÇÃO ---
   function main() {

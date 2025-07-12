@@ -1102,3 +1102,109 @@ body {
 #confirm-delete-btn:hover {
     background-color: var(--red-danger-hover);
 }
+
+/* --- Estilos do Modal de Perfil --- */
+
+.modal-content.profile-modal {
+    padding: 0;
+    overflow: hidden;
+    max-width: 500px;
+    background-color: var(--background-tertiary);
+}
+
+.profile-modal-banner {
+    width: 100%;
+    height: 100px;
+    background-color: var(--brand-experiment);
+}
+
+.profile-modal-header {
+    position: relative;
+    padding: 0 16px;
+}
+
+#profile-modal-avatar {
+    width: 92px;
+    height: 92px;
+    border-radius: 50%;
+    border: 6px solid var(--background-tertiary);
+    position: absolute;
+    top: -46px;
+    background-color: var(--background-tertiary);
+}
+
+.profile-modal-body {
+    padding: 60px 16px 16px 16px;
+}
+
+#profile-modal-name {
+    font-size: 20px;
+    color: var(--header-primary);
+    margin: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--background-secondary);
+}
+
+.profile-section {
+    margin-top: 20px;
+}
+
+.profile-section h4 {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin: 0 0 8px 0;
+}
+
+#profile-modal-bio {
+    color: var(--text-normal);
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.close-profile-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.3);
+    border: none;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-weight: bold;
+    line-height: 24px;
+    text-align: center;
+}
+
+.view-profile-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 5px;
+}
+.view-profile-btn:hover {
+    color: var(--header-primary);
+}
+
+.friend-actions button {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 5px;
+    transition: color 0.2s;
+}
+.friend-actions .remove-friend-btn:hover {
+    color: var(--red-danger);
+}
+.friend-actions .view-profile-btn:hover {
+    color: var(--header-primary);
+}
