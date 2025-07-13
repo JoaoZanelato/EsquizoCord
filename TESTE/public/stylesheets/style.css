@@ -196,7 +196,7 @@ body {
   padding: 8px;
   border-radius: 4px;
   cursor: pointer;
-  gap: 8px;
+  justify-content: space-between;
 }
 .friend-item:hover {
   background-color: rgba(255, 255, 255, 0.04);
@@ -209,7 +209,6 @@ body {
 .admin-icon {
   color: #f1c40f;
   font-size: 10px;
-  margin-left: auto;
 }
 .friend-request-item {
   background-color: var(--background-tertiary);
@@ -1207,4 +1206,24 @@ body {
 }
 .friend-actions .view-profile-btn:hover {
     color: var(--header-primary);
+}
+.member-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-icons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-role-icon {
+  font-size: 16px;
+  color: var(--text-muted);
+}
+
+.member-role-icon.fa-crown {
+  color: #f1c40f;
 }

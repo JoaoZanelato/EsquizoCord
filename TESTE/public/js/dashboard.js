@@ -544,34 +544,39 @@ document.addEventListener("DOMContentLoaded", () => {
       memberHeader.textContent = `MEMBROS - ${data.members.length}`;
       channelListContent.appendChild(memberHeader);
       data.members.forEach((member) => {
-        const memberDiv = document.createElement("div");
-        memberDiv.className = "friend-item";
-        memberDiv.dataset.friendId = member.id_usuario;
+    const memberDiv = document.createElement("div");
+    memberDiv.className = "friend-item member-list-item";
+    memberDiv.dataset.friendId = member.id_usuario;
 
-        const isOnline = onlineUserIds.has(member.id_usuario);
+    const isOnline = onlineUserIds.has(member.id_usuario);
+    const memberPhoto = member.FotoPerfil || "/images/logo.png";
+    const nameHTML = formatUserTag(member.Nome, member.id_usuario);
 
-        const memberNameHTML =
-          member.id_usuario === AI_USER_ID
-            ? `<span>${member.Nome} <i class="fas fa-robot" title="Inteligência Artificial" style="color: var(--text-muted);"></i></span>`
-            : `<span>${formatUserTag(member.Nome, member.id_usuario)}</span>`;
+    const isAI = member.id_usuario === AI_USER_ID;
 
-        const adminIconHTML = member.isAdmin
-          ? '<i class="fas fa-crown admin-icon" title="Administrador"></i>'
-          : "";
+    let iconsHTML = '';
+    if (member.isAdmin) {
+        iconsHTML += '<i class="fas fa-crown member-role-icon" title="Administrador"></i>';
+    }
+    if (isAI) {
+        iconsHTML += '<i class="fas fa-robot member-role-icon" title="Inteligência Artificial"></i>';
+    }
 
-        const memberPhoto = member.FotoPerfil || "/images/logo.png";
+    memberDiv.innerHTML = `
+      <div class="member-info">
+        <div class="avatar-container">
+          <img src="${memberPhoto}" alt="${member.Nome}">
+          <span class="status-indicator ${isOnline ? "online" : "offline"}"></span>
+        </div>
+        <span>${nameHTML}</span>
+      </div>
+      <div class="member-icons">
+        ${iconsHTML}
+      </div>
+    `;
 
-        memberDiv.innerHTML = `
-            <div class="avatar-container">
-              <img src="${memberPhoto}" alt="${member.Nome}">
-              <span class="status-indicator ${
-                isOnline ? "online" : "offline"
-              }"></span>
-            </div>
-            ${memberNameHTML}${adminIconHTML}`;
-
-        channelListContent.appendChild(memberDiv);
-      });
+    channelListContent.appendChild(memberDiv);
+});
       isCurrentUserAdmin = data.members.some(
         (m) => m.id_usuario === currentUserId && m.isAdmin
       );
@@ -1248,7 +1253,7 @@ async function showUserProfile(userId) {
         // Popula o modal com os dados do usuário
         profileModalAvatar.src = profileData.FotoPerfil || '/images/logo.png';
         profileModalName.innerHTML = formatUserTag(profileData.Nome, profileData.id_usuario);
-        profileModalBio.textContent = profileData.Biografia || 'Não sabemos muito sobre esse usuário, mas temos certeza que ele é uma boa pessoa';
+        profileModalBio.textContent = profileData.Biografia || 'Não sabemos muito sobre esse usuário, mas temos certeza que ele é uma boa pessoa.';
 
         openModal(viewProfileModal);
 
