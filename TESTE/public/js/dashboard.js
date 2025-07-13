@@ -1248,7 +1248,7 @@ async function showUserProfile(userId) {
         // Popula o modal com os dados do usuário
         profileModalAvatar.src = profileData.FotoPerfil || '/images/logo.png';
         profileModalName.innerHTML = formatUserTag(profileData.Nome, profileData.id_usuario);
-        profileModalBio.textContent = profileData.Biografia || 'Este usuário ainda não escreveu nada sobre si...';
+        profileModalBio.textContent = profileData.Biografia || 'Não sabemos muito sobre esse usuário, mas temos certeza que ele é uma boa pessoa';
 
         openModal(viewProfileModal);
 
