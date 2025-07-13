@@ -52,7 +52,9 @@ let transporter = nodemailer.createTransport({
 
 router.get('/', (req, res) => res.render('Home'));
 router.get('/login', (req, res) => res.render('Login'));
-router.get('/cadastro', (req, res) => res.render('Cadastro'));
+router.get('/cadastro', (req, res) => {
+    res.render('Cadastro', { error: null, formData: {} });
+});
 
 router.get('/dashboard', requireLogin, async (req, res, next) => {
     try {
@@ -193,47 +195,57 @@ router.get('/mensagem', (req, res) => {
 
 // Rota de cadastro
 router.post('/cadastro', async (req, res, next) => {
-  const { nome, email, senha, confirmar_senha } = req.body;
-  if (senha !== confirmar_senha) {
-    return res.status(400).send("Erro: As senhas não conferem.");
-  }
-  
-  const pool = req.db;
+    const { nome, email, senha, confirmar_senha } = req.body;
+    const formData = { nome, email };
 
-  try {
-    const [existingUsers] = await pool.query("SELECT Nome, Email FROM Usuarios WHERE Nome = ? OR Email = ?", [nome, email]);
-    if (existingUsers.length > 0) {
-      return res.status(409).send("Erro: Nome de usuário ou e-mail já está em uso.");
+    if (senha !== confirmar_senha) {
+        return res.render('Cadastro', {
+            error: 'As senhas não conferem.',
+            formData: formData
+        });
     }
-    
-    const senhaCriptografada = await bcrypt.hash(senha, saltRounds);
-    const token = crypto.randomBytes(32).toString('hex');
-    
-    await pool.query(
-        "INSERT INTO Usuarios (Nome, Email, Senha, token_verificacao, email_verificado) VALUES (?, ?, ?, ?, 0)",
-        [nome, email, senhaCriptografada, token]
-    );
 
-    const verificationLink = `http://${req.headers.host}/verificar-email?token=${token}`;
-    await transporter.sendMail({
-        from: '"EsquizoCord" <no-reply@esquizocord.com>',
-        to: email,
-        subject: "Verificação de E-mail - EsquizoCord",
-        html: `<b>Olá ${nome}!</b><br><p>Obrigado por se cadastrar. Por favor, clique no link a seguir para ativar sua conta: <a href="${verificationLink}">${verificationLink}</a></p>`,
-    });
+    const pool = req.db;
 
-    const titulo = "Verifique seu E-mail";
-    const mensagem = "Cadastro realizado com sucesso! Um link de verificação foi enviado para o seu e-mail para ativar sua conta.";
-    res.redirect(`/mensagem?titulo=${encodeURIComponent(titulo)}&mensagem=${encodeURIComponent(mensagem)}`);
+    try {
+        const [existingUsers] = await pool.query("SELECT Nome, Email FROM Usuarios WHERE Nome = ? OR Email = ?", [nome, email]);
+        if (existingUsers.length > 0) {
+            return res.render('Cadastro', {
+                error: 'Nome de usuário ou e-mail já está em uso.',
+                formData: formData
+            });
+        }
 
-  } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).send('Erro: Nome de usuário ou e-mail já cadastrado.');
+        const senhaCriptografada = await bcrypt.hash(senha, saltRounds);
+        const token = crypto.randomBytes(32).toString('hex');
+
+        await pool.query(
+            "INSERT INTO Usuarios (Nome, Email, Senha, token_verificacao, email_verificado) VALUES (?, ?, ?, ?, 0)",
+            [nome, email, senhaCriptografada, token]
+        );
+
+        const verificationLink = `http://${req.headers.host}/verificar-email?token=${token}`;
+        await transporter.sendMail({
+            from: '"EsquizoCord" <no-reply@esquizocord.com>',
+            to: email,
+            subject: "Verificação de E-mail - EsquizoCord",
+            html: `<b>Olá ${nome}!</b><br><p>Obrigado por se cadastrar. Por favor, clique no link a seguir para ativar sua conta: <a href="${verificationLink}">${verificationLink}</a></p>`,
+        });
+
+        const titulo = "Verifique seu E-mail";
+        const mensagem = "Cadastro realizado com sucesso! Um link de verificação foi enviado para o seu e-mail para ativar sua conta.";
+        res.redirect(`/mensagem?titulo=${encodeURIComponent(titulo)}&mensagem=${encodeURIComponent(mensagem)}`);
+
+    } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.render('Cadastro', {
+                error: 'Nome de usuário ou e-mail já cadastrado.',
+                formData: formData
+            });
+        }
+        next(error);
     }
-    next(error); 
-  }
 });
-
 
 // Rota de login
 router.post('/login', async (req, res, next) => {
