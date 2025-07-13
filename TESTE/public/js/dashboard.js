@@ -401,11 +401,22 @@ document.addEventListener("DOMContentLoaded", () => {
         friendDiv.dataset.friendPhoto = friend.FotoPerfil || "/images/logo.png";
 
         const isOnline = onlineUserIds.has(friend.id_usuario);
+        const isAI = friend.id_usuario === AI_USER_ID;
 
         const nameHTML =
-          friend.id_usuario === AI_USER_ID
+          isAI
             ? `${friend.Nome} <i class="fas fa-robot" title="Inteligência Artificial" style="font-size: 12px; color: var(--text-muted);"></i>`
             : formatUserTag(friend.Nome, friend.id_usuario);
+
+        const actionsHTML = `
+          <div class="friend-actions">
+            <button class="view-profile-btn" title="Ver Perfil" data-friend-id="${friend.id_usuario}"><i class="fas fa-eye"></i></button>
+            ${!isAI ?
+              `<button class="remove-friend-btn" title="Remover Amigo"><i class="fas fa-user-minus"></i></button>` :
+              ''
+            }
+          </div>
+        `;
 
         friendDiv.innerHTML = `
           <div class="friend-info">
@@ -415,10 +426,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
             <span>${nameHTML}</span>
           </div>
-          <div class="friend-actions">
-            <button class="view-profile-btn" title="Ver Perfil" data-friend-id="${friend.id_usuario}"><i class="fas fa-eye"></i></button>
-            <button class="remove-friend-btn" title="Remover Amigo"><i class="fas fa-user-minus"></i></button>
-          </div>`;
+          ${actionsHTML}`;
         channelListContent.appendChild(friendDiv);
       });
     } else {
@@ -427,7 +435,7 @@ document.addEventListener("DOMContentLoaded", () => {
       noFriendsP.textContent = "Sua lista de amigos está vazia.";
       channelListContent.appendChild(noFriendsP);
     }
-  }
+}
 
   function renderPendingRequests() {
     if (!channelListContent) return;
