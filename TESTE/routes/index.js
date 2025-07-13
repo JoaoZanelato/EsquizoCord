@@ -52,14 +52,19 @@ let transporter = nodemailer.createTransport({
 
 router.get('/', (req, res) => res.render('Home'));
 router.get('/login', (req, res) => res.render('Login'));
-router.get('/cadastro', (req, res) => {
+router.get('/cadastro', (req, res, next) => {
     const error = req.session.error;
     const formData = req.session.formData || {};
 
     delete req.session.error;
     delete req.session.formData;
 
-    res.render('Cadastro', { error: error, formData: formData });
+    req.session.save(err => {
+        if (err) {
+            return next(err);
+        }
+        res.render('Cadastro', { error: error, formData: formData });
+    });
 });
 
 router.get('/dashboard', requireLogin, async (req, res, next) => {
@@ -206,7 +211,6 @@ router.post('/cadastro', async (req, res, next) => {
 
     if (senha !== confirmar_senha) {
         req.session.error = 'As senhas não conferem.';
-        // Garante que a sessão é guardada antes de redirecionar
         return req.session.save(err => {
             if (err) return next(err);
             res.redirect('/cadastro');
@@ -219,7 +223,6 @@ router.post('/cadastro', async (req, res, next) => {
         const [existingUsers] = await pool.query("SELECT Nome, Email FROM Usuarios WHERE Nome = ? OR Email = ?", [nome, email]);
         if (existingUsers.length > 0) {
             req.session.error = 'Nome de usuário ou e-mail já está em uso.';
-             // Garante que a sessão é guardada antes de redirecionar
             return req.session.save(err => {
                 if (err) return next(err);
                 res.redirect('/cadastro');
