@@ -220,9 +220,18 @@ router.post('/cadastro', async (req, res, next) => {
     const pool = req.db;
 
     try {
-        const [existingUsers] = await pool.query("SELECT Nome, Email FROM Usuarios WHERE Nome = ? OR Email = ?", [nome, email]);
-        if (existingUsers.length > 0) {
-            req.session.error = 'Nome de usuário ou e-mail já está em uso.';
+        const [userExists] = await pool.query("SELECT id_usuario FROM Usuarios WHERE Nome = ?", [nome]);
+        if (userExists.length > 0) {
+            req.session.error = 'Este nome de usuário já está em uso. Por favor, escolha outro.';
+            return req.session.save(err => {
+                if (err) return next(err);
+                res.redirect('/cadastro');
+            });
+        }
+
+        const [emailExists] = await pool.query("SELECT id_usuario FROM Usuarios WHERE Email = ?", [email]);
+        if (emailExists.length > 0) {
+            req.session.error = 'Este endereço de e-mail já está registado.';
             return req.session.save(err => {
                 if (err) return next(err);
                 res.redirect('/cadastro');
@@ -256,14 +265,11 @@ router.post('/cadastro', async (req, res, next) => {
         });
 
     } catch (error) {
-        if (error.code === 'ER_DUP_ENTRY') {
-            req.session.error = 'Nome de usuário ou e-mail já cadastrado.';
-            return req.session.save(err => {
-                if (err) return next(err);
-                res.redirect('/cadastro');
-            });
-        }
-        next(error);
+        req.session.error = 'Ocorreu um erro ao tentar criar a conta. Por favor, tente novamente.';
+        req.session.save(err => {
+            if (err) return next(err);
+            res.redirect('/cadastro');
+        });
     }
 });
 
