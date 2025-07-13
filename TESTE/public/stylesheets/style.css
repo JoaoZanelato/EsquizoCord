@@ -193,10 +193,10 @@ body {
 .friend-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 8px;
-  width: 100%;
   border-radius: 4px;
+  cursor: pointer;
+  gap: 8px;
 }
 .group-member-item {
     display: flex;
@@ -979,6 +979,7 @@ body {
     opacity: 0;
     transition: opacity 0.2s ease-in-out;
 }
+
 .friend-item:hover .friend-actions {
     visibility: visible;
     opacity: 1;
@@ -1217,14 +1218,12 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  cursor: pointer;
 }
 
-.member-icons, .friend-actions {
+.member-icons {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
 }
 
 .member-role-icon {

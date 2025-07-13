@@ -406,28 +406,30 @@ document.addEventListener("DOMContentLoaded", () => {
         const isOnline = onlineUserIds.has(friend.id_usuario);
         const isAI = friend.id_usuario === AI_USER_ID;
 
-        const nameHTML = isAI
-            ? `${friend.Nome}`
+        const nameHTML =
+          isAI
+            ? `${friend.Nome} <i class="fas fa-robot" title="Inteligência Artificial" style="font-size: 12px; color: var(--text-muted);"></i>`
             : formatUserTag(friend.Nome, friend.id_usuario);
 
-        let actionsHTML = `<button class="view-profile-btn" title="Ver Perfil" data-friend-id="${friend.id_usuario}"><i class="fas fa-eye"></i></button>`;
-        if (isAI) {
-            actionsHTML += '<i class="fas fa-robot member-role-icon" title="Inteligência Artificial"></i>';
-        } else {
-            actionsHTML += `<button class="remove-friend-btn" title="Remover Amigo"><i class="fas fa-user-minus"></i></button>`;
-        }
+        const actionsHTML = `
+          <div class="friend-actions">
+            <button class="view-profile-btn" title="Ver Perfil" data-friend-id="${friend.id_usuario}"><i class="fas fa-eye"></i></button>
+            ${!isAI ?
+              `<button class="remove-friend-btn" title="Remover Amigo"><i class="fas fa-user-minus"></i></button>` :
+              ''
+            }
+          </div>
+        `;
 
         friendDiv.innerHTML = `
-          <div class="member-info">
+          <div class="friend-info">
             <div class="avatar-container">
-              <img src="${friend.FotoPerfil || "/images/logo.png"}" alt="${friend.Nome}">
+              <img src="${friend.FotoPerfil || "/images/logo.png"}">
               <span class="status-indicator ${isOnline ? "online" : "offline"}"></span>
             </div>
             <span>${nameHTML}</span>
           </div>
-          <div class="friend-actions">
-            ${actionsHTML}
-          </div>`;
+          ${actionsHTML}`;
         channelListContent.appendChild(friendDiv);
       });
     } else {
@@ -546,12 +548,13 @@ document.addEventListener("DOMContentLoaded", () => {
       channelListContent.appendChild(memberHeader);
       data.members.forEach((member) => {
     const memberDiv = document.createElement("div");
-    memberDiv.className = "friend-item"; // Usa a mesma classe base
+    memberDiv.className = "group-member-item";
     memberDiv.dataset.friendId = member.id_usuario;
 
     const isOnline = onlineUserIds.has(member.id_usuario);
     const memberPhoto = member.FotoPerfil || "/images/logo.png";
     const nameHTML = formatUserTag(member.Nome, member.id_usuario);
+
     const isAI = member.id_usuario === AI_USER_ID;
 
     let iconsHTML = '';
@@ -574,6 +577,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ${iconsHTML}
       </div>
     `;
+
     channelListContent.appendChild(memberDiv);
 });
       isCurrentUserAdmin = data.members.some(
