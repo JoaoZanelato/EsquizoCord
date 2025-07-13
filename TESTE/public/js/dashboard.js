@@ -548,7 +548,7 @@ document.addEventListener("DOMContentLoaded", () => {
       channelListContent.appendChild(memberHeader);
       data.members.forEach((member) => {
     const memberDiv = document.createElement("div");
-    memberDiv.className = "group-member-item";
+    memberDiv.className = "friend-item member-list-item";
     memberDiv.dataset.friendId = member.id_usuario;
 
     const isOnline = onlineUserIds.has(member.id_usuario);

@@ -196,14 +196,7 @@ body {
   padding: 8px;
   border-radius: 4px;
   cursor: pointer;
-  gap: 8px;
-}
-.group-member-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px;
-    border-radius: 4px;
+  justify-content: space-between;
 }
 .friend-item:hover {
   background-color: rgba(255, 255, 255, 0.04);
