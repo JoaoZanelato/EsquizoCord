@@ -486,110 +486,103 @@ document.addEventListener("DOMContentLoaded", () => {
     removeNotification(groupId);
 
     if (currentDmFriendId) {
-        const oldRoomName = `dm-${[currentUserId, currentDmFriendId].sort().join("-")}`;
-        socket.emit("leave_dm_room", oldRoomName);
+      const oldRoomName = `dm-${[currentUserId, currentDmFriendId]
+        .sort()
+        .join("-")}`;
+      socket.emit("leave_dm_room", oldRoomName);
     }
     if (currentGroupId && currentGroupId !== groupId) {
-        const oldRoomName = `group-${currentGroupId}`;
-        socket.emit("leave_group_room", oldRoomName);
+      const oldRoomName = `group-${currentGroupId}`;
+      socket.emit("leave_group_room", oldRoomName);
     }
 
     if (chatArea) chatArea.classList.remove("friends-view-active");
-
     try {
-        const response = await fetch(`/groups/${groupId}/details`);
-        if (!response.ok) throw new Error("Falha ao buscar detalhes do grupo.");
-        const data = await response.json();
+      const response = await fetch(`/groups/${groupId}/details`);
+      if (!response.ok) throw new Error("Falha ao buscar detalhes do grupo.");
+      const data = await response.json();
 
-        currentGroupData = data;
-        currentGroupId = groupId;
-        currentDmFriendId = null;
+      currentGroupData = data;
+      currentGroupId = groupId;
+      currentDmFriendId = null;
+      if (friendsNavContainer) friendsNavContainer.style.display = "none";
+      if (groupNameHeader) groupNameHeader.textContent = data.details.Nome;
+      if (groupSettingsIcon)
+        groupSettingsIcon.style.display =
+          data.details.id_criador === currentUserId ? "block" : "none";
+      if (!channelListContent) return;
 
-        if (friendsNavContainer) friendsNavContainer.style.display = "none";
-        if (groupNameHeader) groupNameHeader.textContent = data.details.Nome;
+      const firstChannel = data.channels[0];
+      currentChatId = firstChannel ? firstChannel.id_chat : null;
 
-        if (groupSettingsIcon) {
-            console.log("ID do Criador do Grupo:", data.details.id_criador, typeof data.details.id_criador);
-            console.log("ID do Utilizador Atual:", currentUserId, typeof currentUserId);
-            
-            const isCreator = parseInt(data.details.id_criador, 10) === parseInt(currentUserId, 10);
-            
-            console.log("O utilizador é o criador?", isCreator);
+      const newRoomName = `group-${groupId}`;
+      socket.emit("join_group_room", newRoomName);
 
-            groupSettingsIcon.style.display = isCreator ? "block" : "none";
+      if (currentChatId) {
+        if (chatHeader)
+          chatHeader.innerHTML = `<h3><i class="fas fa-hashtag" style="color: var(--text-muted);"></i> ${firstChannel.Nome}</h3>`;
+        if (chatInput) {
+          chatInput.placeholder = `Conversar em #${firstChannel.Nome}`;
+          chatInput.disabled = false;
         }
-
-        if (!channelListContent) return;
-
-        const firstChannel = data.channels[0];
-        currentChatId = firstChannel ? firstChannel.id_chat : null;
-
-        const newRoomName = `group-${groupId}`;
-        socket.emit("join_group_room", newRoomName);
-
-        if (currentChatId) {
-            if (chatHeader) chatHeader.innerHTML = `<h3><i class="fas fa-hashtag" style="color: var(--text-muted);"></i> ${firstChannel.Nome}</h3>`;
-            if (chatInput) {
-                chatInput.placeholder = `Conversar em #${firstChannel.Nome}`;
-                chatInput.disabled = false;
-            }
-            loadAndRenderMessages(`/groups/chats/${currentChatId}/messages`);
-        } else {
-            currentChatId = null;
-            if (chatHeader) chatHeader.innerHTML = `<h3>Sem canais de texto</h3>`;
-            if (chatInput) {
-                chatInput.placeholder = `Crie um canal para começar a conversar.`;
-                chatInput.disabled = true;
-            }
-            if (chatMessagesContainer) chatMessagesContainer.innerHTML = "";
+        loadAndRenderMessages(`/groups/chats/${currentChatId}/messages`);
+      } else {
+        currentChatId = null;
+        if (chatHeader) chatHeader.innerHTML = `<h3>Sem canais de texto</h3>`;
+        if (chatInput) {
+          chatInput.placeholder = `Crie um canal para começar a conversar.`;
+          chatInput.disabled = true;
         }
+        if (chatMessagesContainer) chatMessagesContainer.innerHTML = "";
+      }
 
-        const mentionBtn = document.getElementById("mention-ai-btn");
-        if (mentionBtn) mentionBtn.style.display = "block";
+      const mentionBtn = document.getElementById("mention-ai-btn");
+      if (mentionBtn) mentionBtn.style.display = "block";
 
-        channelListContent.innerHTML = "";
-        const memberHeader = document.createElement("div");
-        memberHeader.className = "channel-list-header";
-        memberHeader.textContent = `MEMBROS - ${data.members.length}`;
-        channelListContent.appendChild(memberHeader);
+      channelListContent.innerHTML = "";
+      const memberHeader = document.createElement("div");
+      memberHeader.className = "channel-list-header";
+      memberHeader.textContent = `MEMBROS - ${data.members.length}`;
+      channelListContent.appendChild(memberHeader);
+      data.members.forEach((member) => {
+    const memberDiv = document.createElement("div");
+    memberDiv.className = "friend-item"; // Usa a mesma classe base
+    memberDiv.dataset.friendId = member.id_usuario;
 
-        data.members.forEach((member) => {
-            const memberDiv = document.createElement("div");
-            memberDiv.className = "friend-item";
-            memberDiv.dataset.friendId = member.id_usuario;
-            const isOnline = onlineUserIds.has(member.id_usuario);
-            const memberPhoto = member.FotoPerfil || "/images/logo.png";
-            const nameHTML = formatUserTag(member.Nome, member.id_usuario);
-            const isAI = member.id_usuario === AI_USER_ID;
-            let iconsHTML = '';
-            if (member.isAdmin) {
-                iconsHTML += '<i class="fas fa-crown member-role-icon" title="Administrador"></i>';
-            }
-            if (isAI) {
-                iconsHTML += '<i class="fas fa-robot member-role-icon" title="Inteligência Artificial"></i>';
-            }
-            memberDiv.innerHTML = `
-              <div class="member-info">
-                <div class="avatar-container">
-                  <img src="${memberPhoto}" alt="${member.Nome}">
-                  <span class="status-indicator ${isOnline ? "online" : "offline"}"></span>
-                </div>
-                <span>${nameHTML}</span>
-              </div>
-              <div class="member-icons">
-                ${iconsHTML}
-              </div>
-            `;
-            channelListContent.appendChild(memberDiv);
-        });
+    const isOnline = onlineUserIds.has(member.id_usuario);
+    const memberPhoto = member.FotoPerfil || "/images/logo.png";
+    const nameHTML = formatUserTag(member.Nome, member.id_usuario);
+    const isAI = member.id_usuario === AI_USER_ID;
 
-        isCurrentUserAdmin = data.members.some(
-            (m) => m.id_usuario === currentUserId && m.isAdmin
-        );
-    } catch (err) {
-        console.error("Erro ao carregar grupo:", err);
+    let iconsHTML = '';
+    if (member.isAdmin) {
+        iconsHTML += '<i class="fas fa-crown member-role-icon" title="Administrador"></i>';
     }
-}
+    if (isAI) {
+        iconsHTML += '<i class="fas fa-robot member-role-icon" title="Inteligência Artificial"></i>';
+    }
+
+    memberDiv.innerHTML = `
+      <div class="member-info">
+        <div class="avatar-container">
+          <img src="${memberPhoto}" alt="${member.Nome}">
+          <span class="status-indicator ${isOnline ? "online" : "offline"}"></span>
+        </div>
+        <span>${nameHTML}</span>
+      </div>
+      <div class="member-icons">
+        ${iconsHTML}
+      </div>
+    `;
+    channelListContent.appendChild(memberDiv);
+});
+      isCurrentUserAdmin = data.members.some(
+        (m) => m.id_usuario === currentUserId && m.isAdmin
+      );
+    } catch (err) {
+      console.error("Erro ao carregar grupo:", err);
+    }
+  }
 
   function renderDmView(friendId, friendName, friendPhoto) {
     removeNotification(null, true);
