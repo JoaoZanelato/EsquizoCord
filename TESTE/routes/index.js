@@ -53,7 +53,13 @@ let transporter = nodemailer.createTransport({
 router.get('/', (req, res) => res.render('Home'));
 router.get('/login', (req, res) => res.render('Login'));
 router.get('/cadastro', (req, res) => {
-    res.render('Cadastro', { error: null, formData: {} });
+    const error = req.session.error;
+    const formData = req.session.formData || {};
+
+    delete req.session.error;
+    delete req.session.formData;
+
+    res.render('Cadastro', { error: error, formData: formData });
 });
 
 router.get('/dashboard', requireLogin, async (req, res, next) => {
@@ -196,13 +202,13 @@ router.get('/mensagem', (req, res) => {
 // Rota de cadastro
 router.post('/cadastro', async (req, res, next) => {
     const { nome, email, senha, confirmar_senha } = req.body;
-    const formData = { nome, email };
+    // Guarda os dados na sessão para repopular o formulário em caso de erro.
+    req.session.formData = { nome, email };
 
     if (senha !== confirmar_senha) {
-        return res.render('Cadastro', {
-            error: 'As senhas não conferem.',
-            formData: formData
-        });
+        // Guarda a mensagem de erro na sessão e redireciona.
+        req.session.error = 'As senhas não conferem.';
+        return res.redirect('/cadastro');
     }
 
     const pool = req.db;
@@ -210,12 +216,12 @@ router.post('/cadastro', async (req, res, next) => {
     try {
         const [existingUsers] = await pool.query("SELECT Nome, Email FROM Usuarios WHERE Nome = ? OR Email = ?", [nome, email]);
         if (existingUsers.length > 0) {
-            return res.render('Cadastro', {
-                error: 'Nome de usuário ou e-mail já está em uso.',
-                formData: formData
-            });
+            // Guarda a mensagem de erro na sessão e redireciona.
+            req.session.error = 'Nome de usuário ou e-mail já está em uso.';
+            return res.redirect('/cadastro');
         }
 
+        // Se o cadastro for bem-sucedido, continue normalmente.
         const senhaCriptografada = await bcrypt.hash(senha, saltRounds);
         const token = crypto.randomBytes(32).toString('hex');
 
@@ -223,6 +229,9 @@ router.post('/cadastro', async (req, res, next) => {
             "INSERT INTO Usuarios (Nome, Email, Senha, token_verificacao, email_verificado) VALUES (?, ?, ?, ?, 0)",
             [nome, email, senhaCriptografada, token]
         );
+        
+        // Limpa os dados do formulário da sessão em caso de sucesso.
+        delete req.session.formData;
 
         const verificationLink = `http://${req.headers.host}/verificar-email?token=${token}`;
         await transporter.sendMail({
@@ -238,10 +247,8 @@ router.post('/cadastro', async (req, res, next) => {
 
     } catch (error) {
         if (error.code === 'ER_DUP_ENTRY') {
-            return res.render('Cadastro', {
-                error: 'Nome de usuário ou e-mail já cadastrado.',
-                formData: formData
-            });
+            req.session.error = 'Nome de usuário ou e-mail já cadastrado.';
+            return res.redirect('/cadastro');
         }
         next(error);
     }
