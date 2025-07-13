@@ -73,40 +73,37 @@
         </div>
       </nav>
       <aside class="channel-list">
-        <div class="channel-header">
-          <span id="group-name-header">Amigos</span>
-          <i
-            class="fas fa-cog"
-            id="group-settings-icon"
-            title="Configurações do Grupo"
-          ></i>
-        </div>
-        <div id="channel-list-content" class="channel-list-content"></div>
-        <div id="friends-nav-container" class="friends-nav">
-          <button class="friends-nav-btn active" data-tab="friends-list">
+    <div class="channel-header">
+        <span id="group-name-header">Amigos</span>
+        <i class="fas fa-cog" id="group-settings-icon" title="Configurações do Grupo"></i>
+    </div>
+
+    <div id="friends-nav-container" class="friends-nav">
+        <button class="friends-nav-btn active" data-tab="friends-list">
             Amigos
-          </button>
-          <button class="friends-nav-btn" data-tab="pending-requests">
+        </button>
+        <button class="friends-nav-btn" data-tab="pending-requests">
             Pendentes
-          </button>
-          <button class="friends-nav-btn" data-tab="add-friend">
+        </button>
+        <button class="friends-nav-btn" data-tab="add-friend">
             Adicionar
-          </button>
+        </button>
+    </div>
+
+    <div id="channel-list-content" class="channel-list-content">
         </div>
-        <div class="channel-list-content" id="channel-list-content">
-          <!-- Conteúdo dinâmico aqui -->
-        </div>
-        <div class="user-panel">
-          <img
+    
+    <div class="user-panel">
+        <img
             src="<%= user.FotoPerfil || '/images/logo.png' %>"
             alt="<%= user.Nome %>"
-          />
-          <div>
+        />
+        <div>
             <span class="username"><%= user.Nome %></span
             ><span class="user-tag">#<%= user.id_usuario %></span>
-          </div>
         </div>
-      </aside>
+    </div>
+</aside>
       <main class="chat-area">
         <div class="chat-header" id="chat-header">
           <button
