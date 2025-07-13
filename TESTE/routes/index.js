@@ -202,13 +202,15 @@ router.get('/mensagem', (req, res) => {
 // Rota de cadastro
 router.post('/cadastro', async (req, res, next) => {
     const { nome, email, senha, confirmar_senha } = req.body;
-    // Guarda os dados na sessão para repopular o formulário em caso de erro.
     req.session.formData = { nome, email };
 
     if (senha !== confirmar_senha) {
-        // Guarda a mensagem de erro na sessão e redireciona.
         req.session.error = 'As senhas não conferem.';
-        return res.redirect('/cadastro');
+        // Garante que a sessão é guardada antes de redirecionar
+        return req.session.save(err => {
+            if (err) return next(err);
+            res.redirect('/cadastro');
+        });
     }
 
     const pool = req.db;
@@ -216,12 +218,14 @@ router.post('/cadastro', async (req, res, next) => {
     try {
         const [existingUsers] = await pool.query("SELECT Nome, Email FROM Usuarios WHERE Nome = ? OR Email = ?", [nome, email]);
         if (existingUsers.length > 0) {
-            // Guarda a mensagem de erro na sessão e redireciona.
             req.session.error = 'Nome de usuário ou e-mail já está em uso.';
-            return res.redirect('/cadastro');
+             // Garante que a sessão é guardada antes de redirecionar
+            return req.session.save(err => {
+                if (err) return next(err);
+                res.redirect('/cadastro');
+            });
         }
 
-        // Se o cadastro for bem-sucedido, continue normalmente.
         const senhaCriptografada = await bcrypt.hash(senha, saltRounds);
         const token = crypto.randomBytes(32).toString('hex');
 
@@ -230,7 +234,6 @@ router.post('/cadastro', async (req, res, next) => {
             [nome, email, senhaCriptografada, token]
         );
         
-        // Limpa os dados do formulário da sessão em caso de sucesso.
         delete req.session.formData;
 
         const verificationLink = `http://${req.headers.host}/verificar-email?token=${token}`;
@@ -243,12 +246,19 @@ router.post('/cadastro', async (req, res, next) => {
 
         const titulo = "Verifique seu E-mail";
         const mensagem = "Cadastro realizado com sucesso! Um link de verificação foi enviado para o seu e-mail para ativar sua conta.";
-        res.redirect(`/mensagem?titulo=${encodeURIComponent(titulo)}&mensagem=${encodeURIComponent(mensagem)}`);
+        
+        req.session.save(err => {
+            if (err) return next(err);
+            res.redirect(`/mensagem?titulo=${encodeURIComponent(titulo)}&mensagem=${encodeURIComponent(mensagem)}`);
+        });
 
     } catch (error) {
         if (error.code === 'ER_DUP_ENTRY') {
             req.session.error = 'Nome de usuário ou e-mail já cadastrado.';
-            return res.redirect('/cadastro');
+            return req.session.save(err => {
+                if (err) return next(err);
+                res.redirect('/cadastro');
+            });
         }
         next(error);
     }
