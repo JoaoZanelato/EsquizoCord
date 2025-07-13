@@ -49,9 +49,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const aiUser = friends.find((f) => f.Nome === "EsquizoIA");
   const AI_USER_ID = aiUser ? aiUser.id_usuario : null;
 
-  const editGroupFotoInput = document.getElementById('edit-group-foto');
-  const editGroupPreview = document.getElementById('edit-group-preview');
-
   // --- SELEÇÃO DE ELEMENTOS DO DOM ---
   const createGroupModal = document.getElementById("create-group-modal"),
     editGroupModal = document.getElementById("edit-group-modal"),
@@ -664,19 +661,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- SETUP DE EVENT LISTENERS ---
   function setupEventListeners() {
-    if (editGroupFotoInput) {
-        editGroupFotoInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file && editGroupPreview) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    editGroupPreview.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    }
-
     if (mobileMenuBtn) {
       mobileMenuBtn.addEventListener("click", () => {
         channelList.classList.toggle("open");
@@ -795,16 +779,18 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
     if (groupSettingsIcon) {
-  groupSettingsIcon.addEventListener("click", () => {
-    if (currentGroupData) {
-      editGroupModal.querySelector("#edit-group-id").value = currentGroupData.details.id_grupo;
-      editGroupModal.querySelector("#edit-group-name").value = currentGroupData.details.Nome;
-      editGroupModal.querySelector("#edit-group-private").checked = currentGroupData.details.IsPrivate;
-      editGroupPreview.src = currentGroupData.details.Foto || '/images/default-group-icon.png';
-      openModal(editGroupModal);
+      groupSettingsIcon.addEventListener("click", () => {
+        if (currentGroupData) {
+          editGroupModal.querySelector("#edit-group-id").value =
+            currentGroupData.details.id_grupo;
+          editGroupModal.querySelector("#edit-group-name").value =
+            currentGroupData.details.Nome;
+          editGroupModal.querySelector("#edit-group-private").checked =
+            currentGroupData.details.IsPrivate;
+          openModal(editGroupModal);
+        }
+      });
     }
-  });
-}
     if (deleteGroupButton) {
       deleteGroupButton.addEventListener("click", async () => {
         const groupId = editGroupModal.querySelector("#edit-group-id").value;

@@ -81,7 +81,6 @@
             title="Configurações do Grupo"
           ></i>
         </div>
-        <div id="channel-list-content" class="channel-list-content"></div>
         <div id="friends-nav-container" class="friends-nav">
           <button class="friends-nav-btn active" data-tab="friends-list">
             Amigos
@@ -239,46 +238,6 @@
         </div>
         <button class="close-profile-btn">X</button>
     </div>
-</div>
-<div id="edit-group-modal" class="modal-overlay">
-  <div class="modal-content">
-    <h3 style="text-align: center; margin-bottom: 10px;">Configurações do Grupo</h3>
-    
-    <form id="edit-group-form" enctype="multipart/form-data">
-        <input type="hidden" id="edit-group-id" name="id">
-
-        <div class="profile-picture-container">
-            <img id="edit-group-preview" src="/images/default-group-icon.png" alt="Pré-visualização">
-            <label for="edit-group-foto" class="photo-upload-label">Alterar Foto</label>
-            <input type="file" id="edit-group-foto" name="foto" accept="image/*" class="photo-upload-input">
-        </div>
-
-        <label for="edit-group-name">NOME DO SERVIDOR</label>
-        <input type="text" id="edit-group-name" name="nome" required>
-        
-        <div class="checkbox-container" style="margin-top: 15px;">
-            <input type="checkbox" id="edit-group-private" name="isPrivate">
-            <label for="edit-group-private">Grupo Privado</label>
-        </div>
-
-        <div class="modal-actions-footer">
-            <button type="submit" class="submit-btn">Salvar Alterações</button>
-        </div>
-    </form>
-
-    <div class="danger-zone">
-        <h4>Zona de Perigo</h4>
-        <div class="danger-action">
-            <div>
-                <p style="margin: 0; font-weight: bold;">Excluir este servidor</p>
-                <span style="font-size: 12px; color: var(--text-muted);">Esta ação não pode ser desfeita.</span>
-            </div>
-            <button id="delete-group-btn" class="delete-btn">Excluir</button>
-        </div>
-    </div>
-    
-    <button class="cancel-btn" style="width:100%; margin-top: 20px;">Fechar</button>
-  </div>
 </div>
   </body>
 </html>
