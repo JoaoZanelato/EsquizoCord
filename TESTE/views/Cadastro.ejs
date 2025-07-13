@@ -132,12 +132,6 @@
           </div>
         <% } %>
 
-        <% if (typeof error !== 'undefined' && error) { %>
-        <div class="feedback-message error">
-          <p><%= error %></p>
-        </div>
-        <% } %>
-
         <form class="auth-form" action="/cadastro" method="POST">
             <label for="nome">Nome de Usuário:</label>
             <input type="text" name="nome" id="nome" value="<%= (typeof formData !== 'undefined' ? formData.nome : '') %>" required>
