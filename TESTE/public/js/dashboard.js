@@ -1035,6 +1035,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
+    // (dashboard.js)
     let searchTimeout;
     document.body.addEventListener("input", (e) => {
       const target = e.target;
@@ -1060,8 +1061,23 @@ document.addEventListener("DOMContentLoaded", () => {
             isGroupSearch ? "search-group-results" : "add-friend-results"
           );
           if (!resultsContainer) return;
+
+          // --- INÍCIO DA ALTERAÇÃO ---
           try {
             const response = await fetch(searchUrl);
+
+            // Verifica se a resposta foi bem-sucedida (status 2xx)
+            if (!response.ok) {
+              // Se o erro for 401 (Não Autorizado), redireciona para o login
+              if (response.status === 401) {
+                alert("A sua sessão expirou. Por favor, faça login novamente.");
+                window.location.href = '/login';
+                return;
+              }
+              // Para outros erros, lança uma exceção para ser apanhada pelo catch
+              throw new Error(`Erro do servidor: ${response.statusText}`);
+            }
+
             const results = await response.json();
             renderSearchResults(results, resultsContainer, isGroupSearch);
           } catch (err) {
@@ -1069,6 +1085,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (resultsContainer)
               resultsContainer.innerHTML = "<p>Erro ao pesquisar.</p>";
           }
+          // --- FIM DA ALTERAÇÃO ---
         }, 300);
       }
     });
