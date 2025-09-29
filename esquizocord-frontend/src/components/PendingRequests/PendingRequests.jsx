@@ -1,25 +1,28 @@
 // src/components/PendingRequests/PendingRequests.jsx
-import React from 'react';
+import React from "react";
 import {
-    PendingContainer,
-    StyledListHeader,
-    RequestItem,
-    UserInfo,
-    StyledAvatarContainer,
-    StyledNameTag,
-    Actions
-} from './styles';
+  PendingContainer,
+  StyledListHeader,
+  RequestItem,
+  UserInfo,
+  StyledAvatarContainer,
+  StyledNameTag,
+  Actions,
+} from "./styles";
 
-const PendingRequests = ({ pending, sent }) => {
+const PendingRequests = ({ pending, sent, onAction }) => {
   return (
     <PendingContainer>
       <StyledListHeader>Pedidos Recebidos - {pending.length}</StyledListHeader>
       {pending.length > 0 ? (
-        pending.map(req => (
+        pending.map((req) => (
           <RequestItem key={req.id_amizade}>
             <UserInfo>
               <StyledAvatarContainer>
-                <img src={req.FotoPerfil || '/images/logo.png'} alt={req.Nome} />
+                <img
+                  src={req.FotoPerfil || "/images/logo.png"}
+                  alt={req.Nome}
+                />
               </StyledAvatarContainer>
               <StyledNameTag>
                 {req.Nome}
@@ -27,24 +30,41 @@ const PendingRequests = ({ pending, sent }) => {
               </StyledNameTag>
             </UserInfo>
             <Actions>
-              <button className="accept" title="Aceitar"><i className="fas fa-check-circle"></i></button>
-              <button className="reject" title="Recusar"><i className="fas fa-times-circle"></i></button>
+              <button
+                onClick={() => onAction("accept", req.id_amizade)}
+                className="accept"
+                title="Aceitar"
+              >
+                <i className="fas fa-check-circle"></i>
+              </button>
+              <button
+                onClick={() => onAction("reject", req.id_amizade)}
+                className="reject"
+                title="Recusar"
+              >
+                <i className="fas fa-times-circle"></i>
+              </button>{" "}
             </Actions>
           </RequestItem>
         ))
       ) : (
-        <p style={{ padding: '8px', color: 'var(--text-muted)' }}>Nenhum pedido recebido.</p>
+        <p style={{ padding: "8px", color: "var(--text-muted)" }}>
+          Nenhum pedido recebido.
+        </p>
       )}
 
-      <StyledListHeader style={{ marginTop: '20px' }}>
+      <StyledListHeader style={{ marginTop: "20px" }}>
         Pedidos Enviados - {sent.length}
       </StyledListHeader>
       {sent.length > 0 ? (
-        sent.map(req => (
+        sent.map((req) => (
           <RequestItem key={req.id_amizade}>
             <UserInfo>
               <StyledAvatarContainer>
-                <img src={req.FotoPerfil || '/images/logo.png'} alt={req.Nome} />
+                <img
+                  src={req.FotoPerfil || "/images/logo.png"}
+                  alt={req.Nome}
+                />
               </StyledAvatarContainer>
               <StyledNameTag>
                 {req.Nome}
@@ -52,12 +72,16 @@ const PendingRequests = ({ pending, sent }) => {
               </StyledNameTag>
             </UserInfo>
             <Actions>
-              <button className="cancel" title="Cancelar Pedido"><i className="fas fa-trash"></i></button>
+              <button className="cancel" title="Cancelar Pedido">
+                <i className="fas fa-trash"></i>
+              </button>
             </Actions>
           </RequestItem>
         ))
       ) : (
-        <p style={{ padding: '8px', color: 'var(--text-muted)' }}>Nenhum pedido enviado.</p>
+        <p style={{ padding: "8px", color: "var(--text-muted)" }}>
+          Nenhum pedido enviado.
+        </p>
       )}
     </PendingContainer>
   );

@@ -1,5 +1,5 @@
 // src/pages/Dashboard/Dashboard.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../services/api';
 
@@ -24,44 +24,45 @@ const Dashboard = () => {
   // Estado para controlar qual chat (DM ou grupo) está ativo
   const [activeChat, setActiveChat] = useState(null);
 
-  useEffect(() => {
-    // Função para buscar os dados iniciais do dashboard
-    const fetchData = async () => {
-      try {
-        const response = await apiClient.get('/dashboard');
-        setDashboardData(response.data);
-      } catch (err) {
-        setError('Não foi possível carregar os seus dados. Tente atualizar a página.');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Envolvemos a fetchData com useCallback para que a sua referência seja estável
+  // e não cause re-renderizações desnecessárias nos componentes filhos.
+  const fetchData = useCallback(async () => {
+    // Não é preciso definir o loading aqui para evitar o piscar da tela ao atualizar
+    try {
+      const response = await apiClient.get('/dashboard');
+      setDashboardData(response.data);
+    } catch (err) {
+      setError('Não foi possível carregar os seus dados. Tente atualizar a página.');
+      console.error(err);
+    } finally {
+      // O loading principal só deve ser definido como falso na primeira vez
+      if (loading) setLoading(false);
+    }
+  }, [loading]); // A dependência 'loading' garante que o setLoading(false) é chamado corretamente
 
+  // Efeito para buscar os dados iniciais quando o componente é montado
+  useEffect(() => {
     fetchData();
-  }, []); // O array vazio [] garante que esta função só é executada uma vez
+  }, [fetchData]);
 
   // Função para ser chamada quando um amigo ou grupo é selecionado
   const handleSelectChat = (chatInfo) => {
-    // Se o chatInfo for um grupo, precisamos de mais detalhes (canais, etc.)
-    if (chatInfo && chatInfo.type === 'group') {
-      // Lógica para buscar detalhes do grupo e definir o primeiro canal como ativo (será implementada a seguir)
-      console.log("Grupo selecionado (lógica futura):", chatInfo.group.id_grupo);
-      setActiveChat(chatInfo); // Por agora, apenas define o grupo como ativo
-    } else {
-      // Para DMs ou para limpar a seleção (quando chatInfo é null)
-      setActiveChat(chatInfo);
-    }
+    setActiveChat(chatInfo);
   };
 
-  // Renderiza um estado de carregamento enquanto os dados não chegam
+  // Renderiza um estado de carregamento inicial
   if (loading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>A carregar o seu universo...</div>;
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#202225' }}>A carregar o seu universo...</div>;
   }
 
-  // Renderiza uma mensagem de erro se a busca de dados falhar
+  // Renderiza uma mensagem de erro se a busca inicial falhar
   if (error) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'red' }}>{error}</div>;
+  }
+
+  // Se os dados ainda não chegaram por algum motivo (pouco provável após o loading), mostra uma mensagem
+  if (!dashboardData) {
+    return <div>Não foi possível carregar os dados.</div>;
   }
 
   return (
@@ -71,7 +72,7 @@ const Dashboard = () => {
         <ServerIcon
           title="Início"
           className={!activeChat || activeChat.type === 'dm' ? 'active' : ''}
-          onClick={() => handleSelectChat(null)} // Clicar em início limpa a seleção de grupo
+          onClick={() => handleSelectChat(null)}
         >
           <img src="/images/logo.png" alt="Início" />
         </ServerIcon>
@@ -83,7 +84,7 @@ const Dashboard = () => {
           <ServerIcon
             key={group.id_grupo}
             title={group.Nome}
-            className={activeChat?.group?.id_grupo === group.id_grupo ? 'active' : ''}
+            className={activeChat?.type === 'group' && activeChat.group.id_grupo === group.id_grupo ? 'active' : ''}
             onClick={() => handleSelectChat({ type: 'group', group })}
           >
             <img
@@ -109,12 +110,13 @@ const Dashboard = () => {
         </div>
       </ServerList>
 
-      {/* A coluna do meio (canais/amigos) agora recebe os dados e a função para selecionar um chat */}
+      {/* A coluna do meio (canais/amigos) */}
       <ChannelList 
         data={dashboardData} 
         onSelectChat={handleSelectChat}
+        onUpdate={fetchData} // Passa a função para que os filhos possam acionar uma atualização
         isGroupView={activeChat?.type === 'group'}
-        groupDetails={activeChat?.type === 'group' ? activeChat.group : null} // Passa detalhes do grupo se estiver ativo
+        groupDetails={activeChat?.type === 'group' ? activeChat.group : null}
       />
 
       {/* A área de chat principal, que renderiza a conversa ativa */}
