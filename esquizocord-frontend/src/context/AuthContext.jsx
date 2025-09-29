@@ -1,17 +1,16 @@
 // src/context/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import apiClient from '../services/api'; // Vamos criar este arquivo a seguir
+import apiClient from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // Para verificar a sessão inicial
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Verifica se já existe uma sessão no backend quando a app carrega
     const checkSession = async () => {
       try {
         const response = await apiClient.get('/session');
@@ -28,11 +27,22 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, senha) => {
-    // A função de login agora vai atualizar nosso estado global
     const response = await apiClient.post('/login', { email, senha });
     setUser(response.data);
     return response;
   };
+
+  // ---- INÍCIO DA ALTERAÇÃO ----
+  const register = async (nome, email, senha, confirmar_senha) => {
+    // Esta função simplesmente faz a chamada à API e retorna o resultado
+    return apiClient.post('/cadastro', {
+      nome,
+      email,
+      senha,
+      confirmar_senha,
+    });
+  };
+  // ---- FIM DA ALTERAÇÃO ----
 
   const logout = async () => {
     await apiClient.post('/sair');
@@ -40,8 +50,8 @@ export const AuthProvider = ({ children }) => {
     navigate('/login');
   };
 
-  // O valor que será partilhado com todos os componentes
-  const value = { user, login, logout, loading };
+  // Adicione a função 'register' ao valor partilhado
+  const value = { user, login, logout, register, loading };
 
   return (
     <AuthContext.Provider value={value}>
@@ -50,7 +60,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Hook personalizado para usar o contexto facilmente
 export const useAuth = () => {
   return useContext(AuthContext);
 };

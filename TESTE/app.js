@@ -31,7 +31,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 app.use(
   cors({
-    origin: "http://localhost:3000", // Endereço do seu futuro frontend React
+    origin: "http://localhost:5173", // Endereço do seu futuro frontend React
     credentials: true, // Essencial para permitir o envio de cookies de sessão
   })
 );

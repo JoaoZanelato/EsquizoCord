@@ -49,8 +49,7 @@ let transporter = nodemailer.createTransport({
 
 /* --- ROTAS DA API --- */
 
-// ROTA POST: /login
-// Autentica o usuário e, em caso de sucesso, retorna os dados do usuário em JSON.
+// ROTA POST: /login (VERSÃO MELHORADA PARA DEBUG)
 router.post('/login', async (req, res, next) => {
   const { email, senha } = req.body;
   if (!email || !senha) {
@@ -66,34 +65,40 @@ router.post('/login', async (req, res, next) => {
     `;
     const [rows] = await pool.query(sql, [email]);
 
+    // ---- INÍCIO DA ALTERAÇÃO ----
+
+    // 1. Verifica se o email existe
     if (rows.length === 0) {
-      return res.status(401).json({ message: 'E-mail ou senha inválidos.' });
+      console.log(`[DEBUG] Tentativa de login falhou: Email "${email}" não encontrado.`);
+      return res.status(401).json({ message: 'Utilizador não encontrado com este e-mail.' });
     }
     
     const user = rows[0];
+    
+    // 2. Compara a senha
     const match = await bcrypt.compare(senha, user.Senha);
 
     if (match) {
       if (!user.email_verificado) {
-        return res.status(403).json({ message: "Sua conta ainda não foi ativada. Por favor, verifique o link enviado para o seu e-mail." });
+        return res.status(403).json({ message: "Sua conta ainda não foi ativada. Verifique seu e-mail." });
       }
 
-      // Remove a senha do objeto antes de enviar a resposta
       delete user.Senha;
-      
       req.session.user = user;
       res.status(200).json(user);
 
     } else {
-      res.status(401).json({ message: 'E-mail ou senha inválidos.' });
+      console.log(`[DEBUG] Tentativa de login falhou: Senha incorreta para o email "${email}".`);
+      res.status(401).json({ message: 'Senha incorreta.' });
     }
+    // ---- FIM DA ALTERAÇÃO ----
+
   } catch (error) {
     next(error);
   }
 });
 
-// ROTA POST: /cadastro
-// Cria um novo usuário e envia o e-mail de verificação.
+// ROTA POST: /cadastro (VERSÃO MELHORADA PARA DEBUG)
 router.post('/cadastro', async (req, res, next) => {
     const { nome, email, senha, confirmar_senha } = req.body;
 
@@ -121,8 +126,7 @@ router.post('/cadastro', async (req, res, next) => {
             [nome, email, senhaCriptografada, token]
         );
 
-        // A URL agora deve apontar para a rota do seu frontend React
-        const verificationLink = `http://localhost:3000/verificar-email?token=${token}`;
+        const verificationLink = `http://localhost:5173/verificar-email?token=${token}`;
         
         await transporter.sendMail({
             from: '"EsquizoCord" <no-reply@esquizocord.com>',
@@ -134,19 +138,22 @@ router.post('/cadastro', async (req, res, next) => {
         res.status(201).json({ message: "Cadastro realizado com sucesso! Um link de verificação foi enviado para o seu e-mail." });
 
     } catch (error) {
-        next(error);
+        // ---- INÍCIO DA ALTERAÇÃO ----
+        // Adiciona um log detalhado do erro no terminal do backend
+        console.error("[ERRO NO CADASTRO]:", error); 
+        
+        // Envia uma mensagem de erro mais genérica para o frontend, por segurança
+        res.status(500).json({ message: 'Ocorreu um erro no servidor ao tentar criar a conta.' });
+        // A linha next(error) foi removida para enviarmos a nossa própria resposta JSON
+        // ---- FIM DA ALTERAÇÃO ----
     }
 });
-
-// ROTA GET: /verificar-email
-// Verifica o token de e-mail. Esta rota pode ser mantida, pois não renderiza uma view,
-// mas apenas processa uma ação e depois o frontend pode redirecionar.
+// ROTA GET: VERIFICAR-EMAIL
 router.get('/verificar-email', async (req, res, next) => {
     try {
         const { token } = req.query;
         if (!token) {
-            // Em uma API, você pode redirecionar para uma página de erro do frontend
-            return res.redirect('http://localhost:3000/verificacao-falhou?erro=token_invalido');
+            return res.status(400).json({ message: 'Token de verificação não fornecido.' });
         }
         
         const pool = req.db;
@@ -156,11 +163,11 @@ router.get('/verificar-email', async (req, res, next) => {
         );
 
         if (result.affectedRows === 0) {
-            return res.redirect('http://localhost:3000/verificacao-falhou?erro=token_nao_encontrado');
+            return res.status(400).json({ message: 'Este token é inválido, expirou ou a conta já foi ativada.' });
         }
 
-        // Redireciona para uma página de sucesso no frontend
-        res.redirect('http://localhost:3000/verificacao-sucesso');
+        // Devolve sucesso em JSON em vez de redirecionar
+        res.status(200).json({ message: 'E-mail verificado com sucesso!' });
 
     } catch (error) {
         next(error);
@@ -198,6 +205,49 @@ router.get('/dashboard', requireLogin, async (req, res, next) => {
             onlineUserIds: Array.from(onlineUsers)
         });
     } catch (error) { next(error); }
+});
+
+// ROTA POST PARA REENVIAR O E-MAIL DE VERIFICAÇÃO
+router.post('/reenviar-verificacao', async (req, res, next) => {
+    const { email } = req.body;
+    if (!email) {
+        return res.status(400).json({ message: 'O e-mail é obrigatório.' });
+    }
+
+    const pool = req.db;
+    try {
+        const [users] = await pool.query("SELECT * FROM Usuarios WHERE Email = ?", [email]);
+
+        if (users.length === 0) {
+            // Enviamos uma mensagem de sucesso mesmo que o e-mail não exista
+            // para evitar que alguém use esta rota para descobrir e-mails registados.
+            return res.status(200).json({ message: 'Se uma conta com este e-mail existir, um novo link de verificação foi enviado.' });
+        }
+
+        const user = users[0];
+        if (user.email_verificado) {
+            return res.status(200).json({ message: 'Esta conta já foi verificada.' });
+        }
+
+        // Gera um novo token e atualiza no banco de dados
+        const token = crypto.randomBytes(32).toString('hex');
+        await pool.query("UPDATE Usuarios SET token_verificacao = ? WHERE id_usuario = ?", [token, user.id_usuario]);
+
+        // Envia o novo e-mail
+        const verificationLink = `http://localhost:5173/verificar-email?token=${token}`;
+        await transporter.sendMail({
+            from: '"EsquizoCord" <no-reply@esquizocord.com>',
+            to: user.Email,
+            subject: "Novo Link de Verificação - EsquizoCord",
+            html: `<b>Olá ${user.Nome}!</b><br><p>Aqui está o seu novo link para ativar a sua conta: <a href="${verificationLink}">${verificationLink}</a></p>`,
+        });
+
+        res.status(200).json({ message: 'Se uma conta com este e-mail existir, um novo link de verificação foi enviado.' });
+
+    } catch (error) {
+        console.error("[ERRO AO REENVIAR TOKEN]:", error);
+        res.status(500).json({ message: 'Ocorreu um erro no servidor.' });
+    }
 });
 
 // ROTA POST: /configuracao
