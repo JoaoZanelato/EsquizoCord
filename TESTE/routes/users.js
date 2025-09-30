@@ -51,11 +51,9 @@ router.delete("/me", requireLogin, async (req, res, next) => {
     const match = await bcrypt.compare(senha, user.Senha);
 
     if (!match) {
-      return res
-        .status(403)
-        .json({
-          message: "Senha incorreta. A exclusão da conta foi cancelada.",
-        });
+      return res.status(403).json({
+        message: "Senha incorreta. A exclusão da conta foi cancelada.",
+      });
     }
 
     await connection.beginTransaction();
@@ -184,6 +182,90 @@ router.post("/change-password", requireLogin, async (req, res, next) => {
     res.status(200).json({ message: "Senha alterada com sucesso!" });
   } catch (error) {
     console.error("Erro ao alterar senha:", error);
+    next(error);
+  }
+});
+
+router.get("/:id/full-profile", requireLogin, async (req, res, next) => {
+  const targetUserId = parseInt(req.params.id, 10);
+  const currentUserId = req.session.user.id_usuario;
+  const pool = req.db;
+
+  // Se o utilizador estiver a ver o seu próprio perfil, não precisamos de calcular mútuos.
+  if (targetUserId === currentUserId) {
+    const [self] = await pool.query(
+      "SELECT id_usuario, Nome, FotoPerfil, Biografia FROM Usuarios WHERE id_usuario = ?",
+      [currentUserId]
+    );
+    return res.json({ user: self[0] });
+  }
+
+  try {
+    // 1. Buscar informações básicas do utilizador alvo
+    const [users] = await pool.query(
+      "SELECT id_usuario, Nome, FotoPerfil, Biografia FROM Usuarios WHERE id_usuario = ?",
+      [targetUserId]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: "Utilizador não encontrado." });
+    }
+    const userProfile = users[0];
+
+    // 2. Verificar o estado da amizade
+    const [friendship] = await pool.query(
+      "SELECT * FROM Amizades WHERE (id_utilizador_requisitante = ? AND id_utilizador_requisitado = ?) OR (id_utilizador_requisitante = ? AND id_utilizador_requisitado = ?)",
+      [currentUserId, targetUserId, targetUserId, currentUserId]
+    );
+
+    // 3. Buscar grupos em comum
+    const [mutualGroups] = await pool.query(
+      `
+            SELECT g.id_grupo, g.Nome, g.Foto 
+            FROM Grupos g
+            JOIN ParticipantesGrupo pg1 ON g.id_grupo = pg1.id_grupo
+            JOIN ParticipantesGrupo pg2 ON g.id_grupo = pg2.id_grupo
+            WHERE pg1.id_usuario = ? AND pg2.id_usuario = ?`,
+      [currentUserId, targetUserId]
+    );
+
+    // 4. Buscar amigos em comum (Esta é uma query complexa)
+    const [mutualFriends] = await pool.query(
+      `
+            SELECT u.id_usuario, u.Nome, u.FotoPerfil
+            FROM Usuarios u
+            WHERE u.id_usuario IN (
+                -- Amigos do utilizador atual
+                SELECT CASE WHEN a1.id_utilizador_requisitante = ? THEN a1.id_utilizador_requisitado ELSE a1.id_utilizador_requisitante END
+                FROM Amizades a1
+                WHERE (a1.id_utilizador_requisitante = ? OR a1.id_utilizador_requisitado = ?) AND a1.status = 'aceite'
+            ) AND u.id_usuario IN (
+                -- Amigos do utilizador alvo
+                SELECT CASE WHEN a2.id_utilizador_requisitante = ? THEN a2.id_utilizador_requisitado ELSE a2.id_utilizador_requisitante END
+                FROM Amizades a2
+                WHERE (a2.id_utilizador_requisitante = ? OR a2.id_utilizador_requisitado = ?) AND a2.status = 'aceite'
+            ) AND u.id_usuario NOT IN (?, ?, 1)`, 
+      [
+        currentUserId,
+        currentUserId,
+        currentUserId,
+        targetUserId,
+        targetUserId,
+        targetUserId,
+        currentUserId,
+        targetUserId,
+      ]
+    );
+
+    res.json({
+      user: userProfile,
+      friendship: friendship.length > 0 ? friendship[0] : null,
+      mutuals: {
+        groups: mutualGroups,
+        friends: mutualFriends,
+      },
+    });
+  } catch (error) {
     next(error);
   }
 });

@@ -29,7 +29,7 @@ export const FriendsNav = styled.div`
 
 export const FriendsNavButton = styled.button`
   flex: 1;
-  background: ${({ theme, $active }) => ($active ? theme.brandExperiment : theme.backgroundSecondary)};
+  background: ${({ theme, $active }) => ($active ? theme.brandExperiment : 'transparent')};
   border: none;
   color: ${({ theme }) => theme.textNormal};
   padding: 8px 5px;
@@ -45,7 +45,7 @@ export const FriendsNavButton = styled.button`
 `;
 
 export const Content = styled.div`
-  padding: 12px;
+  padding: 12px 8px;
   flex-grow: 1;
   overflow-y: auto;
   display: flex;
@@ -74,5 +74,77 @@ export const UserPanel = styled.div`
   .user-tag {
     color: ${({ theme }) => theme.textMuted};
     font-size: 12px;
+  }
+`;
+
+// --- NOVOS ESTILOS ADICIONADOS ---
+
+export const ListHeader = styled.div`
+  color: ${({ theme }) => theme.textMuted};
+  font-size: 12px;
+  font-weight: bold;
+  padding: 0 8px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+`;
+
+export const ChannelItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  margin: 0 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: ${({ theme, $active }) => $active ? theme.headerPrimary : theme.textMuted};
+  background-color: ${({ theme, $active }) => $active ? 'rgba(255, 255, 255, 0.08)' : 'transparent'};
+  font-weight: ${({ $active }) => $active ? 'bold' : 'normal'};
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+    color: ${({ theme }) => theme.headerPrimary};
+  }
+`;
+
+export const MemberList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+export const MemberItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 4px;
+  
+  img {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+  }
+
+  span {
+    color: ${({ theme }) => theme.textMuted};
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .online-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: ${({ theme }) => theme.greenAccent};
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  i.fa-crown {
+    color: #FAA61A; /* Cor de coroa */
+    font-size: 14px;
+    margin-left: auto;
+    flex-shrink: 0;
   }
 `;

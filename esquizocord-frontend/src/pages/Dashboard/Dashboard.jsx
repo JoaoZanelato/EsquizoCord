@@ -4,12 +4,13 @@ import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
 import apiClient from '../../services/api';
 
-// Componentes
 import ChannelList from '../../components/ChannelList/ChannelList';
 import ChatArea from '../../components/ChatArea/ChatArea';
-import CreateGroupModal from '../../components/CreateGroupModal/CreateGroupModal'; // <-- Importe o novo modal
+import CreateGroupModal from '../../components/CreateGroupModal/CreateGroupModal';
+import ExploreGroupsModal from '../../components/ExploreGroupsModal/ExploreGroupsModal';
+import EditGroupModal from '../../components/EditGroupModal/EditGroupModal';
+import UserProfileModal from '../../components/UserProfileModal/UserProfileModal';
 
-// Estilos
 import {
   DashboardLayout, ServerList, ServerIcon, Divider, LoadingContainer
 } from './styles';
@@ -20,79 +21,113 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeChat, setActiveChat] = useState(null);
-
-  // --- INÍCIO DA ADIÇÃO ---
+  
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
-  // --- FIM DA ADIÇÃO ---
+  const [isExploreModalOpen, setIsExploreModalOpen] = useState(false);
+  const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false);
+  const [viewingProfileId, setViewingProfileId] = useState(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (selectChatAfter = null) => {
     try {
       const response = await apiClient.get('/dashboard');
       setDashboardData(response.data);
+      if (selectChatAfter) {
+          setActiveChat(selectChatAfter);
+      }
     } catch (err) {
       setError('Não foi possível carregar os seus dados. Tente atualizar a página.');
-      console.error(err);
     } finally {
       if (loading) setLoading(false);
     }
   }, [loading]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  const handleSelectChat = (chatInfo) => {
-    setActiveChat(chatInfo);
+  const handleSelectGroup = async (group) => {
+      try {
+          const response = await apiClient.get(`/groups/${group.id_grupo}/details`);
+          const groupDetails = response.data;
+          const defaultChannel = groupDetails.channels[0];
+          
+          setActiveChat({
+              type: 'group',
+              group: groupDetails,
+              channelId: defaultChannel?.id_chat,
+              channelName: defaultChannel?.Nome
+          });
+      } catch (err) {
+          console.error("Erro ao carregar detalhes do grupo:", err);
+          alert("Não foi possível carregar os detalhes deste servidor.");
+      }
   };
 
-  if (loading) {
-    return <LoadingContainer>A carregar o seu universo...</LoadingContainer>;
-  }
-  if (error) {
-    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'red' }}>{error}</div>;
-  }
-  if (!dashboardData) {
-    return <div>Não foi possível carregar os dados.</div>;
-  }
+  const handleFriendAction = async (action, id) => {
+    let url = '', body = {}, method = 'post';
+    switch (action) {
+        case 'add':
+            url = '/friends/request';
+            body = { requestedId: id };
+            break;
+        case 'remove':
+            if (!window.confirm("Tem a certeza que deseja remover este amigo?")) return;
+            url = `/friends/${id}`;
+            method = 'delete';
+            break;
+        case 'accept':
+            url = '/friends/respond';
+            body = { requestId: id, action: 'aceite' };
+            break;
+        case 'reject':
+             url = '/friends/respond';
+             body = { requestId: id, action: 'recusada' };
+             break;
+        case 'cancel':
+             url = '/friends/cancel';
+             body = { requestId: id };
+             break;
+        default:
+            return;
+    }
+    try {
+        await apiClient[method](url, body);
+        fetchData(); 
+        if(viewingProfileId) {
+            setViewingProfileId(null); // Fecha o modal de perfil
+            setViewingProfileId(id); // e reabre para atualizar os dados
+        }
+    } catch (error) {
+        alert(error.response?.data?.message || `Erro ao executar a ação: ${action}`);
+    }
+  };
+
+  const handleSendMessage = (userToMessage) => {
+    setActiveChat({ type: 'dm', user: userToMessage });
+    setViewingProfileId(null);
+  };
+
+  if (loading) { return <LoadingContainer>A carregar o seu universo...</LoadingContainer>; }
+  if (error) { return <div style={{color: 'red'}}>{error}</div>; }
+  if (!dashboardData) { return <div>Não foi possível carregar os dados.</div>; }
 
   return (
     <>
       <DashboardLayout>
         <ServerList>
-          {/* Ícone de Início/Amigos */}
-          <ServerIcon
-            title="Início"
-            className={!activeChat || activeChat.type === 'dm' ? 'active' : ''}
-            onClick={() => handleSelectChat(null)}
-          >
+          <ServerIcon title="Início" className={!activeChat || activeChat.type === 'dm' ? 'active' : ''} onClick={() => setActiveChat(null)}>
             <img src="/images/logo.png" alt="Início" />
           </ServerIcon>
-          
           <Divider />
 
-          {/* Ícones dos servidores (grupos) */}
           {dashboardData.groups.map(group => (
-            <ServerIcon
-              key={group.id_grupo}
-              title={group.Nome}
-              className={activeChat?.type === 'group' && activeChat.group.id_grupo === group.id_grupo ? 'active' : ''}
-              onClick={() => handleSelectChat({ type: 'group', group })}
-            >
-              <img
-                src={group.Foto || '/images/default-group-icon.png'}
-                alt={group.Nome}
-              />
+            <ServerIcon key={group.id_grupo} title={group.Nome} className={activeChat?.type === 'group' && activeChat.group.details.id_grupo === group.id_grupo ? 'active' : ''} onClick={() => handleSelectGroup(group)}>
+              <img src={group.Foto || '/images/default-group-icon.png'} alt={group.Nome} />
             </ServerIcon>
           ))}
           
-          {/* --- INÍCIO DA ALTERAÇÃO --- */}
-          {/* Botão para abrir o modal de criação */}
           <ServerIcon title="Adicionar um servidor" onClick={() => setIsCreateGroupModalOpen(true)}>
               <i className="fas fa-plus" style={{color: 'var(--green-accent)'}}></i>
           </ServerIcon>
-          {/* --- FIM DA ALTERAÇÃO --- */}
-
-          <ServerIcon title="Explorar Servidores">
+          <ServerIcon title="Explorar Servidores" onClick={() => setIsExploreModalOpen(true)}>
               <i className="fas fa-compass" style={{color: 'var(--green-accent)'}}></i>
           </ServerIcon>
           
@@ -105,23 +140,44 @@ const Dashboard = () => {
 
         <ChannelList 
           data={dashboardData} 
-          onSelectChat={handleSelectChat}
+          onSelectChat={setActiveChat}
           onUpdate={fetchData}
-          isGroupView={activeChat?.type === 'group'}
-          groupDetails={activeChat?.type === 'group' ? activeChat.group : null}
+          activeChat={activeChat}
+          onOpenGroupSettings={() => setIsEditGroupModalOpen(true)}
+          onViewProfile={setViewingProfileId}
+          onFriendAction={handleFriendAction}
         />
 
-        <ChatArea chatInfo={activeChat} />
+        <ChatArea 
+            chatInfo={activeChat}
+            onViewProfile={setViewingProfileId}
+        />
       </DashboardLayout>
 
-      {/* --- INÍCIO DA ADIÇÃO --- */}
-      {/* Renderiza o modal de criação de grupo */}
-      <CreateGroupModal 
-        isOpen={isCreateGroupModalOpen}
-        onClose={() => setIsCreateGroupModalOpen(false)}
-        onGroupCreated={fetchData}
+      <CreateGroupModal isOpen={isCreateGroupModalOpen} onClose={() => setIsCreateGroupModalOpen(false)} onGroupCreated={fetchData} />
+      <ExploreGroupsModal isOpen={isExploreModalOpen} onClose={() => setIsExploreModalOpen(false)} onGroupJoined={fetchData} />
+      
+      <EditGroupModal 
+        isOpen={isEditGroupModalOpen}
+        onClose={() => setIsEditGroupModalOpen(false)}
+        groupDetails={activeChat?.type === 'group' ? activeChat.group.details : null}
+        onGroupUpdated={() => {
+            fetchData();
+            if (activeChat?.type === 'group') {
+                handleSelectGroup(activeChat.group.details);
+            }
+        }}
+        onGroupDeleted={() => {
+            fetchData();
+            setActiveChat(null);
+        }}
       />
-      {/* --- FIM DA ADIÇÃO --- */}
+      <UserProfileModal
+        userId={viewingProfileId}
+        onClose={() => setViewingProfileId(null)}
+        onAction={handleFriendAction}
+        onSendMessage={handleSendMessage}
+      />
     </>
   );
 };

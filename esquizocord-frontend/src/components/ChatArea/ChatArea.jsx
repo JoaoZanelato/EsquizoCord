@@ -18,9 +18,8 @@ const ChatArea = ({ chatInfo }) => {
   const [loading, setLoading] = useState(false);
   const socket = useSocket();
   const messagesEndRef = useRef(null);
-  const currentChatRef = useRef(null); // Ref para guardar o chatInfo atual
+  const currentChatRef = useRef(null);
 
-  // Atualiza a ref sempre que o chatInfo mudar
   useEffect(() => {
     currentChatRef.current = chatInfo;
   }, [chatInfo]);
@@ -28,134 +27,123 @@ const ChatArea = ({ chatInfo }) => {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-
-  // Efeito para buscar mensagens e gerir salas do Socket.IO
+  
+  // --- INÍCIO DA GRANDE ALTERAÇÃO ---
   useEffect(() => {
     if (!socket) return;
 
-    // Função para sair da sala anterior
-    const leavePreviousRoom = (prevChatInfo) => {
-      if (prevChatInfo?.type === "dm") {
-        const ids = [
-          currentUser.id_usuario,
-          prevChatInfo.user.id_usuario,
-        ].sort();
-        const roomName = `dm-${ids[0]}-${ids[1]}`;
-        socket.emit("leave_dm_room", roomName);
+    const leavePreviousRoom = (prevChat) => {
+      if (!prevChat) return;
+      if (prevChat.type === 'dm') {
+        const ids = [currentUser.id_usuario, prevChat.user.id_usuario].sort();
+        socket.emit("leave_dm_room", `dm-${ids[0]}-${ids[1]}`);
+      } else if (prevChat.type === 'group') {
+        socket.emit("leave_group_room", `group-${prevChat.group.details.id_grupo}`);
       }
-      // Adicionar lógica para 'group' aqui depois
     };
 
     const fetchMessagesAndJoinRoom = async () => {
+      leavePreviousRoom(currentChatRef.current); // Sai da sala anterior
+      
       if (!chatInfo) {
         setMessages([]);
         return;
       }
 
-      setLoading(true);
-      setMessages([]);
-      try {
-        let url = "";
-        if (chatInfo.type === "dm") {
-          // Entra na nova sala de DM
-          const ids = [currentUser.id_usuario, chatInfo.user.id_usuario].sort();
-          const roomName = `dm-${ids[0]}-${ids[1]}`;
-          socket.emit("join_dm_room", roomName);
+      let url = '';
+      if (chatInfo.type === 'dm') {
+        const ids = [currentUser.id_usuario, chatInfo.user.id_usuario].sort();
+        socket.emit("join_dm_room", `dm-${ids[0]}-${ids[1]}`);
+        url = `/friends/dm/${chatInfo.user.id_usuario}/messages`;
 
-          url = `/friends/dm/${chatInfo.user.id_usuario}/messages`;
-        }
-        // Adicionar lógica para 'group' aqui depois
+      } else if (chatInfo.type === 'group' && chatInfo.channelId) {
+        socket.emit("join_group_room", `group-${chatInfo.group.details.id_grupo}`);
+        url = `/groups/chats/${chatInfo.channelId}/messages`;
+      }
 
-        if (url) {
+      if (url) {
+        setLoading(true);
+        setMessages([]);
+        try {
           const response = await apiClient.get(url);
           setMessages(response.data);
+        } catch (error) {
+          console.error("Erro ao buscar mensagens:", error);
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error("Erro ao buscar mensagens:", error);
-      } finally {
-        setLoading(false);
+      } else {
+        setMessages([]); // Limpa mensagens se não houver chat/canal selecionado
       }
     };
-
-    // Antes de buscar novas mensagens e entrar numa nova sala, saímos da anterior
-    leavePreviousRoom(currentChatRef.current);
+    
     fetchMessagesAndJoinRoom();
 
-    // Função de limpeza que será executada quando o componente for desmontado
     return () => {
       leavePreviousRoom(chatInfo);
     };
   }, [chatInfo, socket, currentUser.id_usuario]);
 
-  // Efeito para OUVIR por novas mensagens em tempo real
   useEffect(() => {
     if (!socket) return;
 
-    const handleNewMessage = (newMessage) => {
-      const activeChat = currentChatRef.current; // Usa a ref para obter o chatInfo mais atual
-      if (!activeChat) return;
-
-      const isChatActive =
-        activeChat.type === "dm" &&
-        ((newMessage.id_remetente === activeChat.user.id_usuario &&
-          newMessage.id_destinatario === currentUser.id_usuario) ||
-          (newMessage.id_remetente === currentUser.id_usuario &&
-            newMessage.id_destinatario === activeChat.user.id_usuario));
-
-      if (isChatActive) {
-        setMessages((prevMessages) => [...prevMessages, newMessage]);
+    const handleNewDM = (newMessage) => {
+      const activeChat = currentChatRef.current;
+      if (activeChat?.type === 'dm' &&
+         ((newMessage.id_remetente === activeChat.user.id_usuario && newMessage.id_destinatario === currentUser.id_usuario) ||
+          (newMessage.id_remetente === currentUser.id_usuario && newMessage.id_destinatario === activeChat.user.id_usuario))) {
+        setMessages(prev => [...prev, newMessage]);
+      }
+    };
+    
+    const handleNewGroupMessage = (newMessage) => {
+      const activeChat = currentChatRef.current;
+      if (activeChat?.type === 'group' && newMessage.id_chat === activeChat.channelId) {
+        setMessages(prev => [...prev, newMessage]);
       }
     };
 
-    socket.on("new_dm", handleNewMessage);
+    socket.on("new_dm", handleNewDM);
+    socket.on("new_group_message", handleNewGroupMessage);
 
     return () => {
-      socket.off("new_dm", handleNewMessage);
+      socket.off("new_dm", handleNewDM);
+      socket.off("new_group_message", handleNewGroupMessage);
     };
-  }, [socket, currentUser.id_usuario]); // A dependência do chatInfo foi removida daqui para evitar re-registos desnecessários
+  }, [socket, currentUser.id_usuario]);
+  // --- FIM DA GRANDE ALTERAÇÃO ---
 
-  // Efeito para fazer scroll para o fundo
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  useEffect(() => { scrollToBottom(); }, [messages]);
 
   if (!chatInfo) {
     return (
       <ChatAreaContainer>
-        <WelcomeMessage>
-          <h2>Selecione um amigo para começar a conversar.</h2>
-        </WelcomeMessage>
+        <WelcomeMessage><h2>Selecione uma conversa para começar.</h2></WelcomeMessage>
       </ChatAreaContainer>
     );
   }
-
-  const headerInfo = chatInfo.type === "dm" ? chatInfo.user : chatInfo.group;
+  
+  // Define o que mostrar no cabeçalho
+  let headerContent;
+  if (chatInfo.type === 'dm') {
+    headerContent = (
+      <>
+        <img src={chatInfo.user.FotoPerfil || '/images/logo.png'} alt={chatInfo.user.Nome} />
+        <h3>{chatInfo.user.Nome}<span className="user-tag">#{chatInfo.user.id_usuario}</span></h3>
+      </>
+    );
+  } else if (chatInfo.type === 'group') {
+    headerContent = <h3><i className="fas fa-hashtag" style={{color: 'var(--text-muted)'}}></i> {chatInfo.channelName || 'Selecione um canal'}</h3>;
+  }
 
   return (
     <ChatAreaContainer>
-      <Header>
-        <img
-          src={headerInfo.FotoPerfil || headerInfo.Foto || "/images/logo.png"}
-          alt={headerInfo.Nome}
-        />
-        <h3>
-          {headerInfo.Nome}
-          {chatInfo.type === "dm" && (
-            <span className="user-tag">#{headerInfo.id_usuario}</span>
-          )}
-        </h3>
-      </Header>
+      <Header>{headerContent}</Header>
       <MessagesContainer>
-                {loading && <p>A carregar mensagens...</p>}
-
-                {/* --- INÍCIO DA ALTERAÇÃO --- */}
-                {!loading && messages.map(msg => (
-                    <MessageItem key={msg.id_mensagem} message={msg} />
-                ))}
-                {/* --- FIM DA ALTERAÇÃO --- */}
-
-                <div ref={messagesEndRef} />
-            </MessagesContainer>
+        {loading && <p>A carregar mensagens...</p>}
+        {!loading && messages.map(msg => <MessageItem key={msg.id_mensagem} message={msg} />)}
+        <div ref={messagesEndRef} />
+      </MessagesContainer>
       <ChatInput chatInfo={chatInfo} />
     </ChatAreaContainer>
   );

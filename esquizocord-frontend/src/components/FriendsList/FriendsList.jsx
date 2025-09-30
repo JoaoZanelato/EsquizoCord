@@ -11,23 +11,19 @@ import {
   FriendActions,
 } from "./styles";
 
-const FriendsList = ({ friends, onlineUserIds, onSelectChat }) => {
-  // A constante AI_USER_ID deve vir de um ficheiro de constantes ou do contexto
+const FriendsList = ({ friends, onlineUserIds, onSelectChat, onAction, onViewProfile }) => {
   const AI_USER_ID = 1;
 
   return (
     <FriendsListContainer>
       <ListHeader>Amigos - {friends.length}</ListHeader>
       {friends.map((friend) => {
-        const isOnline = onlineUserIds.includes(friend.id_usuario);
         const isAI = friend.id_usuario === AI_USER_ID;
+        const isOnline = isAI || onlineUserIds.includes(friend.id_usuario);
 
         return (
-          <FriendItem
-            key={friend.id_usuario}
-            onClick={() => onSelectChat({ type: "dm", user: friend })}
-          >
-            <FriendInfo>
+          <FriendItem key={friend.id_usuario}>
+            <FriendInfo onClick={() => onSelectChat({ type: "dm", user: friend })}>
               <AvatarContainer>
                 <img
                   src={friend.FotoPerfil || "/images/logo.png"}
@@ -50,16 +46,16 @@ const FriendsList = ({ friends, onlineUserIds, onSelectChat }) => {
               </NameTag>
             </FriendInfo>
 
-            <FriendActions>
-              <button title="Ver Perfil">
-                <i className="fas fa-eye"></i>
-              </button>
-              {!isAI && (
-                <button title="Remover Amigo" className="remove">
-                  <i className="fas fa-user-minus"></i>
-                </button>
-              )}
-            </FriendActions>
+            {!isAI && (
+                <FriendActions onClick={(e) => e.stopPropagation()}>
+                    <button title="Ver Perfil" onClick={() => onViewProfile(friend.id_usuario)}>
+                        <i className="fas fa-eye"></i>
+                    </button>
+                    <button title="Remover Amigo" className="remove" onClick={() => onAction('remove', friend.id_usuario)}>
+                        <i className="fas fa-user-minus"></i>
+                    </button>
+                </FriendActions>
+            )}
           </FriendItem>
         );
       })}

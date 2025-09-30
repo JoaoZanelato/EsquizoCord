@@ -1,42 +1,47 @@
 // src/components/ChatInput/ChatInput.jsx
 import React, { useState } from 'react';
 import apiClient from '../../services/api';
-import {
-    InputBarContainer,
-    InputWrapper,
-    MentionButton,
-    InputField
-} from './styles';
+import { InputBarContainer, InputWrapper, MentionButton, InputField } from './styles';
 
 const ChatInput = ({ chatInfo }) => {
     const [message, setMessage] = useState('');
+    
+    // --- INÍCIO DA ALTERAÇÃO ---
+    // Define o placeholder e se o input deve estar ativo
+    let placeholder = "Selecione uma conversa...";
+    let disabled = true;
+    if (chatInfo?.type === 'dm') {
+        placeholder = `Conversar com ${chatInfo.user.Nome}`;
+        disabled = false;
+    } else if (chatInfo?.type === 'group' && chatInfo.channelName) {
+        placeholder = `Conversar em #${chatInfo.channelName}`;
+        disabled = false;
+    }
+    // --- FIM DA ALTERAÇÃO ---
 
     const handleSendMessage = async (e) => {
-        // Envia a mensagem apenas se a tecla "Enter" for pressionada e a mensagem não estiver vazia
-        if (e.key === 'Enter' && message.trim() !== '') {
+        if (e.key === 'Enter' && message.trim() !== '' && !disabled) {
             e.preventDefault();
-
-            const messageToSend = message.trim(); // 1. Guarda a mensagem a ser enviada
-            setMessage(''); // 2. Limpa o campo de texto imediatamente
-
+            const messageToSend = message.trim();
+            setMessage('');
+            
+            // --- INÍCIO DA ALTERAÇÃO ---
             let url = '';
             if (chatInfo.type === 'dm') {
                 url = `/friends/dm/${chatInfo.user.id_usuario}/messages`;
+            } else if (chatInfo.type === 'group') {
+                url = `/groups/chats/${chatInfo.channelId}/messages`;
             }
-            // Adicionar lógica para grupos aqui depois
+            // --- FIM DA ALTERAÇÃO ---
 
-            if (!url) {
-                setMessage(messageToSend); // Restaura a mensagem se a URL for inválida
-                return;
-            }
+            if (!url) { setMessage(messageToSend); return; }
 
             try {
-                // 3. Envia a requisição para o servidor sem bloquear a UI
                 await apiClient.post(url, { content: messageToSend });
             } catch (error) {
                 console.error("Erro ao enviar mensagem:", error);
                 alert("Não foi possível enviar a sua mensagem.");
-                setMessage(messageToSend); // 4. Em caso de erro, restaura a mensagem no input
+                setMessage(messageToSend);
             }
         }
     };
@@ -44,14 +49,13 @@ const ChatInput = ({ chatInfo }) => {
     return (
         <InputBarContainer>
             <InputWrapper>
-                {/* O botão de menção pode ser ativado com base no tipo de chat no futuro */}
-                {/* <MentionButton><i className="fas fa-robot"></i></MentionButton> */}
                 <InputField
                     type="text"
-                    placeholder={`Conversar com ${chatInfo.user?.Nome || '...'}`}
+                    placeholder={placeholder}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={handleSendMessage}
+                    disabled={disabled}
                 />
             </InputWrapper>
         </InputBarContainer>

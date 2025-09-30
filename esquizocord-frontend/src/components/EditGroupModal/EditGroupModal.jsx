@@ -1,5 +1,5 @@
-// src/components/CreateGroupModal/CreateGroupModal.jsx
-import React, { useState, useRef } from "react";
+// src/components/EditGroupModal/EditGroupModal.jsx
+import React, { useState, useEffect, useRef } from "react";
 import apiClient from "../../services/api";
 import {
   ModalOverlay,
@@ -13,32 +13,45 @@ import {
   Label,
   Input,
   CheckboxContainer,
-  ModalActions,
   CancelButton,
   SubmitButton,
-} from "./styles";
-
-// --- INÍCIO DA CORREÇÃO ---
-// Corrigido de "ImagemCropModal" para "ImageCropModal"
+} from "../CreateGroupModal/styles"; // Reutilizando estilos do modal de criação
+import { ModalActions, DeleteButton } from "./styles";
 import ImageCropModal from "../ImageCropModal/ImageCropModal";
 import {
   HiddenFileInput,
   CustomFileUploadButton,
   PreviewImage,
 } from "../ImageCropModal/styles";
-// --- FIM DA CORREÇÃO ---
 
-const CreateGroupModal = ({ isOpen, onClose, onGroupCreated }) => {
+const EditGroupModal = ({
+  isOpen,
+  onClose,
+  groupDetails,
+  onGroupUpdated,
+  onGroupDeleted,
+}) => {
   const [nome, setNome] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Estados para a imagem
   const [fotoOriginal, setFotoOriginal] = useState(null);
   const [fotoPreview, setFotoPreview] = useState(null);
   const [fotoRecortadaBlob, setFotoRecortadaBlob] = useState(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const fileInputRef = useRef(null);
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Carrega os dados do grupo quando o modal é aberto
+  useEffect(() => {
+    if (groupDetails) {
+      setNome(groupDetails.Nome || "");
+      setIsPrivate(groupDetails.IsPrivate || false);
+      setFotoPreview(groupDetails.Foto || null);
+    }
+  }, [groupDetails]);
+
+  if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,25 +65,40 @@ const CreateGroupModal = ({ isOpen, onClose, onGroupCreated }) => {
     }
 
     try {
-      await apiClient.post("/groups/criar", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      onGroupCreated();
-      handleClose();
+      await apiClient.post(
+        `/groups/${groupDetails.id_grupo}/settings`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+      onGroupUpdated();
+      onClose();
     } catch (error) {
-      alert(error.response?.data?.message || "Erro ao criar o grupo.");
+      alert(error.response?.data?.message || "Erro ao atualizar o grupo.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleClose = () => {
-    setNome("");
-    setIsPrivate(false);
-    setFotoOriginal(null);
-    setFotoPreview(null);
-    setFotoRecortadaBlob(null);
-    onClose();
+  const handleDelete = async () => {
+    if (
+      !window.confirm(
+        `Tem a certeza de que deseja apagar o servidor "${nome}"? Esta ação é irreversível.`
+      )
+    ) {
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await apiClient.delete(`/groups/${groupDetails.id_grupo}`);
+      onGroupDeleted();
+      onClose();
+    } catch (error) {
+      alert(error.response?.data?.message || "Erro ao apagar o grupo.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleFileSelect = (e) => {
@@ -92,18 +120,18 @@ const CreateGroupModal = ({ isOpen, onClose, onGroupCreated }) => {
 
   return (
     <>
-      <ModalOverlay $isOpen={isOpen} onClick={handleClose}>
+      <ModalOverlay $isOpen={isOpen} onClick={onClose}>
         <ModalContent onClick={(e) => e.stopPropagation()}>
-          <CloseButton onClick={handleClose}>&times;</CloseButton>
+          <CloseButton onClick={onClose}>&times;</CloseButton>
           <Title as="h3" style={{ textAlign: "center", marginBottom: "20px" }}>
-            Crie o seu servidor
+            Configurações do Grupo
           </Title>
 
           <Form onSubmit={handleSubmit}>
             <FormGroup>
-              <Label htmlFor="group-name">Nome do Servidor</Label>
+              <Label htmlFor="edit-group-name">Nome do Servidor</Label>
               <Input
-                id="group-name"
+                id="edit-group-name"
                 type="text"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
@@ -112,11 +140,9 @@ const CreateGroupModal = ({ isOpen, onClose, onGroupCreated }) => {
             </FormGroup>
 
             <FormGroup>
-              <Label htmlFor="group-photo">Foto do Servidor (Opcional)</Label>
+              <Label>Foto do Servidor</Label>
               <HiddenFileInput
                 type="file"
-                id="group-photo"
-                name="foto"
                 onChange={handleFileSelect}
                 accept="image/*"
                 ref={fileInputRef}
@@ -125,35 +151,38 @@ const CreateGroupModal = ({ isOpen, onClose, onGroupCreated }) => {
                 type="button"
                 onClick={() => fileInputRef.current.click()}
               >
-                <i className="fas fa-camera"></i> Selecionar Foto
-                {fotoPreview && <img src={fotoPreview} alt="Preview" />}
+                <i className="fas fa-camera"></i> Alterar Foto
               </CustomFileUploadButton>
-              {fotoPreview && (
-                <PreviewImage src={fotoPreview} alt="Prévia da foto do grupo" />
-              )}
+              {fotoPreview && <PreviewImage src={fotoPreview} alt="Prévia" />}
             </FormGroup>
 
             <CheckboxContainer>
               <Input
                 type="checkbox"
-                id="group-private"
+                id="edit-group-private"
                 checked={isPrivate}
                 onChange={(e) => setIsPrivate(e.target.checked)}
                 style={{ width: "auto" }}
               />
-              <label htmlFor="group-private">Grupo Privado</label>
+              <label htmlFor="edit-group-private">Grupo Privado</label>
             </CheckboxContainer>
 
             <ModalActions>
-              <CancelButton type="button" onClick={handleClose}>
-                Cancelar
-              </CancelButton>
-              <SubmitButton
-                type="submit"
-                disabled={isSubmitting || !nome.trim()}
+              <DeleteButton
+                type="button"
+                onClick={handleDelete}
+                disabled={isSubmitting}
               >
-                {isSubmitting ? "Criando..." : "Criar"}
-              </SubmitButton>
+                Apagar
+              </DeleteButton>
+              <div>
+                <CancelButton type="button" onClick={onClose}>
+                  Cancelar
+                </CancelButton>
+                <SubmitButton type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "A Guardar..." : "Guardar"}
+                </SubmitButton>
+              </div>
             </ModalActions>
           </Form>
         </ModalContent>
@@ -170,4 +199,4 @@ const CreateGroupModal = ({ isOpen, onClose, onGroupCreated }) => {
   );
 };
 
-export default CreateGroupModal;
+export default EditGroupModal;

@@ -1,68 +1,32 @@
+// src/components/ChannelList/ChannelList.jsx
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import apiClient from '../../services/api';
 
-// Sub-componentes para cada aba
 import FriendsList from '../FriendsList/FriendsList';
 import PendingRequests from '../PendingRequests/PendingRequests';
 import AddFriend from '../AddFriend/AddFriend';
 
-// Componentes de estilo
 import {
-    ChannelListContainer,
-    ChannelHeader,
-    FriendsNav,
-    FriendsNavButton,
-    Content,
-    UserPanel,
+    ChannelListContainer, ChannelHeader, FriendsNav, FriendsNavButton, Content, UserPanel,
+    ChannelItem, MemberList, MemberItem, ListHeader
 } from './styles';
 
-// A prop 'onUpdate' é uma função vinda do Dashboard para recarregar os dados
-const ChannelList = ({ data, onSelectChat, onUpdate, isGroupView, groupDetails }) => {
+const ChannelList = ({ data, onSelectChat, onUpdate, activeChat, onOpenGroupSettings, onViewProfile, onFriendAction }) => {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('friends');
+    
+    const isGroupView = activeChat?.type === 'group';
+    const groupDetails = isGroupView ? activeChat.group : null;
+    const onlineUserIds = data.onlineUserIds || [];
+    const AI_USER_ID = 1;
 
-    // Função central para lidar com todas as ações de amizade
-    const handleFriendAction = async (action, id) => {
-        let url = '';
-        let body = {};
-        let method = 'post';
-
-        switch (action) {
-            case 'accept':
-            case 'reject':
-                url = '/friends/respond';
-                body = { requestId: id, action: action === 'accept' ? 'aceite' : 'recusada' };
-                break;
-            case 'cancel':
-                url = '/friends/cancel';
-                body = { requestId: id };
-                break;
-            case 'remove':
-                if (!window.confirm("Tem a certeza de que deseja remover este amigo?")) return;
-                url = `/friends/${id}`;
-                method = 'delete';
-                break;
-            default:
-                return;
-        }
-
-        try {
-            await apiClient[method](url, body);
-            onUpdate(); // Notifica o Dashboard para buscar os dados atualizados
-        } catch (error) {
-            alert(error.response?.data?.message || `Erro ao executar a ação: ${action}`);
-        }
-    };
-
-    // Renderiza o conteúdo da aba de amigos
     const renderFriendsContent = () => {
         switch (activeTab) {
             case 'pending':
                 return <PendingRequests 
                             pending={data.pendingRequests} 
                             sent={data.sentRequests} 
-                            onAction={handleFriendAction} 
+                            onAction={onFriendAction} 
                         />;
             case 'add':
                 return <AddFriend onUpdate={onUpdate} />;
@@ -72,45 +36,63 @@ const ChannelList = ({ data, onSelectChat, onUpdate, isGroupView, groupDetails }
                             friends={data.friends} 
                             onlineUserIds={data.onlineUserIds} 
                             onSelectChat={onSelectChat} 
-                            onAction={handleFriendAction}
+                            onAction={onFriendAction}
+                            onViewProfile={onViewProfile}
                         />;
         }
     };
     
-    // Renderiza o conteúdo da visualização de grupo
     const renderGroupContent = () => {
-        // Lógica futura para renderizar canais de texto e voz
+        if (!groupDetails) return null;
+        
         return (
-            <div>
-                 <div style={{ padding: '12px', color: 'var(--text-muted)' }}>
-                    CANAIS DE TEXTO
-                 </div>
-                 {/* Aqui faremos um map dos canais do grupo */}
-                 <div style={{ padding: '12px', cursor: 'pointer' }}># geral</div>
-            </div>
+            <>
+                <ListHeader>Canais de Texto</ListHeader>
+                {groupDetails.channels?.map(channel => (
+                    <ChannelItem 
+                        key={channel.id_chat}
+                        $active={activeChat.channelId === channel.id_chat}
+                        onClick={() => onSelectChat({ ...activeChat, channelId: channel.id_chat, channelName: channel.Nome })}
+                    >
+                        <i className="fas fa-hashtag" style={{width: '12px'}}></i>
+                        {channel.Nome}
+                    </ChannelItem>
+                ))}
+                
+                <ListHeader style={{ marginTop: '20px' }}>Membros — {groupDetails.members?.length}</ListHeader>
+                <MemberList>
+                    {groupDetails.members?.map(member => {
+                        const isAI = member.id_usuario === AI_USER_ID;
+                        const isOnline = isAI || onlineUserIds.includes(member.id_usuario);
+                        return (
+                            <MemberItem key={member.id_usuario} onClick={() => onViewProfile(member.id_usuario)}>
+                                <img src={member.FotoPerfil || '/images/logo.png'} alt={member.Nome} />
+                                <span>{member.Nome}</span>
+                                {isAI && <i className="fas fa-robot" title="Inteligência Artificial" style={{marginLeft: 'auto', color: '#8e9297'}}></i>}
+                                {member.isAdmin && !isAI && <i className="fas fa-crown" title="Administrador"></i>}
+                                {!isAI && !member.isAdmin && isOnline && <div className="online-indicator" title="Online"></div>}
+                            </MemberItem>
+                        );
+                    })}
+                </MemberList>
+            </>
         );
     }
 
     return (
         <ChannelListContainer>
             <ChannelHeader>
-                {/* O título muda se estivermos a ver um grupo ou a lista de amigos */}
-                <span>{isGroupView ? groupDetails.Nome : 'Amigos'}</span>
-                {/* O ícone de configurações do grupo será adicionado aqui */}
+                <span>{isGroupView ? groupDetails?.details?.Nome : 'Amigos'}</span>
+                {isGroupView && user.id_usuario === groupDetails?.details?.id_criador && (
+                    <i className="fas fa-cog" title="Configurações do Grupo" style={{cursor: 'pointer'}} onClick={onOpenGroupSettings}></i>
+                )}
             </ChannelHeader>
 
-            {/* Mostra a navegação de amigos apenas se não estivermos a ver um grupo */}
             {!isGroupView && (
                  <FriendsNav>
-                    <FriendsNavButton $active={activeTab === 'friends'} onClick={() => setActiveTab('friends')}>
-                        Amigos
-                    </FriendsNavButton>
-                    <FriendsNavButton $active={activeTab === 'pending'} onClick={() => setActiveTab('pending')}>
-                        Pendentes
-                    </FriendsNavButton>
-                    <FriendsNavButton $active={activeTab === 'add'} onClick={() => setActiveTab('add')}>
-                        Adicionar
-                    </FriendsNavButton>
+                    <FriendsNavButton $active={activeTab === 'friends'} onClick={() => setActiveTab('friends')}>Amigos</FriendsNavButton>
+                    <FriendsNavButton $active={activeTab === 'pending'} onClick={() => setActiveTab('pending')}>Pendentes</FriendsNavButton>
+                    <FriendsNavButton $active={activeTab === 'add'} onClick={() => setActiveTab('add')}>Adicionar</FriendsNavButton>
                 </FriendsNav>
             )}
             

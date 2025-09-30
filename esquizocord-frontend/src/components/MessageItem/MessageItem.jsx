@@ -11,22 +11,32 @@ import {
     MessageText
 } from './styles';
 
-// Função para formatar a hora
 const formatTime = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 };
 
-const MessageItem = ({ message }) => {
+const MessageItem = ({ message, onViewProfile }) => { // <-- Recebe a nova prop
     const { user: currentUser } = useAuth();
     const isSentByMe = message.id_usuario === currentUser.id_usuario;
 
+    // Não permite abrir o próprio perfil a partir de uma mensagem
+    const handleAvatarClick = () => {
+        if (!isSentByMe && onViewProfile) {
+            onViewProfile(message.id_usuario);
+        }
+    };
+
     return (
         <MessageContainer $isSentByMe={isSentByMe}>
-            <Avatar src={message.autorFoto || '/images/logo.png'} alt={message.autorNome} />
+            <Avatar 
+                src={message.autorFoto || '/images/logo.png'} 
+                alt={message.autorNome} 
+                onClick={handleAvatarClick} // <-- Adicionado onClick
+                style={{ cursor: isSentByMe ? 'default' : 'pointer' }} // Feedback visual
+            />
            
             <MessageContent $isSentByMe={isSentByMe}>
-                {/* Oculta o header se a mensagem for sua para não repetir seu nome */}
                 {!isSentByMe && (
                     <MessageHeader>
                         <AuthorName>{message.autorNome}</AuthorName>
