@@ -32,9 +32,7 @@ export const AuthProvider = ({ children }) => {
     return response;
   };
 
-  // ---- INÍCIO DA ALTERAÇÃO ----
   const register = async (nome, email, senha, confirmar_senha) => {
-    // Esta função simplesmente faz a chamada à API e retorna o resultado
     return apiClient.post('/cadastro', {
       nome,
       email,
@@ -42,7 +40,6 @@ export const AuthProvider = ({ children }) => {
       confirmar_senha,
     });
   };
-  // ---- FIM DA ALTERAÇÃO ----
 
   const logout = async () => {
     await apiClient.post('/sair');
@@ -50,8 +47,10 @@ export const AuthProvider = ({ children }) => {
     navigate('/login');
   };
 
-  // Adicione a função 'register' ao valor partilhado
-  const value = { user, login, logout, register, loading };
+  // ---- INÍCIO DA ALTERAÇÃO ----
+  // Adicione 'setUser' ao valor compartilhado
+  const value = { user, setUser, login, logout, register, loading };
+  // ---- FIM DA ALTERAÇÃO ----
 
   return (
     <AuthContext.Provider value={value}>

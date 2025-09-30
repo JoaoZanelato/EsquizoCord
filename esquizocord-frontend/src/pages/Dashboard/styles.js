@@ -65,3 +65,14 @@ export const ChatArea = styled.main`
   display: flex;
   flex-direction: column;
 `;
+export const LoadingContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+  /* A cor de fundo agora vem do tema aplicado */
+  background-color: ${({ theme }) => theme.backgroundTertiary};
+  color: ${({ theme }) => theme.textNormal};
+  font-size: 1.2rem;
+`;
