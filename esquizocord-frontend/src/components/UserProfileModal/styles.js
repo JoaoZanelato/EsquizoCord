@@ -42,7 +42,7 @@ export const ProfileHeader = styled.div`
   display: flex;
   align-items: center;
   padding: 0 16px;
-  margin-top: -52px;
+  margin-top: -40px;
   margin-left: 110px;
 `;
 
@@ -111,13 +111,16 @@ export const ModalBody = styled.div`
   padding: 16px;
   background-color: ${({ theme }) => theme.backgroundSecondary};
   border-radius: 0 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px; /* Adiciona espaçamento consistente entre todas as seções */
 `;
 
 export const UserInfo = styled.div`
   padding: 16px;
   background-color: ${({ theme }) => theme.backgroundTertiary};
   border-radius: 8px;
-  margin-top: 12px;
+  margin-top: 36px;
 `;
 
 export const UserName = styled.h3`
@@ -135,7 +138,7 @@ export const UserName = styled.h3`
 `;
 
 export const Section = styled.div`
-  margin-top: 20px;
+  margin-top: 16px; /* Ajustado para um espaçamento menor e consistente */
   &:first-child {
     margin-top: 0;
   }
