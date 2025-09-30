@@ -191,3 +191,27 @@ VALUES(4, 'Escuro Moderno', '#242526', '#3498DB');
 INSERT INTO defaultdb.Temas
 (id_tema, nome_tema, bckgrnd_color, main_color)
 VALUES(5, 'Claro Minimalista', '#F0F2F5', '#0D6EFD');
+
+-- Tabela de Cargos (Roles)
+CREATE TABLE `Cargos` (
+  `id_cargo` INT NOT NULL AUTO_INCREMENT,
+  `id_grupo` INT NOT NULL,
+  `nome_cargo` VARCHAR(100) NOT NULL,
+  `cor` VARCHAR(7) DEFAULT '#99aab5',
+  `permissoes` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id_cargo`),
+  KEY `fk_cargo_grupo` (`id_grupo`),
+  CONSTRAINT `fk_cargo_grupo` FOREIGN KEY (`id_grupo`) REFERENCES `Grupos` (`id_grupo`) ON DELETE CASCADE
+);
+
+-- Tabela de junção para atribuir cargos aos usuários
+CREATE TABLE `CargosUsuario` (
+  `id_cargo_usuario` INT NOT NULL AUTO_INCREMENT,
+  `id_usuario` INT NOT NULL,
+  `id_cargo` INT NOT NULL,
+  PRIMARY KEY (`id_cargo_usuario`),
+  UNIQUE KEY `usuario_cargo_unico` (`id_usuario`, `id_cargo`),
+  KEY `fk_cargousuario_cargo` (`id_cargo`),
+  CONSTRAINT `fk_cargousuario_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `Usuarios` (`id_usuario`) ON DELETE CASCADE,
+  CONSTRAINT `fk_cargousuario_cargo` FOREIGN KEY (`id_cargo`) REFERENCES `Cargos` (`id_cargo`) ON DELETE CASCADE
+);

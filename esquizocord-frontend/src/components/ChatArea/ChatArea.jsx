@@ -10,6 +10,7 @@ import {
   Header,
   MessagesContainer,
   WelcomeMessage,
+  MobileMenuButton,
 } from "./styles";
 
 const ChatArea = ({
@@ -19,6 +20,7 @@ const ChatArea = ({
   onReply,
   onCancelReply,
   onDeleteMessage,
+  onMenuClick,
 }) => {
   const { user: currentUser } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -26,7 +28,6 @@ const ChatArea = ({
   const socket = useSocket();
   const messagesEndRef = useRef(null);
 
-  // Ref para guardar a informação do chat atual e evitar re-execuções desnecessárias
   const currentChatRef = useRef(chatInfo);
   useEffect(() => {
     currentChatRef.current = chatInfo;
@@ -36,11 +37,9 @@ const ChatArea = ({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Efeito para buscar mensagens e gerir salas do Socket.IO
   useEffect(() => {
     if (!socket) return;
 
-    // Função para sair da sala anterior
     const leavePreviousRoom = (prevChat) => {
       if (!prevChat) return;
       if (prevChat.type === "dm") {
@@ -54,7 +53,6 @@ const ChatArea = ({
       }
     };
 
-    // Deixa a sala anterior antes de entrar numa nova
     leavePreviousRoom(currentChatRef.current);
 
     if (!chatInfo) {
@@ -63,7 +61,6 @@ const ChatArea = ({
     }
 
     let url = "";
-    // Entra na sala apropriada e define o URL para buscar mensagens
     if (chatInfo.type === "dm") {
       const ids = [currentUser.id_usuario, chatInfo.user.id_usuario].sort();
       socket.emit("join_dm_room", `dm-${ids[0]}-${ids[1]}`);
@@ -88,13 +85,11 @@ const ChatArea = ({
       setMessages([]);
     }
 
-    // Cleanup: sai da sala quando o componente é desmontado ou o chat muda
     return () => {
       leavePreviousRoom(chatInfo);
     };
   }, [chatInfo, socket, currentUser.id_usuario]);
 
-  // Efeito para lidar com eventos do Socket.IO em tempo real
   useEffect(() => {
     if (!socket) return;
 
@@ -102,7 +97,6 @@ const ChatArea = ({
       setMessages((prev) => [...prev, newMessage]);
     };
 
-    // --- INÍCIO DAS NOVAS ADIÇÕES ---
     const handleMessageDeleted = ({ messageId }) => {
       setMessages((prev) =>
         prev.filter((msg) => msg.id_mensagem !== messageId)
@@ -120,14 +114,20 @@ const ChatArea = ({
       socket.off("dm_message_deleted", handleMessageDeleted);
       socket.off("group_message_deleted", handleMessageDeleted);
     };
-    // --- FIM DAS NOVAS ADIÇÕES ---
   }, [socket, currentUser.id_usuario]);
 
   useEffect(scrollToBottom, [messages]);
 
+  const userPermissions =
+    chatInfo?.type === "group" ? chatInfo.group.currentUserPermissions : 0;
+  const canDeleteMessages = (userPermissions & 4) > 0; // 4 = APAGAR_MENSAGENS
+
   if (!chatInfo) {
     return (
       <ChatAreaContainer>
+        <Header>
+          <MobileMenuButton onClick={onMenuClick}>&#9776;</MobileMenuButton>
+        </Header>
         <WelcomeMessage>
           <h2>Selecione uma conversa para começar.</h2>
         </WelcomeMessage>
@@ -135,14 +135,6 @@ const ChatArea = ({
     );
   }
 
-  // Verifica se o usuário atual é admin do grupo
-  const isGroupAdmin =
-    chatInfo.type === "group" &&
-    chatInfo.group?.members?.some(
-      (m) => m.id_usuario === currentUser.id_usuario && m.isAdmin
-    );
-
-  // Renderização do cabeçalho
   let headerContent;
   if (chatInfo.type === "dm") {
     headerContent = (
@@ -179,7 +171,10 @@ const ChatArea = ({
 
   return (
     <ChatAreaContainer>
-      <Header>{headerContent}</Header>
+      <Header>
+        <MobileMenuButton onClick={onMenuClick}>&#9776;</MobileMenuButton>
+        {headerContent}
+      </Header>
       <MessagesContainer>
         {loading && <p>A carregar mensagens...</p>}
         {!loading &&
@@ -187,22 +182,20 @@ const ChatArea = ({
             <MessageItem
               key={msg.id_mensagem}
               message={msg}
-              isGroupAdmin={isGroupAdmin}
+              canDelete={
+                msg.id_usuario === currentUser.id_usuario || canDeleteMessages
+              }
               onViewProfile={onViewProfile}
-              // --- INÍCIO DAS NOVAS PROPS ---
               onReply={onReply}
               onDelete={onDeleteMessage}
-              // --- FIM DAS NOVAS PROPS ---
             />
           ))}
         <div ref={messagesEndRef} />
       </MessagesContainer>
       <ChatInput
         chatInfo={chatInfo}
-        // --- INÍCIO DAS NOVAS PROPS ---
         replyingTo={replyingTo}
         onCancelReply={onCancelReply}
-        // --- FIM DAS NOVAS PROPS ---
       />
     </ChatAreaContainer>
   );

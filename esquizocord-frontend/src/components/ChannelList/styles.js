@@ -1,13 +1,21 @@
 // src/components/ChannelList/styles.js
 import styled from 'styled-components';
 
-// ... (estilos existentes: ChannelListContainer, ChannelHeader, etc.)
 export const ChannelListContainer = styled.aside`
   width: 260px;
   background-color: ${({ theme }) => theme.backgroundSecondary};
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  z-index: 2;
+
+  @media (max-width: 768px) {
+    position: fixed;
+    height: 100%;
+    left: ${({ $isOpen }) => ($isOpen ? '0' : '-100%')};
+    transition: left 0.3s ease-in-out;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+  }
 `;
 
 export const ChannelHeader = styled.div`
@@ -116,10 +124,9 @@ export const MemberItem = styled.div`
   gap: 12px;
   padding: 8px;
   border-radius: 4px;
-  cursor: pointer; /* Adicionado para indicar que o item todo é clicável */
+  cursor: pointer;
   transition: background-color 0.2s;
 
-  /* --- EFEITO DE HOVER ADICIONADO --- */
   &:hover {
     background-color: rgba(255, 255, 255, 0.04);
   }
@@ -131,7 +138,7 @@ export const MemberItem = styled.div`
   }
 
   span {
-    color: ${({ theme }) => theme.textMuted};
+    color: ${({ theme, color }) => color || theme.textMuted};
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -146,10 +153,7 @@ export const MemberItem = styled.div`
     flex-shrink: 0;
   }
 
-  i.fa-crown {
-    color: #FAA61A;
-    font-size: 14px;
-    margin-left: auto;
-    flex-shrink: 0;
+  i.fa-shield-alt, i.fa-robot {
+      margin-left: auto;
   }
 `;

@@ -12,6 +12,7 @@ const indexRouter = require("./routes/index");
 const usersRouter = require("./routes/users");
 const groupsRouter = require("./routes/groups");
 const friendsRouter = require("./routes/friends");
+const rolesRouter = require("./routes/roles");
 
 const app = express();
 
@@ -59,6 +60,7 @@ app.use("/", indexRouter);
 app.use("/users", usersRouter);
 app.use("/groups", groupsRouter);
 app.use("/friends", friendsRouter);
+app.use("/groups", rolesRouter);
 
 app.use(function (req, res, next) {
   next(createError(404));

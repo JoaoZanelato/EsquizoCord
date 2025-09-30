@@ -23,6 +23,7 @@ import {
   CustomFileUploadButton,
   PreviewImage,
 } from "../ImageCropModal/styles";
+import RolesManagerModal from "../RolesManagerModal/RolesManagerModal"; // Importe o novo modal
 
 const EditGroupModal = ({
   isOpen,
@@ -34,6 +35,7 @@ const EditGroupModal = ({
   const [nome, setNome] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRolesModalOpen, setIsRolesModalOpen] = useState(false); // Novo estado
 
   // Estados para a imagem
   const [fotoOriginal, setFotoOriginal] = useState(null);
@@ -167,6 +169,17 @@ const EditGroupModal = ({
               <label htmlFor="edit-group-private">Grupo Privado</label>
             </CheckboxContainer>
 
+            <SubmitButton
+              type="button"
+              onClick={() => setIsRolesModalOpen(true)}
+              style={{
+                marginTop: "20px",
+                backgroundColor: "var(--background-secondary-alt, #202225)",
+              }}
+            >
+              Gerir Cargos e Permissões
+            </SubmitButton>
+
             <ModalActions>
               <DeleteButton
                 type="button"
@@ -187,6 +200,12 @@ const EditGroupModal = ({
           </Form>
         </ModalContent>
       </ModalOverlay>
+
+      <RolesManagerModal
+        isOpen={isRolesModalOpen}
+        onClose={() => setIsRolesModalOpen(false)}
+        groupDetails={groupDetails}
+      />
 
       <ImageCropModal
         isOpen={isCropModalOpen}

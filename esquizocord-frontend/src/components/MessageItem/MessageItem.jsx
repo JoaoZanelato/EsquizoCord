@@ -1,6 +1,8 @@
 // src/components/MessageItem/MessageItem.jsx
 import React from "react";
 import { useAuth } from "../../context/AuthContext";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
 import {
   MessageContainer,
   Avatar,
@@ -26,20 +28,23 @@ const formatTime = (dateString) => {
 
 const MessageItem = ({
   message,
-  isGroupAdmin,
+  canDelete, // Recebe a permissão diretamente
   onReply,
   onDelete,
   onViewProfile,
 }) => {
   const { user: currentUser } = useAuth();
   const isSentByMe = message.id_usuario === currentUser.id_usuario;
-  const canDelete = isSentByMe || isGroupAdmin;
 
   const handleAvatarClick = () => {
     if (!isSentByMe && onViewProfile) {
       onViewProfile(message.id_usuario);
     }
   };
+
+  const sanitizedContent = DOMPurify.sanitize(
+    marked.parse(message.Conteudo || "")
+  );
 
   return (
     <MessageContainer $isSentByMe={isSentByMe}>
@@ -68,13 +73,19 @@ const MessageItem = ({
         {message.repliedTo && (
           <ReplyContext>
             <ReplyAuthor>{message.repliedTo.autorNome}</ReplyAuthor>
-            <ReplyContent>{message.repliedTo.Conteudo}</ReplyContent>
+            <ReplyContent
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(
+                  marked.parse(message.repliedTo.Conteudo || "")
+                ),
+              }}
+            />
           </ReplyContext>
         )}
 
         <MessageText
           $isSentByMe={isSentByMe}
-          dangerouslySetInnerHTML={{ __html: message.Conteudo }}
+          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
         />
       </MessageContent>
 

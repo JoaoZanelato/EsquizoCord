@@ -1,11 +1,15 @@
 // src/pages/Dashboard/styles.js
-import styled from 'styled-components';
+import styled from "styled-components";
 
 export const DashboardLayout = styled.div`
   display: flex;
   height: 100vh;
   width: 100vw;
   background-color: ${({ theme }) => theme.backgroundPrimary};
+
+  @media (max-width: 768px) {
+    overflow-x: hidden;
+  }
 `;
 
 export const ServerList = styled.nav`
@@ -17,9 +21,18 @@ export const ServerList = styled.nav`
   align-items: center;
   flex-shrink: 0;
   overflow-y: auto;
+  z-index: 3;
+
+  @media (max-width: 480px) {
+    position: fixed;
+    height: 100%;
+    left: ${({ $isOpen }) => ($isOpen ? "0" : "-100%")};
+    transition: left 0.3s ease-in-out;
+  }
 `;
 
 export const ServerIcon = styled.div`
+  position: relative; /* Adicionado para o badge */
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -38,10 +51,22 @@ export const ServerIcon = styled.div`
     object-fit: cover;
   }
 
-  &:hover, &.active {
+  &:hover,
+  &.active {
     border-radius: 16px;
     background-color: ${({ theme }) => theme.brandExperiment};
   }
+`;
+
+export const NotificationBadge = styled.span`
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  width: 10px;
+  height: 10px;
+  background-color: ${({ theme }) => theme.redDanger};
+  border-radius: 50%;
+  border: 2px solid ${({ theme }) => theme.backgroundTertiary};
 `;
 
 export const Divider = styled.div`
@@ -51,27 +76,12 @@ export const Divider = styled.div`
   margin: 8px 0;
 `;
 
-export const ChannelList = styled.aside`
-  width: 260px;
-  background-color: ${({ theme }) => theme.backgroundSecondary};
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-`;
-
-export const ChatArea = styled.main`
-  flex-grow: 1;
-  background-color: ${({ theme }) => theme.backgroundPrimary};
-  display: flex;
-  flex-direction: column;
-`;
 export const LoadingContainer = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
   width: 100vw;
-  /* A cor de fundo agora vem do tema aplicado */
   background-color: ${({ theme }) => theme.backgroundTertiary};
   color: ${({ theme }) => theme.textNormal};
   font-size: 1.2rem;

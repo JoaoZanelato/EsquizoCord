@@ -1,5 +1,5 @@
 // src/components/ChatArea/styles.js
-import styled from 'styled-components';
+import styled from "styled-components";
 
 export const ChatAreaContainer = styled.main`
   flex-grow: 1;
@@ -18,14 +18,15 @@ export const Header = styled.div`
   gap: 12px;
   height: 50px;
   flex-shrink: 0;
-  
+
   /* --- EFEITO DE HOVER ADICIONADO --- */
-  & > div { /* Aplica o hover apenas ao container do perfil no cabeçalho */
+  & > div {
+    /* Aplica o hover apenas ao container do perfil no cabeçalho */
     padding: 4px 8px;
     border-radius: 4px;
     transition: background-color 0.2s;
     &:hover {
-        background-color: rgba(255, 255, 255, 0.04);
+      background-color: rgba(255, 255, 255, 0.04);
     }
   }
 
@@ -39,9 +40,24 @@ export const Header = styled.div`
     margin: 0;
     font-size: 16px;
     .user-tag {
-        color: ${({ theme }) => theme.textMuted};
-        font-size: 12px;
+      color: ${({ theme }) => theme.textMuted};
+      font-size: 12px;
     }
+  }
+`;
+export const MobileMenuButton = styled.button`
+  display: none;
+  background: none;
+  border: none;
+  color: ${({ theme }) => theme.headerPrimary};
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  margin-right: 15px;
+  line-height: 1;
+
+  @media (max-width: 768px) {
+    display: inline-block;
   }
 `;
 
@@ -54,13 +70,12 @@ export const MessagesContainer = styled.div`
   gap: 1rem;
 `;
 
-
 export const WelcomeMessage = styled.div`
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: ${({ theme }) => theme.textMuted};
-    text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: ${({ theme }) => theme.textMuted};
+  text-align: center;
 `;
