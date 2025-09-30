@@ -1,7 +1,7 @@
 // src/pages/Dashboard/Dashboard.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { useAuth } from "../../context/AuthContext";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import apiClient from "../../services/api";
 
 import ChannelList from "../../components/ChannelList/ChannelList";
@@ -25,6 +25,10 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeChat, setActiveChat] = useState(null);
+
+  // --- INÍCIO DAS NOVAS ADIÇÕES ---
+  const [replyingTo, setReplyingTo] = useState(null); // Estado para controlar a resposta
+  // --- FIM DAS NOVAS ADIÇÕES ---
 
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
   const [isExploreModalOpen, setIsExploreModalOpen] = useState(false);
@@ -71,6 +75,32 @@ const Dashboard = () => {
       alert("Não foi possível carregar os detalhes deste servidor.");
     }
   };
+
+  // --- INÍCIO DAS NOVAS FUNÇÕES ---
+  const handleDeleteMessage = async (messageId) => {
+    if (!window.confirm("Tem a certeza de que deseja apagar esta mensagem?")) {
+      return;
+    }
+
+    try {
+      let url = "";
+      if (activeChat?.type === "group") {
+        url = `/groups/messages/${messageId}`;
+      } else if (activeChat?.type === "dm") {
+        url = `/friends/dm/messages/${messageId}`;
+      }
+
+      if (url) {
+        await apiClient.delete(url);
+        // A atualização visual será feita via WebSocket
+      }
+    } catch (error) {
+      alert(
+        error.response?.data?.message || "Não foi possível apagar a mensagem."
+      );
+    }
+  };
+  // --- FIM DAS NOVAS FUNÇÕES ---
 
   const handleFriendAction = async (action, id) => {
     let url = "",
@@ -150,7 +180,10 @@ const Dashboard = () => {
           <ServerIcon
             title="Início"
             className={!activeChat || activeChat.type === "dm" ? "active" : ""}
-            onClick={() => setActiveChat(null)}
+            onClick={() => {
+              setActiveChat(null);
+              setReplyingTo(null); // Limpa a resposta ao mudar de chat
+            }}
           >
             <img src="/images/logo.png" alt="Início" />
           </ServerIcon>
@@ -166,7 +199,10 @@ const Dashboard = () => {
                   ? "active"
                   : ""
               }
-              onClick={() => handleSelectGroup(group)}
+              onClick={() => {
+                handleSelectGroup(group);
+                setReplyingTo(null); // Limpa a resposta ao mudar de chat
+              }}
             >
               <img
                 src={group.Foto || "/images/default-group-icon.png"}
@@ -203,7 +239,10 @@ const Dashboard = () => {
 
         <ChannelList
           data={dashboardData}
-          onSelectChat={setActiveChat}
+          onSelectChat={(chat) => {
+            setActiveChat(chat);
+            setReplyingTo(null); // Limpa a resposta ao mudar de chat
+          }}
           onUpdate={fetchData}
           activeChat={activeChat}
           onOpenGroupSettings={() => setIsEditGroupModalOpen(true)}
@@ -211,9 +250,19 @@ const Dashboard = () => {
           onFriendAction={handleFriendAction}
         />
 
-        <ChatArea chatInfo={activeChat} onViewProfile={setViewingProfileId} />
+        <ChatArea
+          chatInfo={activeChat}
+          onViewProfile={setViewingProfileId}
+          // --- INÍCIO DAS NOVAS PROPS ---
+          replyingTo={replyingTo}
+          onReply={setReplyingTo}
+          onCancelReply={() => setReplyingTo(null)}
+          onDeleteMessage={handleDeleteMessage}
+          // --- FIM DAS NOVAS PROPS ---
+        />
       </DashboardLayout>
 
+      {/* ... Modais ... */}
       <CreateGroupModal
         isOpen={isCreateGroupModalOpen}
         onClose={() => setIsCreateGroupModalOpen(false)}

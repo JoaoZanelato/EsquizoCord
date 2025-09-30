@@ -9,6 +9,11 @@ import {
   AuthorName,
   Timestamp,
   MessageText,
+  MessageActions,
+  ActionButton,
+  ReplyContext,
+  ReplyAuthor,
+  ReplyContent,
 } from "./styles";
 
 const formatTime = (dateString) => {
@@ -19,11 +24,17 @@ const formatTime = (dateString) => {
   });
 };
 
-const MessageItem = ({ message, onViewProfile }) => {
+const MessageItem = ({
+  message,
+  isGroupAdmin,
+  onReply,
+  onDelete,
+  onViewProfile,
+}) => {
   const { user: currentUser } = useAuth();
   const isSentByMe = message.id_usuario === currentUser.id_usuario;
+  const canDelete = isSentByMe || isGroupAdmin;
 
-  // Não permite abrir o próprio perfil a partir de uma mensagem
   const handleAvatarClick = () => {
     if (!isSentByMe && onViewProfile) {
       onViewProfile(message.id_usuario);
@@ -32,12 +43,14 @@ const MessageItem = ({ message, onViewProfile }) => {
 
   return (
     <MessageContainer $isSentByMe={isSentByMe}>
-      <Avatar
-        src={message.autorFoto || "/images/logo.png"}
-        alt={message.autorNome}
-        onClick={handleAvatarClick}
-        style={{ cursor: isSentByMe ? "default" : "pointer" }}
-      />
+      {!isSentByMe && (
+        <Avatar
+          src={message.autorFoto || "/images/logo.png"}
+          alt={message.autorNome}
+          onClick={handleAvatarClick}
+          style={{ cursor: "pointer" }}
+        />
+      )}
 
       <MessageContent $isSentByMe={isSentByMe}>
         {!isSentByMe && (
@@ -52,11 +65,32 @@ const MessageItem = ({ message, onViewProfile }) => {
           </MessageHeader>
         )}
 
+        {message.repliedTo && (
+          <ReplyContext>
+            <ReplyAuthor>{message.repliedTo.autorNome}</ReplyAuthor>
+            <ReplyContent>{message.repliedTo.Conteudo}</ReplyContent>
+          </ReplyContext>
+        )}
+
         <MessageText
           $isSentByMe={isSentByMe}
           dangerouslySetInnerHTML={{ __html: message.Conteudo }}
         />
       </MessageContent>
+
+      <MessageActions>
+        <ActionButton title="Responder" onClick={() => onReply(message)}>
+          <i className="fas fa-reply"></i>
+        </ActionButton>
+        {canDelete && (
+          <ActionButton
+            title="Apagar"
+            onClick={() => onDelete(message.id_mensagem)}
+          >
+            <i className="fas fa-trash"></i>
+          </ActionButton>
+        )}
+      </MessageActions>
     </MessageContainer>
   );
 };
