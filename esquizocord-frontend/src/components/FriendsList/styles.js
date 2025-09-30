@@ -55,8 +55,9 @@ export const StatusIndicator = styled.span`
   height: 12px;
   border-radius: 50%;
   border: 2px solid ${({ theme }) => theme.backgroundSecondary};
-  background-color: ${({ theme, isOnline }) => (isOnline ? theme.greenAccent : theme.textMuted)};
+  background-color: ${({ theme, $isOnline }) => ($isOnline ? theme.greenAccent : theme.textMuted)};
 `;
+
 
 export const NameTag = styled.span`
   font-weight: 500;

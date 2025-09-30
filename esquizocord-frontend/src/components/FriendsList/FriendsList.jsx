@@ -33,7 +33,7 @@ const FriendsList = ({ friends, onlineUserIds, onSelectChat }) => {
                   src={friend.FotoPerfil || "/images/logo.png"}
                   alt={friend.Nome}
                 />
-                <StatusIndicator isOnline={isOnline} />
+                <StatusIndicator $isOnline={isOnline} />
               </AvatarContainer>
               <NameTag>
                 {friend.Nome}

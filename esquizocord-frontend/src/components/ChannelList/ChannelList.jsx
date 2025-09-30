@@ -102,13 +102,13 @@ const ChannelList = ({ data, onSelectChat, onUpdate, isGroupView, groupDetails }
             {/* Mostra a navegação de amigos apenas se não estivermos a ver um grupo */}
             {!isGroupView && (
                  <FriendsNav>
-                    <FriendsNavButton active={activeTab === 'friends'} onClick={() => setActiveTab('friends')}>
+                    <FriendsNavButton $active={activeTab === 'friends'} onClick={() => setActiveTab('friends')}>
                         Amigos
                     </FriendsNavButton>
-                    <FriendsNavButton active={activeTab === 'pending'} onClick={() => setActiveTab('pending')}>
+                    <FriendsNavButton $active={activeTab === 'pending'} onClick={() => setActiveTab('pending')}>
                         Pendentes
                     </FriendsNavButton>
-                    <FriendsNavButton active={activeTab === 'add'} onClick={() => setActiveTab('add')}>
+                    <FriendsNavButton $active={activeTab === 'add'} onClick={() => setActiveTab('add')}>
                         Adicionar
                     </FriendsNavButton>
                 </FriendsNav>

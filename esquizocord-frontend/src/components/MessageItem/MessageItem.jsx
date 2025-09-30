@@ -26,7 +26,7 @@ const MessageItem = ({ message }) => {
                 )}
                 {/* Usamos dangerouslySetInnerHTML para renderizar o HTML do 'marked', mas é seguro porque o sanitizamos no backend */}
                 <MessageText
-                    isSentByMe={isSentByMe}
+                    $issentbyme={isSentByMe}
                     dangerouslySetInnerHTML={{ __html: message.Conteudo }}
                 />
             </MessageContent>

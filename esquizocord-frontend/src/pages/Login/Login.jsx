@@ -50,6 +50,7 @@ const Login = () => {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Digite seu email"
             required
+            autoComplete="email"
           />
           <Label htmlFor="password">Senha:</Label>
           <Input
@@ -58,6 +59,7 @@ const Login = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Digite sua senha"
+            autoComplete="current-password"
             required
           />
           {/* O link "Esqueceu a senha?" pode ser um <Link> do react-router-dom */}

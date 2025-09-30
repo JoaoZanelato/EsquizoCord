@@ -29,7 +29,7 @@ export const FriendsNav = styled.div`
 
 export const FriendsNavButton = styled.button`
   flex: 1;
-  background: ${({ theme, active }) => (active ? theme.brandExperiment : theme.backgroundSecondary)};
+  background: ${({ theme, $active }) => ($active ? theme.brandExperiment : theme.backgroundSecondary)};
   border: none;
   color: ${({ theme }) => theme.textNormal};
   padding: 8px 5px;
@@ -40,7 +40,7 @@ export const FriendsNavButton = styled.button`
   transition: background-color 0.2s;
 
   &:hover {
-    background-color: ${({ theme, active }) => !active && 'rgba(255, 255, 255, 0.04)'};
+    background-color: ${({ theme, $active }) => !$active && 'rgba(255, 255, 255, 0.04)'};
   }
 `;
 

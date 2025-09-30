@@ -3,10 +3,10 @@
 /**
  * Módulos necessários.
  */
-const { app, sessionMiddleware } = require('../app'); // Importa a app e o sessionMiddleware
+const { app, sessionMiddleware } = require('../app');
 const debug = require('debug')('teste:server');
 const http = require('http');
-const { Server } = require("socket.io"); // Importa o Server do socket.io
+const { Server } = require("socket.io");
 
 /**
  * Obtém a porta do ambiente e guarda no Express.
@@ -21,9 +21,16 @@ const server = http.createServer(app);
 
 /**
  * --- CORREÇÃO APLICADA AQUI ---
- * Inicializa o Socket.IO e o anexa ao servidor HTTP.
+ * Inicializa o Socket.IO com a configuração de CORS explícita.
  */
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173", // A origem do seu frontend
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
+
 
 // Partilha a sessão do Express com o Socket.IO para autenticação
 io.use((socket, next) => {
@@ -43,14 +50,11 @@ io.on('connection', (socket) => {
   const currentUserId = session.user.id_usuario;
   console.log(`Socket ${socket.id} autenticado como utilizador ${currentUserId}`);
   
-  // Adiciona o utilizador ao conjunto de utilizadores online
   const onlineUsers = app.get('onlineUsers') || new Set();
   onlineUsers.add(currentUserId);
   app.set('onlineUsers', onlineUsers);
   io.emit('user_online', { userId: currentUserId });
 
-
-  // Lógica para entrar e sair de salas de DM
   socket.on('join_dm_room', (roomName) => {
     socket.join(roomName);
     console.log(`Socket ${socket.id} entrou na sala DM: ${roomName}`);
@@ -61,7 +65,6 @@ io.on('connection', (socket) => {
     console.log(`Socket ${socket.id} saiu da sala DM: ${roomName}`);
   });
 
-  // Lógica para entrar e sair de salas de Grupo
   socket.on('join_group_room', (roomName) => {
     socket.join(roomName);
     console.log(`Socket ${socket.id} entrou na sala de GRUPO: ${roomName}`);
@@ -72,7 +75,6 @@ io.on('connection', (socket) => {
     console.log(`Socket ${socket.id} saiu da sala de GRUPO: ${roomName}`);
   });
 
-  // Quando o cliente se desconecta
   socket.on('disconnect', () => {
     onlineUsers.delete(currentUserId);
     app.set('onlineUsers', onlineUsers);
@@ -83,7 +85,6 @@ io.on('connection', (socket) => {
 
 // Disponibiliza o 'io' para todas as rotas da app
 app.set('io', io);
-// --- FIM DA CORREÇÃO ---
 
 /**
  * O servidor começa a escutar na porta especificada.

@@ -8,8 +8,8 @@ export const MessageContainer = styled.div`
   align-items: flex-start;
 
   // Alinha a mensagem à direita se for enviada pelo utilizador atual
-  align-self: ${({ isSentByMe }) => (isSentByMe ? 'flex-end' : 'flex-start')};
-  flex-direction: ${({ isSentByMe }) => (isSentByMe ? 'row-reverse' : 'row')};
+  align-self: ${({ $issentbyme }) => ($issentbyme ? 'flex-end' : 'flex-start')};
+  flex-direction: ${({ $issentbyme }) => ($issentbyme ? 'row-reverse' : 'row')};
 `;
 
 export const Avatar = styled.img`
@@ -23,9 +23,9 @@ export const MessageContent = styled.div`
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background-color: ${({ isSentByMe, theme }) => (isSentByMe ? theme.chatBubbleSent : 'transparent')};
-  padding: ${({ isSentByMe }) => (isSentByMe ? '8px 12px' : '0')};
-  border-radius: ${({ isSentByMe }) => (isSentByMe ? '12px 12px 0 12px' : '0')};
+  background-color: ${({ $issentbyme, theme }) => ($issentbyme ? theme.chatBubbleSent : 'transparent')};
+  padding: ${({ $issentbyme }) => ($issentbyme ? '8px 12px' : '0')};
+  border-radius: ${({ $issentbyme }) => ($issentbyme ? '12px 12px 0 12px' : '0')};
 `;
 
 export const AuthorName = styled.span`
@@ -35,7 +35,7 @@ export const AuthorName = styled.span`
 `;
 
 export const MessageText = styled.div`
-  color: ${({ isSentByMe, theme }) => (isSentByMe ? 'white' : theme.textNormal)};
+  color: ${({ $issentbyme, theme }) => ($issentbyme ? 'white' : theme.textNormal)};
   line-height: 1.4;
   overflow-wrap: break-word;
   word-wrap: break-word;
