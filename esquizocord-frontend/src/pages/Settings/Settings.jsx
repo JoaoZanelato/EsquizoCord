@@ -3,14 +3,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
 import apiClient from "../../services/api";
 
-// --- INÍCIO DA CORREÇÃO ---
-// Corrigido de 'ImagemCropModal' para 'ImageCropModal'
 import ImageCropModal from "../../components/ImageCropModal/ImageCropModal";
 import {
   HiddenFileInput,
   CustomFileUploadButton,
 } from "../../components/ImageCropModal/styles";
-// --- FIM DA CORREÇÃO ---
 
 import {
   SettingsPageContainer,
@@ -28,6 +25,7 @@ import {
   FooterActions,
   ActionLink,
   DeleteContainer,
+  SectionDivider,
   ModalOverlay,
   ModalContent,
   CloseButton,
@@ -35,8 +33,6 @@ import {
 
 const Settings = () => {
   const { user, setUser, logout } = useAuth();
-
-  // Estado para o formulário de perfil
   const [formData, setFormData] = useState({
     nome: user.Nome,
     biografia: user.Biografia || "",
@@ -44,14 +40,10 @@ const Settings = () => {
   });
   const [themes, setThemes] = useState([]);
   const [preview, setPreview] = useState(user.FotoPerfil || "/images/logo.png");
-
-  // Estados para o recorte de imagem
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const [imageToCrop, setImageToCrop] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
-
-  // Estados para o modal de senha
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -62,8 +54,6 @@ const Settings = () => {
     type: "",
     text: "",
   });
-
-  // Estados para a exclusão de conta
   const [showDelete, setShowDelete] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
 
@@ -110,11 +100,9 @@ const Settings = () => {
       "id_tema",
       formData.id_tema === "1" ? "null" : formData.id_tema
     );
-
     if (selectedFile) {
       data.append("fotoPerfil", selectedFile);
     }
-
     try {
       const response = await apiClient.post("/configuracao", data, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -183,7 +171,6 @@ const Settings = () => {
             <i className="fas fa-arrow-left"></i>
           </BackLink>
           <Title>Configurações de {user.Nome}</Title>
-
           <Form onSubmit={handleProfileSubmit}>
             <ProfilePhotoContainer>
               <img src={preview} alt="Prévia" />
@@ -240,7 +227,6 @@ const Settings = () => {
             </FormGroup>
             <SubmitButton type="submit">Salvar Alterações</SubmitButton>
           </Form>
-
           <FooterActions>
             <ActionLink onClick={logout}>Sair da Conta</ActionLink>
             <div>
@@ -252,7 +238,6 @@ const Settings = () => {
               </ActionLink>
             </div>
           </FooterActions>
-
           {showDelete && (
             <DeleteContainer>
               <p>
@@ -278,7 +263,6 @@ const Settings = () => {
           )}
         </SettingsCard>
       </SettingsPageContainer>
-
       <ModalOverlay
         $isOpen={isPasswordModalOpen}
         onClick={() => setIsPasswordModalOpen(false)}
@@ -297,7 +281,6 @@ const Settings = () => {
           >
             Alterar Senha
           </Title>
-
           <Form onSubmit={handlePasswordSubmit}>
             <FormGroup>
               <Label htmlFor="currentPassword">Senha Atual</Label>
@@ -347,7 +330,6 @@ const Settings = () => {
           </Form>
         </ModalContent>
       </ModalOverlay>
-
       <ImageCropModal
         isOpen={isCropModalOpen}
         onClose={() => setIsCropModalOpen(false)}

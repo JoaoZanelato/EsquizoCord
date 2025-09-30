@@ -11,7 +11,13 @@ import {
   FriendActions,
 } from "./styles";
 
-const FriendsList = ({ friends, onlineUserIds, onSelectChat, onAction, onViewProfile }) => {
+const FriendsList = ({
+  friends,
+  onlineUserIds,
+  onSelectChat,
+  onAction,
+  onViewProfile,
+}) => {
   const AI_USER_ID = 1;
 
   return (
@@ -23,7 +29,9 @@ const FriendsList = ({ friends, onlineUserIds, onSelectChat, onAction, onViewPro
 
         return (
           <FriendItem key={friend.id_usuario}>
-            <FriendInfo onClick={() => onSelectChat({ type: "dm", user: friend })}>
+            <FriendInfo
+              onClick={() => onSelectChat({ type: "dm", user: friend })}
+            >
               <AvatarContainer>
                 <img
                   src={friend.FotoPerfil || "/images/logo.png"}
@@ -46,16 +54,23 @@ const FriendsList = ({ friends, onlineUserIds, onSelectChat, onAction, onViewPro
               </NameTag>
             </FriendInfo>
 
-            {!isAI && (
-                <FriendActions onClick={(e) => e.stopPropagation()}>
-                    <button title="Ver Perfil" onClick={() => onViewProfile(friend.id_usuario)}>
-                        <i className="fas fa-eye"></i>
-                    </button>
-                    <button title="Remover Amigo" className="remove" onClick={() => onAction('remove', friend.id_usuario)}>
-                        <i className="fas fa-user-minus"></i>
-                    </button>
-                </FriendActions>
-            )}
+            <FriendActions onClick={(e) => e.stopPropagation()}>
+              <button
+                title="Ver Perfil"
+                onClick={() => onViewProfile(friend.id_usuario)}
+              >
+                <i className="fas fa-eye"></i>
+              </button>
+              {!isAI && (
+                <button
+                  title="Remover Amigo"
+                  className="remove"
+                  onClick={() => onAction("remove", friend.id_usuario)}
+                >
+                  <i className="fas fa-user-minus"></i>
+                </button>
+              )}
+            </FriendActions>
           </FriendItem>
         );
       })}
@@ -63,4 +78,4 @@ const FriendsList = ({ friends, onlineUserIds, onSelectChat, onAction, onViewPro
   );
 };
 
-export default FriendsList;
+export default FriendsList; // <-- A LINHA QUE FALTAVA FOI ADICIONADA AQUI

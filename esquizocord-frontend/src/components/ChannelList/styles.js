@@ -1,6 +1,7 @@
 // src/components/ChannelList/styles.js
 import styled from 'styled-components';
 
+// ... (estilos existentes: ChannelListContainer, ChannelHeader, etc.)
 export const ChannelListContainer = styled.aside`
   width: 260px;
   background-color: ${({ theme }) => theme.backgroundSecondary};
@@ -17,7 +18,7 @@ export const ChannelHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 50px; // Altura fixa para alinhar com o header do chat
+  height: 50px;
 `;
 
 export const FriendsNav = styled.div`
@@ -38,7 +39,6 @@ export const FriendsNavButton = styled.button`
   font-size: 14px;
   text-align: center;
   transition: background-color 0.2s;
-
   &:hover {
     background-color: ${({ theme, $active }) => !$active && 'rgba(255, 255, 255, 0.04)'};
   }
@@ -57,8 +57,8 @@ export const UserPanel = styled.div`
   padding: 12px;
   display: flex;
   align-items: center;
-  margin-top: auto; // Empurra o painel para o fundo
-  height: 52px; // Altura fixa
+  margin-top: auto;
+  height: 52px;
 
   img {
     width: 32px;
@@ -76,8 +76,6 @@ export const UserPanel = styled.div`
     font-size: 12px;
   }
 `;
-
-// --- NOVOS ESTILOS ADICIONADOS ---
 
 export const ListHeader = styled.div`
   color: ${({ theme }) => theme.textMuted};
@@ -118,6 +116,13 @@ export const MemberItem = styled.div`
   gap: 12px;
   padding: 8px;
   border-radius: 4px;
+  cursor: pointer; /* Adicionado para indicar que o item todo é clicável */
+  transition: background-color 0.2s;
+
+  /* --- EFEITO DE HOVER ADICIONADO --- */
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+  }
   
   img {
     width: 24px;
@@ -142,7 +147,7 @@ export const MemberItem = styled.div`
   }
 
   i.fa-crown {
-    color: #FAA61A; /* Cor de coroa */
+    color: #FAA61A;
     font-size: 14px;
     margin-left: auto;
     flex-shrink: 0;

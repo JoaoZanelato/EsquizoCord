@@ -22,18 +22,24 @@ export const FriendItem = styled.div`
   justify-content: space-between;
   padding: 8px;
   border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.04);
-  }
+  /* Removido o hover do item inteiro para ser mais específico */
 `;
 
 export const FriendInfo = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
+  cursor: pointer;
+  flex-grow: 1;
+  min-width: 0;
+  padding: 4px; /* Adicionado padding para a área de hover ser maior */
+  border-radius: 4px;
+  transition: background-color 0.2s;
+
+  /* --- EFEITO DE HOVER ADICIONADO --- */
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+  }
 `;
 
 export const AvatarContainer = styled.div`
@@ -61,6 +67,10 @@ export const StatusIndicator = styled.span`
 
 export const NameTag = styled.span`
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  
   .user-tag {
     color: ${({ theme }) => theme.textMuted};
     font-size: 12px;

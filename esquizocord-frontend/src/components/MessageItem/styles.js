@@ -6,8 +6,15 @@ export const MessageContainer = styled.div`
   max-width: 90%;
   align-items: flex-start;
   gap: 16px;
+  padding: 4px 8px; /* Adicionado para criar espaço para o hover */
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  
+  /* --- EFEITO DE HOVER ADICIONADO --- */
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+  }
 
-  /* Alinha a si mesmo à direita e inverte a direção se a mensagem for sua */
   align-self: ${({ $isSentByMe }) => ($isSentByMe ? 'flex-end' : 'flex-start')};
   flex-direction: ${({ $isSentByMe }) => ($isSentByMe ? 'row-reverse' : 'row')};
 `;
@@ -25,7 +32,6 @@ export const MessageContent = styled.div`
   flex-direction: column;
   min-width: 0;
   
-  /* Adiciona fundo, padding e borda SOMENTE se a mensagem for sua */
   background-color: ${({ $isSentByMe, theme }) => ($isSentByMe ? theme.chatBubbleSent : 'transparent')};
   padding: ${({ $isSentByMe }) => ($isSentByMe ? '8px 12px' : '0')};
   border-radius: ${({ $isSentByMe }) => ($isSentByMe ? '12px 12px 0 12px' : '0')};
@@ -42,6 +48,12 @@ export const AuthorName = styled.span`
   color: ${({ theme }) => theme.headerPrimary};
   font-size: 1rem;
   margin-right: 0.5rem;
+  cursor: pointer;
+
+  /* --- EFEITO DE HOVER ADICIONADO --- */
+  &:hover {
+    text-decoration: underline;
+  }
 `;
 
 export const Timestamp = styled.span`
@@ -50,7 +62,6 @@ export const Timestamp = styled.span`
 `;
 
 export const MessageText = styled.div`
-  /* A cor do texto muda para branco se a mensagem for sua */
   color: ${({ $isSentByMe, theme }) => ($isSentByMe ? '#FFFFFF' : theme.textNormal)};
   line-height: 1.375rem;
   font-size: 1rem;

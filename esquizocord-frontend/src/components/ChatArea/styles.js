@@ -19,6 +19,16 @@ export const Header = styled.div`
   height: 50px;
   flex-shrink: 0;
   
+  /* --- EFEITO DE HOVER ADICIONADO --- */
+  & > div { /* Aplica o hover apenas ao container do perfil no cabeçalho */
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    &:hover {
+        background-color: rgba(255, 255, 255, 0.04);
+    }
+  }
+
   img {
     width: 24px;
     height: 24px;
@@ -41,7 +51,7 @@ export const MessagesContainer = styled.div`
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem; /* <-- ADICIONE/ALTERE ESTA LINHA */
+  gap: 1rem;
 `;
 
 

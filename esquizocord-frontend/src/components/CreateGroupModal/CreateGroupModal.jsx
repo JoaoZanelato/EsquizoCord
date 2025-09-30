@@ -17,40 +17,32 @@ import {
   CancelButton,
   SubmitButton,
 } from "./styles";
-
-// --- INÍCIO DA CORREÇÃO ---
-// Corrigido de "ImagemCropModal" para "ImageCropModal"
 import ImageCropModal from "../ImageCropModal/ImageCropModal";
 import {
   HiddenFileInput,
   CustomFileUploadButton,
   PreviewImage,
 } from "../ImageCropModal/styles";
-// --- FIM DA CORREÇÃO ---
 
 const CreateGroupModal = ({ isOpen, onClose, onGroupCreated }) => {
   const [nome, setNome] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
-
   const [fotoOriginal, setFotoOriginal] = useState(null);
   const [fotoPreview, setFotoPreview] = useState(null);
   const [fotoRecortadaBlob, setFotoRecortadaBlob] = useState(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const fileInputRef = useRef(null);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-
     const formData = new FormData();
     formData.append("nome", nome);
     formData.append("isPrivate", isPrivate ? "on" : "off");
     if (fotoRecortadaBlob) {
       formData.append("foto", fotoRecortadaBlob);
     }
-
     try {
       await apiClient.post("/groups/criar", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -98,7 +90,6 @@ const CreateGroupModal = ({ isOpen, onClose, onGroupCreated }) => {
           <Title as="h3" style={{ textAlign: "center", marginBottom: "20px" }}>
             Crie o seu servidor
           </Title>
-
           <Form onSubmit={handleSubmit}>
             <FormGroup>
               <Label htmlFor="group-name">Nome do Servidor</Label>
@@ -110,7 +101,6 @@ const CreateGroupModal = ({ isOpen, onClose, onGroupCreated }) => {
                 required
               />
             </FormGroup>
-
             <FormGroup>
               <Label htmlFor="group-photo">Foto do Servidor (Opcional)</Label>
               <HiddenFileInput
@@ -132,7 +122,6 @@ const CreateGroupModal = ({ isOpen, onClose, onGroupCreated }) => {
                 <PreviewImage src={fotoPreview} alt="Prévia da foto do grupo" />
               )}
             </FormGroup>
-
             <CheckboxContainer>
               <Input
                 type="checkbox"
@@ -143,7 +132,6 @@ const CreateGroupModal = ({ isOpen, onClose, onGroupCreated }) => {
               />
               <label htmlFor="group-private">Grupo Privado</label>
             </CheckboxContainer>
-
             <ModalActions>
               <CancelButton type="button" onClick={handleClose}>
                 Cancelar
@@ -152,13 +140,12 @@ const CreateGroupModal = ({ isOpen, onClose, onGroupCreated }) => {
                 type="submit"
                 disabled={isSubmitting || !nome.trim()}
               >
-                {isSubmitting ? "Criando..." : "Criar"}
+                {isSubmitting ? "A Criar..." : "Criar"}
               </SubmitButton>
             </ModalActions>
           </Form>
         </ModalContent>
       </ModalOverlay>
-
       <ImageCropModal
         isOpen={isCropModalOpen}
         onClose={() => setIsCropModalOpen(false)}

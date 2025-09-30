@@ -64,26 +64,20 @@ app.use(function (req, res, next) {
   next(createError(404));
 });
 
-// --- INÍCIO DA CORREÇÃO ---
-// NOVO TRATAMENTO DE ERROS (JSON-aware)
+// GESTOR DE ERROS CORRIGIDO
 app.use(function (err, req, res, next) {
   res.status(err.status || 500);
-
-  // Se a requisição espera JSON (como as do React), responde com JSON
-  if (req.accepts('json')) {
+  if (req.accepts("json")) {
     res.json({
       message: err.message,
-      // Em desenvolvimento, envie o stack do erro para depuração
-      error: req.app.get('env') === 'development' ? err : {}
+      error: req.app.get("env") === "development" ? err : {},
     });
   } else {
-    // Caso contrário, renderiza a página de erro EJS (fallback)
     res.locals.message = err.message;
-    res.locals.error = req.app.get('env') === 'development' ? err : {};
-    res.render('error');
+    res.locals.error = req.app.get("env") === "development" ? err : {};
+    res.render("error");
   }
 });
-// --- FIM DA CORREÇÃO ---
 
 module.exports = {
   app: app,
