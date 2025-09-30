@@ -41,7 +41,9 @@ export const MessagesContainer = styled.div`
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  gap: 1.25rem; /* <-- ADICIONE/ALTERE ESTA LINHA */
 `;
+
 
 export const WelcomeMessage = styled.div`
     display: flex;

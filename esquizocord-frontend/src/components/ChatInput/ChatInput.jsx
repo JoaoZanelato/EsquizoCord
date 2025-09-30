@@ -16,24 +16,27 @@ const ChatInput = ({ chatInfo }) => {
         if (e.key === 'Enter' && message.trim() !== '') {
             e.preventDefault();
 
-            let url = '';
-            const body = { content: message.trim() };
+            const messageToSend = message.trim(); // 1. Guarda a mensagem a ser enviada
+            setMessage(''); // 2. Limpa o campo de texto imediatamente
 
+            let url = '';
             if (chatInfo.type === 'dm') {
                 url = `/friends/dm/${chatInfo.user.id_usuario}/messages`;
             }
             // Adicionar lógica para grupos aqui depois
 
-            if (!url) return;
+            if (!url) {
+                setMessage(messageToSend); // Restaura a mensagem se a URL for inválida
+                return;
+            }
 
             try {
-                // Não precisamos de esperar pela resposta para limpar o input,
-                // a mensagem aparecerá em tempo real via Socket.IO
-                await apiClient.post(url, body);
-                setMessage(''); // Limpa o input
+                // 3. Envia a requisição para o servidor sem bloquear a UI
+                await apiClient.post(url, { content: messageToSend });
             } catch (error) {
                 console.error("Erro ao enviar mensagem:", error);
                 alert("Não foi possível enviar a sua mensagem.");
+                setMessage(messageToSend); // 4. Em caso de erro, restaura a mensagem no input
             }
         }
     };
