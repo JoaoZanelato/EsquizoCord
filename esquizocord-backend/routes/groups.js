@@ -175,11 +175,12 @@ router.post(
 router.get("/search", requireLogin, async (req, res, next) => {
   const { q } = req.query;
   const pool = req.db;
+  const currentUserId = req.session.user.id_usuario;
   try {
     const query = q
-      ? `SELECT id_grupo, Nome, Foto FROM Grupos WHERE IsPrivate = 0 AND (Nome LIKE ? OR id_grupo = ?)`
-      : `SELECT id_grupo, Nome, Foto FROM Grupos WHERE IsPrivate = 0 ORDER BY Nome ASC`;
-    const params = q ? [`%${q}%`, q] : [];
+      ? `SELECT id_grupo, Nome, Foto FROM Grupos WHERE IsPrivate = 0 AND (Nome LIKE ? OR id_grupo = ?) AND id_grupo NOT IN (SELECT id_grupo FROM ParticipantesGrupo WHERE id_usuario = ?)`
+      : `SELECT id_grupo, Nome, Foto FROM Grupos WHERE IsPrivate = 0 AND id_grupo NOT IN (SELECT id_grupo FROM ParticipantesGrupo WHERE id_usuario = ?) ORDER BY Nome ASC`;
+    const params = q ? [`%${q}%`, q, currentUserId] : [currentUserId];
     const [groups] = await pool.query(query, params);
     res.json(groups);
   } catch (error) {
