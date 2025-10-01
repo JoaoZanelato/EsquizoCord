@@ -5,24 +5,27 @@ import { Link } from "react-router-dom";
 export const SettingsPageContainer = styled.div`
   display: flex;
   justify-content: center;
-  align-items: flex-start; /* Alinha no topo para scroll */
+  align-items: flex-start; 
   min-height: 100vh;
   padding: 40px 20px;
   background-image: url("/images/background.png");
   background-size: cover;
   background-attachment: fixed;
-  overflow-y: auto;
+  overflow-y: auto; 
 `;
 
 export const SettingsCard = styled.div`
   position: relative;
-  /* ALTERAÇÃO: Usando a cor secundária para contraste */
   background-color: ${({ theme }) => theme.backgroundPrimary};
   padding: 24px;
   border-radius: 8px;
   width: 100%;
   max-width: 500px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+
+  
+  max-height: 90vh; /* Define uma altura máxima para o cartão */
+  overflow-y: auto; /* Adiciona a barra de rolagem vertical apenas quando o conteúdo do cartão ultrapassa a altura máxima */
 `;
 
 export const BackLink = styled(Link)`
@@ -38,6 +41,7 @@ export const BackLink = styled(Link)`
   align-items: center;
   justify-content: center;
   transition: background-color 0.2s;
+  z-index: 1; 
   &:hover {
     background-color: ${({ theme }) => theme.backgroundTertiary};
   }
@@ -147,7 +151,8 @@ export const FooterActions = styled.div`
 `;
 
 export const ActionLink = styled.a`
-  color: ${({ theme, $danger }) => ($danger ? theme.redDanger : theme.textMuted)};
+  color: ${({ theme, $danger }) =>
+    $danger ? theme.redDanger : theme.textMuted};
   text-decoration: none;
   font-size: 14px;
   padding: 8px;
@@ -178,7 +183,7 @@ export const ModalOverlay = styled.div`
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.75);
-  display: ${({ $isOpen }) => ($isOpen ? 'flex' : 'none')};
+  display: ${({ $isOpen }) => ($isOpen ? "flex" : "none")};
   justify-content: center;
   align-items: center;
   z-index: 1000;
@@ -192,20 +197,22 @@ export const ModalContent = styled.div`
   max-width: 440px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
   position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
 `;
 
 export const CloseButton = styled.button`
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    background: none;
-    border: none;
-    color: ${({ theme }) => theme.textMuted};
-    font-size: 28px;
-    cursor: pointer;
-    line-height: 1;
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none;
+  border: none;
+  color: ${({ theme }) => theme.textMuted};
+  font-size: 28px;
+  cursor: pointer;
+  line-height: 1;
 
-    &:hover {
-        color: ${({ theme }) => theme.headerPrimary};
-    }
+  &:hover {
+    color: ${({ theme }) => theme.headerPrimary};
+  }
 `;

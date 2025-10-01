@@ -218,12 +218,10 @@ const Dashboard = () => {
     setViewingProfileId(null);
   };
 
-  // --- FUNÇÃO CORRIGIDA ---
   const handleRoleUpdated = (updatedRole) => {
     if (!activeChat || activeChat.type !== "group") return;
 
     setActiveChat((currentActiveChat) => {
-      // Cria cópias apenas dos níveis do objeto que precisam de ser alterados
       const newActiveChat = {
         ...currentActiveChat,
         group: {
@@ -235,7 +233,6 @@ const Dashboard = () => {
               ) ?? -1;
 
             if (cargoIndex !== -1) {
-              // Se o membro tiver o cargo, cria um novo membro com os cargos atualizados
               const newCargos = [...member.cargos];
               newCargos[cargoIndex] = {
                 ...newCargos[cargoIndex],
@@ -243,12 +240,27 @@ const Dashboard = () => {
               };
               return { ...member, cargos: newCargos };
             }
-            // Se não, retorna o membro original sem alterações
             return member;
           }),
         },
       };
       return newActiveChat;
+    });
+  };
+
+  const handleChannelCreated = (newChannel) => {
+    if (!activeChat || activeChat.type !== "group") return;
+
+    setActiveChat((currentChat) => {
+      const newGroupData = { ...currentChat.group };
+      newGroupData.channels = [...newGroupData.channels, newChannel];
+
+      return {
+        ...currentChat,
+        group: newGroupData,
+        channelId: newChannel.id_chat,
+        channelName: newChannel.Nome,
+      };
     });
   };
 
@@ -350,6 +362,7 @@ const Dashboard = () => {
           onViewProfile={setViewingProfileId}
           onFriendAction={handleFriendAction}
           $isChannelListOpen={isChannelListOpen}
+          onChannelCreated={handleChannelCreated}
         />
 
         <ChatArea
@@ -379,6 +392,11 @@ const Dashboard = () => {
         onClose={() => setIsEditGroupModalOpen(false)}
         groupDetails={
           activeChat?.type === "group" ? activeChat.group.details : null
+        }
+        currentUserPermissions={
+          activeChat?.type === "group"
+            ? activeChat.group.currentUserPermissions
+            : 0
         }
         onGroupUpdated={() => {
           fetchData();

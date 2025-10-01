@@ -7,6 +7,7 @@ import FriendsList from "../FriendsList/FriendsList";
 import PendingRequests from "../PendingRequests/PendingRequests";
 import AddFriend from "../AddFriend/AddFriend";
 import ManageMemberRolesModal from "../ManageMemberRolesModal/ManageMemberRolesModal";
+import CreateChannelModal from "../CreateChannelModal/CreateChannelModal";
 
 import {
   ChannelListContainer,
@@ -24,7 +25,26 @@ import {
 
 const PERMISSIONS = {
   GERIR_CARGOS: 1,
+  CRIAR_CANAIS: 8,
 };
+
+const ListHeaderContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: 8px;
+`;
+
+const AddChannelButton = styled.button`
+  background: none;
+  border: none;
+  color: ${({ theme }) => theme.textMuted};
+  cursor: pointer;
+  font-size: 16px;
+  &:hover {
+    color: ${({ theme }) => theme.headerPrimary};
+  }
+`;
 
 const ChannelList = ({
   data,
@@ -35,16 +55,20 @@ const ChannelList = ({
   onViewProfile,
   onFriendAction,
   $isChannelListOpen,
+  onChannelCreated,
 }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("friends");
   const [managingMember, setManagingMember] = useState(null);
+  const [isCreateChannelModalOpen, setIsCreateChannelModalOpen] =
+    useState(false);
 
   const isGroupView = activeChat?.type === "group";
   const groupDetails = isGroupView ? activeChat.group : null;
   const onlineUserIds = data.onlineUserIds || [];
   const AI_USER_ID = 1;
 
+  // --- FUNÇÃO RESTAURADA ---
   const renderFriendsContent = () => {
     switch (activeTab) {
       case "pending":
@@ -76,10 +100,23 @@ const ChannelList = ({
 
     const canManageRoles =
       (groupDetails.currentUserPermissions & PERMISSIONS.GERIR_CARGOS) > 0;
+    const canCreateChannels =
+      (groupDetails.currentUserPermissions & PERMISSIONS.CRIAR_CANAIS) > 0;
 
     return (
       <>
-        <ListHeader>Canais de Texto</ListHeader>
+        <ListHeaderContainer>
+          <ListHeader>Canais de Texto</ListHeader>
+          {canCreateChannels && (
+            <AddChannelButton
+              title="Criar Canal"
+              onClick={() => setIsCreateChannelModalOpen(true)}
+            >
+              <i className="fas fa-plus"></i>
+            </AddChannelButton>
+          )}
+        </ListHeaderContainer>
+
         {groupDetails.channels?.map((channel) => (
           <ChannelItem
             key={channel.id_chat}
@@ -223,6 +260,13 @@ const ChannelList = ({
         member={managingMember}
         groupDetails={groupDetails?.details}
         onRolesUpdated={onUpdate}
+      />
+
+      <CreateChannelModal
+        isOpen={isCreateChannelModalOpen}
+        onClose={() => setIsCreateChannelModalOpen(false)}
+        groupDetails={groupDetails?.details}
+        onChannelCreated={onChannelCreated}
       />
     </>
   );

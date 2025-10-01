@@ -2,6 +2,14 @@
 const express = require("express");
 const router = express.Router();
 
+const PERMISSIONS = {
+  GERIR_CARGOS: 1,
+  EXPULSAR_MEMBROS: 2,
+  APAGAR_MENSAGENS: 4,
+  CRIAR_CANAIS: 8,
+   VISUALIZAR_RELATORIOS: 16,
+};
+
 async function isGroupCreator(req, res, next) {
   try {
     const { groupId } = req.params;
@@ -42,6 +50,7 @@ router.post("/:groupId/roles", isGroupCreator, async (req, res, next) => {
   const { nome_cargo, cor, icone } = req.body;
   const permissoes =
     typeof req.body.permissoes === "number" ? req.body.permissoes : 0;
+
   if (!nome_cargo) {
     return res.status(400).json({ message: "O nome do cargo é obrigatório." });
   }
@@ -75,9 +84,6 @@ router.put(
     const permissoes =
       typeof req.body.permissoes === "number" ? req.body.permissoes : 0;
 
-    // Log para depuração
-    console.log("Recebido para atualizar cargo:", req.body);
-
     try {
       const pool = req.db;
       await pool.query(
@@ -93,7 +99,7 @@ router.put(
       );
       res.status(200).json({ message: "Cargo atualizado com sucesso." });
     } catch (error) {
-      console.error("ERRO AO ATUALIZAR CARGO:", error.message);
+      console.error("ERRO AO ATUALIZAR CARGO:", error);
       next(error);
     }
   }

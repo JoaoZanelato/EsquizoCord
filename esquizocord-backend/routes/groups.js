@@ -1,4 +1,4 @@
-// TESTE/routes/groups.js
+// esquizocord-backend/routes/groups.js
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
@@ -11,6 +11,8 @@ const PERMISSIONS = {
   GERIR_CARGOS: 1,
   EXPULSAR_MEMBROS: 2,
   APAGAR_MENSAGENS: 4,
+  CRIAR_CANAIS: 8,
+  VISUALIZAR_RELATORIOS: 16,
 };
 
 function requireLogin(req, res, next) {
@@ -18,7 +20,6 @@ function requireLogin(req, res, next) {
   return res.status(401).json({ message: "Acesso não autorizado" });
 }
 
-// NOVO MIDDLEWARE: Verificar Permissão
 function requirePermission(permission) {
   return async (req, res, next) => {
     try {
@@ -68,11 +69,9 @@ async function isGroupCreator(req, res, next) {
       return res.status(404).json({ message: "Grupo não encontrado." });
     }
     if (rows[0].id_criador !== userId) {
-      return res
-        .status(403)
-        .json({
-          message: "Apenas o criador pode alterar as configurações do grupo.",
-        });
+      return res.status(403).json({
+        message: "Apenas o criador pode alterar as configurações do grupo.",
+      });
     }
     return next();
   } catch (error) {
@@ -115,24 +114,20 @@ router.post(
 
     try {
       await connection.beginTransaction();
-
       const [groupResult] = await connection.query(
         "INSERT INTO Grupos (Nome, Foto, IsPrivate, id_criador) VALUES (?, ?, ?, ?)",
         [nome, fotoUrl, isPrivateBool, id_criador]
       );
       const newGroupId = groupResult.insertId;
-
       const [roleResult] = await connection.query(
         "INSERT INTO Cargos (id_grupo, nome_cargo, cor, permissoes) VALUES (?, 'Dono', '#FAA61A', ?)",
         [newGroupId, PERMISSAO_TODAS]
       );
       const ownerRoleId = roleResult.insertId;
-
       await connection.query(
         "INSERT INTO CargosUsuario (id_usuario, id_cargo) VALUES (?, ?)",
         [id_criador, ownerRoleId]
       );
-
       await connection.query(
         "INSERT INTO ParticipantesGrupo (id_usuario, id_grupo) VALUES (?, ?)",
         [id_criador, newGroupId]
@@ -141,12 +136,10 @@ router.post(
         "INSERT INTO ParticipantesGrupo (id_usuario, id_grupo) VALUES (?, ?)",
         [AI_USER_ID, newGroupId]
       );
-
       await connection.query(
         "INSERT INTO Chats (id_grupo, Nome) VALUES (?, 'geral')",
         [newGroupId]
       );
-
       await connection.commit();
       res
         .status(201)
@@ -160,6 +153,91 @@ router.post(
   }
 );
 
+router.post(
+  "/:groupId/channels",
+  requireLogin,
+  requirePermission(PERMISSIONS.CRIAR_CANAIS),
+  async (req, res, next) => {
+    const { channelName } = req.body;
+    const { groupId } = req.params;
+
+    if (!channelName || channelName.trim() === "") {
+      return res
+        .status(400)
+        .json({ message: "O nome do canal é obrigatório." });
+    }
+
+    try {
+      const pool = req.db;
+      const [result] = await pool.query(
+        "INSERT INTO Chats (id_grupo, Nome) VALUES (?, ?)",
+        [groupId, channelName.trim()]
+      );
+
+      const newChannel = {
+        id_chat: result.insertId,
+        id_grupo: parseInt(groupId, 10),
+        Nome: channelName.trim(),
+      };
+
+      res.status(201).json(newChannel);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+// ROTA GET: Obter estatísticas de um grupo
+router.get(
+  "/:groupId/analytics",
+  requireLogin,
+  requirePermission(PERMISSIONS.VISUALIZAR_RELATORIOS),
+  async (req, res, next) => {
+    const { groupId } = req.params;
+    const pool = req.db;
+    try {
+      // 1. Estatísticas Gerais
+      const [generalStats] = await pool.query(
+        `SELECT 
+                (SELECT COUNT(*) FROM ParticipantesGrupo WHERE id_grupo = ?) as memberCount,
+                (SELECT COUNT(*) FROM Mensagens m JOIN Chats c ON m.id_chat = c.id_chat WHERE c.id_grupo = ?) as totalMessages,
+                (SELECT data_cadastro FROM Usuarios WHERE id_usuario = (SELECT id_criador FROM Grupos WHERE id_grupo = ?)) as creationDate`,
+        [groupId, groupId, groupId]
+      );
+
+      // 2. Membros mais ativos
+      const [topMembers] = await pool.query(
+        `SELECT u.Nome, COUNT(m.id_mensagem) as messageCount
+             FROM Mensagens m
+             JOIN Usuarios u ON m.id_usuario = u.id_usuario
+             JOIN Chats c ON m.id_chat = c.id_chat
+             WHERE c.id_grupo = ?
+             GROUP BY u.id_usuario
+             ORDER BY messageCount DESC
+             LIMIT 5`,
+        [groupId]
+      );
+
+      // 3. Atividade nos últimos 7 dias
+      const [dailyActivity] = await pool.query(
+        `SELECT DATE(DataHora) as date, COUNT(id_mensagem) as count
+             FROM Mensagens m
+             JOIN Chats c ON m.id_chat = c.id_chat
+             WHERE c.id_grupo = ? AND m.DataHora >= CURDATE() - INTERVAL 7 DAY
+             GROUP BY DATE(DataHora)
+             ORDER BY date ASC`,
+        [groupId]
+      );
+
+      res.json({
+        general: generalStats[0],
+        topMembers,
+        dailyActivity,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 router.get("/search", requireLogin, async (req, res, next) => {
   const { q } = req.query;
   const pool = req.db;
@@ -293,11 +371,9 @@ router.delete("/:id", requireLogin, isGroupCreator, async (req, res, next) => {
     await connection.beginTransaction();
     await connection.query("DELETE FROM Grupos WHERE id_grupo = ?", [id]);
     await connection.commit();
-    res
-      .status(200)
-      .json({
-        message: "Grupo e todos os seus dados foram excluídos com sucesso.",
-      });
+    res.status(200).json({
+      message: "Grupo e todos os seus dados foram excluídos com sucesso.",
+    });
   } catch (error) {
     await connection.rollback();
     next(error);
@@ -492,11 +568,9 @@ router.delete("/messages/:messageId", requireLogin, async (req, res, next) => {
 
       const userPermissions = rows[0]?.total_permissoes || 0;
       if ((userPermissions & PERMISSIONS.APAGAR_MENSAGENS) === 0) {
-        return res
-          .status(403)
-          .json({
-            message: "Você não tem permissão para excluir esta mensagem.",
-          });
+        return res.status(403).json({
+          message: "Você não tem permissão para excluir esta mensagem.",
+        });
       }
     }
 
