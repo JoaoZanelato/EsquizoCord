@@ -79,6 +79,7 @@ export const UserPanel = styled.div`
 
   .username {
     font-weight: bold;
+    margin-right: 5px;
   }
 
   .user-tag {

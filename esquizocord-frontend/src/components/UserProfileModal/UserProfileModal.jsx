@@ -209,7 +209,7 @@ const UserProfileModal = ({
                 <ProfileHeader>
                   <UserNameContainer>
                     <UserName>
-                      {profileData.user.Nome}
+                      {profileData.user.nome}
                       <span> #{profileData.user.id_usuario}</span>
                     </UserName>
                   </UserNameContainer>
@@ -219,7 +219,7 @@ const UserProfileModal = ({
                   <Section>
                     <h4>Sobre mim</h4>
                     <p>
-                      {profileData.user.Biografia ||
+                      {profileData.user.biografia ||
                         "Este utilizador é um mistério... muahahaha!"}
                     </p>
                   </Section>
@@ -257,7 +257,7 @@ const UserProfileModal = ({
       {showImagePreview && (
         <ImagePreviewOverlay onClick={() => setShowImagePreview(false)}>
           <img
-            src={profileData.user.FotoPerfil || "/images/logo.png"}
+            src={profileData.user.fotoPerfil || "/images/logo.png"}
             alt="Preview"
           />
         </ImagePreviewOverlay>

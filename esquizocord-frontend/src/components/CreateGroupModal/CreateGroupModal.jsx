@@ -1,6 +1,7 @@
 // src/components/CreateGroupModal/CreateGroupModal.jsx
 import React, { useState, useRef } from "react";
 import apiClient from "../../services/api";
+import { useNotification } from "../../context/NotificationContext/NotificationContext";
 import {
   ModalOverlay,
   ModalContent,
@@ -25,6 +26,7 @@ import {
 } from "../ImageCropModal/styles";
 
 const CreateGroupModal = ({ isOpen, onClose, onGroupCreated }) => {
+  const { addNotification } = useNotification();
   const [nome, setNome] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [fotoOriginal, setFotoOriginal] = useState(null);
@@ -41,16 +43,21 @@ const CreateGroupModal = ({ isOpen, onClose, onGroupCreated }) => {
     formData.append("nome", nome);
     formData.append("isPrivate", isPrivate ? "on" : "off");
     if (fotoRecortadaBlob) {
-      formData.append("foto", fotoRecortadaBlob);
+      // Adicionamos um terceiro argumento ao append, que é o nome do ficheiro.
+      formData.append("foto", fotoRecortadaBlob, "group-photo.png");
     }
     try {
       await apiClient.post("/groups/criar", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+      addNotification("Grupo criado com sucesso!", "success"); // <-- 3. USAR A NOTIFICAÇÃO DE SUCESSO
       onGroupCreated();
       handleClose();
     } catch (error) {
-      alert(error.response?.data?.message || "Erro ao criar o grupo.");
+      // 4. SUBSTITUIR O ALERT PELA NOTIFICAÇÃO DE ERRO
+      const errorMessage =
+        error.response?.data?.message || "Erro ao criar o grupo.";
+      addNotification(errorMessage, "error");
     } finally {
       setIsSubmitting(false);
     }

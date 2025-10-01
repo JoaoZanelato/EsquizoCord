@@ -126,13 +126,13 @@ const ChannelList = ({
               onSelectChat({
                 ...activeChat,
                 channelId: channel.id_chat,
-                channelName: channel.Nome,
+                channelName: channel.nome,
               })
             }
           >
             <i className="fas fa-hashtag" style={{ width: "12px" }}></i>
-            {channel.Nome}
-            {canCreateChannels && channel.Nome !== "geral" && (
+            {channel.nome}
+            {canCreateChannels && channel.nome !== "geral" && (
               <DeleteChannelButton
                 title="Excluir Canal"
                 onClick={(e) => {
@@ -172,8 +172,8 @@ const ChannelList = ({
                   onClick={() => onViewProfile(member.id_usuario)}
                 >
                   <img
-                    src={member.FotoPerfil || "/images/logo.png"}
-                    alt={member.Nome}
+                    src={member.fotoPerfil || "/images/logo.png"}
+                    alt={member.nome}
                     style={{ flexShrink: 0 }}
                   />
                   <span
@@ -184,7 +184,7 @@ const ChannelList = ({
                       textOverflow: "ellipsis",
                     }}
                   >
-                    {member.Nome}
+                    {member.nome}
                   </span>
                 </div>
 
@@ -235,7 +235,7 @@ const ChannelList = ({
     <>
       <ChannelListContainer $isOpen={$isChannelListOpen}>
         <ChannelHeader>
-          <span>{isGroupView ? groupDetails?.details?.Nome : "Amigos"}</span>
+          <span>{isGroupView ? groupDetails?.details?.nome : "Amigos"}</span>
           {isGroupView &&
             (groupDetails.currentUserPermissions & PERMISSIONS.GERIR_CARGOS) >
               0 && (
@@ -276,9 +276,9 @@ const ChannelList = ({
         </Content>
 
         <UserPanel>
-          <img src={user.FotoPerfil || "/images/logo.png"} alt={user.Nome} />
+          <img src={user.fotoPerfil || "/images/logo.png"} alt={user.nome} />
           <div>
-            <span className="username">{user.Nome}</span>
+            <span className="username">{user.nome}</span>
             <span className="user-tag">#{user.id_usuario}</span>
           </div>
         </UserPanel>

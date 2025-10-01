@@ -7,6 +7,7 @@ import { themes } from "./styles/themes.js";
 import GlobalStyles from "./styles/GlobalStyles.js";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { SocketProvider } from "./context/SocketContext.jsx";
+import { NotificationProvider } from "./context/NotificationContext/NotificationContext.jsx";
 
 // Componentes e Páginas
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
@@ -16,7 +17,7 @@ import Register from "./pages/Register/Register.jsx";
 import Dashboard from "./pages/Dashboard/Dashboard.jsx";
 import Verification from "./pages/Verification/Verification.jsx";
 import ForgotPassword from "./pages/ForgotPassword/ForgotPassword.jsx";
-import ResetPassword from "./pages/ResetPassword/ResetPassword.jsx"; // <-- Importar o novo componente
+import ResetPassword from "./pages/ResetPassword/ResetPassword.jsx"; 
 import Settings from "./pages/Settings/Settings.jsx";
 
 // Este componente agora lida apenas com a lógica de temas e rotas
@@ -54,7 +55,9 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <ThemedApp />
+        <NotificationProvider>
+          <ThemedApp />
+        </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>
   );

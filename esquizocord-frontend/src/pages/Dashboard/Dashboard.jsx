@@ -398,7 +398,7 @@ const Dashboard = () => {
 
           <div style={{ marginTop: "auto" }}>
             <ServerIcon as={Link} to="/settings" title="Configurações">
-              <img src={user.FotoPerfil || "/images/logo.png"} alt="Perfil" />
+              <img src={user.fotoPerfil || "/images/logo.png"} alt="Perfil" />
             </ServerIcon>
           </div>
         </ServerList>

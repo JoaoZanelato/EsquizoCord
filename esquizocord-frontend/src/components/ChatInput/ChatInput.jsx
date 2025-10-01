@@ -16,7 +16,7 @@ import {
   SendButton,
   CancelButton,
 } from "./styles";
-import { MentionButton } from "./styles"; 
+import { MentionButton } from "./styles";
 
 const ChatInput = ({ chatInfo, replyingTo, onCancelReply }) => {
   const [message, setMessage] = useState("");
@@ -76,12 +76,19 @@ const ChatInput = ({ chatInfo, replyingTo, onCancelReply }) => {
     formData.append("chat-image", imageFile);
 
     try {
-      const response = await apiClient.post("/upload/chat-image", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      // 1. FAZ O UPLOAD DA IMAGEM PRIMEIRO PARA OBTER A URL
+      const response = await apiClient.post(
+        "/groups/upload/chat-image",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+
+      // 2. USA A URL RETORNADA PARA ENVIAR A MENSAGEM DO TIPO "IMAGEM"
       await handleSendMessage(response.data.url, "imagem");
     } catch (error) {
-      alert("Falha no upload da imagem.");
+      alert("Falha no upload da imagem. Tente novamente.");
       console.error(error);
     } finally {
       setIsUploading(false);
@@ -109,7 +116,9 @@ const ChatInput = ({ chatInfo, replyingTo, onCancelReply }) => {
               <SendButton onClick={handleSendImage} disabled={isUploading}>
                 {isUploading ? "A Enviar..." : "Enviar"}
               </SendButton>
-              <CancelButton onClick={cancelImageUpload}>Cancelar</CancelButton>
+              <CancelButton onClick={cancelImageUpload} disabled={isUploading}>
+                Cancelar
+              </CancelButton>
             </PreviewActions>
           </PreviewInfo>
         </ImagePreviewContainer>

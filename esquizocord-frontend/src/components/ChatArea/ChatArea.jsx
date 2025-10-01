@@ -148,11 +148,11 @@ const ChatArea = ({
         }}
       >
         <img
-          src={chatInfo.user.FotoPerfil || "/images/logo.png"}
-          alt={chatInfo.user.Nome}
+          src={chatInfo.user.fotoPerfil || "/images/logo.png"}
+          alt={chatInfo.user.nome}
         />
         <h3>
-          {chatInfo.user.Nome}
+          {chatInfo.user.nome}
           <span className="user-tag">#{chatInfo.user.id_usuario}</span>
         </h3>
       </div>

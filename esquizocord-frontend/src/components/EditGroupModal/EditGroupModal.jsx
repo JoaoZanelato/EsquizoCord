@@ -68,7 +68,7 @@ const EditGroupModal = ({
     formData.append("nome", nome);
     formData.append("isPrivate", isPrivate ? "on" : "off");
     if (fotoRecortadaBlob) {
-      formData.append("foto", fotoRecortadaBlob);
+      formData.append("foto", fotoRecortadaBlob, "group-photo.png");
     }
     try {
       await apiClient.post(

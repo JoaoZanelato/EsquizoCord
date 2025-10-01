@@ -23,6 +23,23 @@ const messageIdValidation = [param("messageId").isInt({ min: 1 })];
 
 // --- Rotas de Grupo ---
 router.post(
+  "/upload/chat-image",
+  requireLogin,
+  chatImageUpload.single("chat-image"),
+  (req, res, next) => {
+    try {
+      if (!req.file) {
+        throw { status: 400, message: "Nenhum ficheiro de imagem enviado." };
+      }
+      // Se o upload for bem-sucedido, o multer-storage-cloudinary adiciona
+      // o caminho (URL) do ficheiro ao objeto req.file.
+      res.status(200).json({ url: req.file.path });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+router.post(
   "/criar",
   requireLogin,
   groupUpload.single("foto"),

@@ -144,3 +144,26 @@ CREATE TABLE `mensagens_diretas` (
 -- ÍNDICES PARA OTIMIZAÇÃO DE CONSULTAS
 CREATE INDEX `idx_mensagens_chat_data` ON `mensagens` (`id_chat`, `data_hora`);
 CREATE INDEX `idx_mensagens_diretas_conversa_data` ON `mensagens_diretas` (`id_remetente`, `id_destinatario`, `data_hora`);
+
+-- INSERT DE IA
+INSERT INTO usuarios (id_usuario, nome, email, senha, foto_perfil, biografia, email_verificado, is_ia)
+VALUES (1, 'EsquizoIA', 'ia@esquizocord.com', '---', 'https://res.cloudinary.com/dgp3wwpv5/image/upload/v1751657687/ChatGPT_Image_4_de_jul._de_2025_15_57_28_dc5gud.png', 'Eu sou a inteligência artificial residente do EsquizoCord, pronta para ajudar!', 1, 1)
+ON DUPLICATE KEY UPDATE
+nome = 'EsquizoIA', 
+email = 'ia@esquizocord.com', 
+foto_perfil = 'https://res.cloudinary.com/dgp3wwpv5/image/upload/v1751657687/ChatGPT_Image_4_de_jul._de_2025_15_57_28_dc5gud.png',
+biografia = 'Eu sou a inteligência artificial residente do EsquizoCord, pronta para ajudar!',
+email_verificado = 1,
+is_ia = 1;
+
+-- INSERT DE TEMAS
+INSERT INTO temas (id_tema, nome_tema, bckgrnd_color, main_color) VALUES
+(1, 'Roxo Padrão', '#36393f', '#540B70'),
+(2, 'Azul Meia-noite', '#2C3E50', '#3498DB'),
+(3, 'Verde Floresta', '#2E403F', '#28A745'),
+(4, 'Escuro Moderno', '#242526', '#3498DB'),
+(5, 'Claro Minimalista', '#F0F2F5', '#0D6EFD')
+ON DUPLICATE KEY UPDATE 
+nome_tema=VALUES(nome_tema), 
+bckgrnd_color=VALUES(bckgrnd_color), 
+main_color=VALUES(main_color);

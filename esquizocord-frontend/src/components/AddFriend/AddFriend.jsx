@@ -71,10 +71,10 @@ const AddFriend = () => {
                     <ResultItem key={user.id_usuario}>
                         <UserInfo>
                             <StyledAvatarContainer>
-                                <img src={user.FotoPerfil || '/images/logo.png'} alt={user.Nome} />
+                                <img src={user.fotoPerfil || '/images/logo.png'} alt={user.nome} />
                             </StyledAvatarContainer>
                             <StyledNameTag>
-                                {user.Nome}
+                                {user.nome}
                                 <span className="user-tag">#{user.id_usuario}</span>
                             </StyledNameTag>
                         </UserInfo>

@@ -1,7 +1,7 @@
 // src/pages/Verification/Verification.jsx
-import React, { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import apiClient from '../../services/api';
+import React, { useEffect, useState, useCallback } from "react";
+import { useSearchParams, Link } from "react-router-dom";
+import apiClient from "../../services/api";
 import {
   VerificationPageContainer,
   VerificationBox,
@@ -9,114 +9,86 @@ import {
   Title,
   Message,
   ActionButton,
-  ResendLink,
-  Input
-} from './styles';
+} from "./styles";
 
 const Verification = () => {
   const [searchParams] = useSearchParams();
-  const [status, setStatus] = useState('loading'); // 'loading', 'success', 'error'
-  const [message, setMessage] = useState('A validar a sua conta...');
-  
-  // Estados para a funcionalidade de reenvio
-  const [showResend, setShowResend] = useState(false);
-  const [email, setEmail] = useState('');
-  const [resendMessage, setResendMessage] = useState('');
-  const [isResending, setIsResending] = useState(false);
+  // Novo estado 'idle' para aguardar a ação do utilizador
+  const [status, setStatus] = useState("idle"); // 'idle', 'loading', 'success', 'error'
+  const [message, setMessage] = useState("");
+  const token = searchParams.get("token");
 
-
+  // Verifica o token na URL assim que a página carrega
   useEffect(() => {
-    const token = searchParams.get('token');
-
     if (!token) {
-      setStatus('error');
-      setMessage('Token de verificação não encontrado. Se o link veio do seu e-mail, pode estar quebrado.');
-      return;
+      setStatus("error");
+      setMessage(
+        "Token de verificação não encontrado. O link pode estar quebrado ou incompleto."
+      );
     }
+  }, [token]);
 
-    const verifyToken = async () => {
-      try {
-        const response = await apiClient.get(`/verificar-email?token=${token}`);
-        setStatus('success');
-        setMessage(response.data.message);
-      } catch (error) {
-        setStatus('error');
-        setMessage(error.response?.data?.message || 'Ocorreu uma falha ao verificar o seu e-mail.');
-      }
-    };
+  // A função de verificação agora é chamada por um evento de clique
+  const handleVerification = useCallback(async () => {
+    if (!token) return;
 
-    verifyToken();
-  }, [searchParams]);
+    setStatus("loading");
+    setMessage("A validar a sua conta...");
 
-  const handleResendSubmit = async (e) => {
-    e.preventDefault();
-    setResendMessage('');
-    setIsResending(true);
     try {
-        const response = await apiClient.post('/reenviar-verificacao', { email });
-        setResendMessage(response.data.message);
+      const response = await apiClient.get(`/verificar-email?token=${token}`);
+      setStatus("success");
+      setMessage(response.data.message);
     } catch (error) {
-        setResendMessage('Ocorreu um erro ao tentar reenviar o e-mail.');
-    } finally {
-        setIsResending(false);
+      setStatus("error");
+      setMessage(
+        error.response?.data?.message ||
+          "Ocorreu uma falha ao verificar o seu e-mail."
+      );
     }
-  }
+  }, [token]);
 
   const renderContent = () => {
     switch (status) {
-      case 'success':
+      case "success":
         return (
           <>
             <Icon className="fas fa-check-circle" status="success" />
             <Title>E-mail Verificado com Sucesso!</Title>
-            <Message>Sua conta foi ativada. Agora já pode fazer login.</Message>
-            <ActionButton to="/login">Fazer Login</ActionButton>
+            <Message>{message}</Message>
+            <ActionButton to="/login">Ir para o Login</ActionButton>
           </>
         );
-      case 'error':
+      case "error":
         return (
           <>
             <Icon className="fas fa-times-circle" status="error" />
             <Title>Falha na Verificação</Title>
             <Message>{message}</Message>
-            
-            {!showResend && (
-                 <ResendLink onClick={() => setShowResend(true)}>
-                    Reenviar e-mail de verificação
-                </ResendLink>
-            )}
-
-            {showResend && (
-                <form onSubmit={handleResendSubmit} style={{marginTop: '20px'}}>
-                    <p style={{fontSize: '0.9rem'}}>Insira o seu e-mail para receber um novo link.</p>
-                    <Input 
-                        type="email" 
-                        placeholder="Seu e-mail de cadastro"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                    />
-                    <ActionButton as="button" type="submit" disabled={isResending} style={{width: '100%', fontSize: '15px'}}>
-                        {isResending ? 'A Enviar...' : 'Reenviar Link'}
-                    </ActionButton>
-                </form>
-            )}
-
-            {resendMessage && <p style={{marginTop: '15px', color: 'var(--green-accent)'}}>{resendMessage}</p>}
-
-            <div style={{marginTop: '25px'}}>
-                <ActionButton to="/cadastro" style={{backgroundColor: 'transparent', border: '1px solid #fff', fontSize: '14px', padding: '8px 20px'}}>
-                    Voltar ao Cadastro
-                </ActionButton>
-            </div>
+            <ActionButton to="/cadastro">Voltar ao Cadastro</ActionButton>
           </>
         );
-      default: // 'loading'
+      case "loading":
         return (
           <>
             <Icon className="fas fa-spinner fa-spin" status="loading" />
-            <Title>A Verificar...</Title>
+            <Title>A Validar...</Title>
             <Message>{message}</Message>
+          </>
+        );
+      case "idle":
+      default:
+        return (
+          <>
+            <Icon className="fas fa-envelope-open-text" status="idle" />
+            <Title>Verifique a sua Conta</Title>
+            <Message>
+              Clique no botão abaixo para confirmar o seu endereço de e-mail e
+              ativar a sua conta.
+            </Message>
+            <ActionButton as="button" onClick={handleVerification}>
+              Verificar E-mail
+            </ActionButton>
           </>
         );
     }
@@ -124,9 +96,7 @@ const Verification = () => {
 
   return (
     <VerificationPageContainer>
-      <VerificationBox>
-        {renderContent()}
-      </VerificationBox>
+      <VerificationBox>{renderContent()}</VerificationBox>
     </VerificationPageContainer>
   );
 };

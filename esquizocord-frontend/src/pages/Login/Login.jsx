@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { useNotification } from "../../context/NotificationContext/NotificationContext.jsx";
 import {
   LoginPageContainer,
   LoginBox,
@@ -17,18 +18,19 @@ import {
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { addNotification } = useNotification();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
     try {
-      await login(email, password); // <-- Usar a função do contexto
-      navigate("/dashboard"); // Redirecionar em caso de sucesso
+      await login(email, password);
+      navigate("/dashboard");
     } catch (err) {
-      setError(err.response?.data?.message || "Erro ao tentar fazer login.");
+      const errorMessage =
+        err.response?.data?.message || "Erro ao tentar fazer login.";
+      addNotification(errorMessage, "error");
     }
   };
 
@@ -36,11 +38,6 @@ const Login = () => {
     <LoginPageContainer>
       <LoginBox>
         <Title>Login</Title>
-        {error && (
-          <FeedbackMessage>
-            <p>{error}</p>
-          </FeedbackMessage>
-        )}
         <Form onSubmit={handleSubmit}>
           <Label htmlFor="email">Email:</Label>
           <Input
