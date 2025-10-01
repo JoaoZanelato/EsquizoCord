@@ -72,7 +72,12 @@ const PendingRequests = ({ pending, sent, onAction }) => {
               </StyledNameTag>
             </UserInfo>
             <Actions>
-              <button className="cancel" title="Cancelar Pedido">
+              {/* CORREÇÃO APLICADA AQUI */}
+              <button
+                onClick={() => onAction("cancel", req.id_amizade)}
+                className="cancel"
+                title="Cancelar Pedido"
+              >
                 <i className="fas fa-trash"></i>
               </button>
             </Actions>

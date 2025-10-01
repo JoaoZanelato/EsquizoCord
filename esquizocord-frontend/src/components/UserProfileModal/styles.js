@@ -200,3 +200,27 @@ export const ImagePreviewOverlay = styled.div`
     border-radius: 8px;
   }
 `;
+export const RolesContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+export const RoleBadge = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: ${({ theme }) => theme.backgroundPrimary};
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid ${(props) => props.color || "transparent"};
+`;
+
+export const RoleColorDot = styled.div`
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: ${(props) => props.color};
+`;

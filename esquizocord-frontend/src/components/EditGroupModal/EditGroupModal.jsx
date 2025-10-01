@@ -15,7 +15,7 @@ import {
   CheckboxContainer,
   CancelButton,
   SubmitButton,
-} from "../CreateGroupModal/styles"; // Reutilizando estilos do modal de criação
+} from "../CreateGroupModal/styles";
 import { ModalActions, DeleteButton } from "./styles";
 import ImageCropModal from "../ImageCropModal/ImageCropModal";
 import {
@@ -23,7 +23,7 @@ import {
   CustomFileUploadButton,
   PreviewImage,
 } from "../ImageCropModal/styles";
-import RolesManagerModal from "../RolesManagerModal/RolesManagerModal"; // Importe o novo modal
+import RolesManagerModal from "../RolesManagerModal/RolesManagerModal";
 
 const EditGroupModal = ({
   isOpen,
@@ -31,20 +31,19 @@ const EditGroupModal = ({
   groupDetails,
   onGroupUpdated,
   onGroupDeleted,
+  onRoleUpdated,
 }) => {
   const [nome, setNome] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRolesModalOpen, setIsRolesModalOpen] = useState(false); // Novo estado
+  const [isRolesModalOpen, setIsRolesModalOpen] = useState(false);
 
-  // Estados para a imagem
   const [fotoOriginal, setFotoOriginal] = useState(null);
   const [fotoPreview, setFotoPreview] = useState(null);
   const [fotoRecortadaBlob, setFotoRecortadaBlob] = useState(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Carrega os dados do grupo quando o modal é aberto
   useEffect(() => {
     if (groupDetails) {
       setNome(groupDetails.Nome || "");
@@ -205,6 +204,7 @@ const EditGroupModal = ({
         isOpen={isRolesModalOpen}
         onClose={() => setIsRolesModalOpen(false)}
         groupDetails={groupDetails}
+        onRoleUpdated={onRoleUpdated}
       />
 
       <ImageCropModal

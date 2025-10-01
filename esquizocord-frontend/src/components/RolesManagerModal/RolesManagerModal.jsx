@@ -37,7 +37,6 @@ const PERMISSIONS = {
   APAGAR_MENSAGENS: 4,
 };
 
-// O componente PermissionToggle pertence aqui, no ficheiro JSX
 const PermissionToggle = ({ label, checked, onChange, disabled }) => (
   <PermissionItem>
     <span>{label}</span>
@@ -53,11 +52,17 @@ const PermissionToggle = ({ label, checked, onChange, disabled }) => (
   </PermissionItem>
 );
 
-const RolesManagerModal = ({ isOpen, onClose, groupDetails }) => {
+const RolesManagerModal = ({
+  isOpen,
+  onClose,
+  groupDetails,
+  onRoleUpdated,
+}) => {
   const [roles, setRoles] = useState([]);
   const [selectedRole, setSelectedRole] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Para o carregamento inicial
   const [isCreating, setIsCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // <-- NOVO ESTADO PARA A AÇÃO DE SALVAR
 
   useEffect(() => {
     if (isOpen && groupDetails) {
@@ -92,11 +97,13 @@ const RolesManagerModal = ({ isOpen, onClose, groupDetails }) => {
       (currentPermissions & permission) > 0
         ? currentPermissions ^ permission
         : currentPermissions | permission;
-    setSelectedRole({ ...selectedRole, permissoes: newPermissions });
+
+    handleFieldChange("permissoes", newPermissions);
   };
 
   const handleSaveRole = async () => {
     if (!selectedRole) return;
+    setIsSaving(true); // <-- Ativa o estado de "a salvar"
     const { id_grupo, ...roleData } = selectedRole;
 
     try {
@@ -109,14 +116,18 @@ const RolesManagerModal = ({ isOpen, onClose, groupDetails }) => {
         setRoles((prev) => [...prev, newRole]);
         setSelectedRole(newRole);
         setIsCreating(false);
+        if (onRoleUpdated) onRoleUpdated(newRole);
       } else {
         await apiClient.put(
           `/groups/${groupDetails.id_grupo}/roles/${selectedRole.id_cargo}`,
           roleData
         );
+        if (onRoleUpdated) onRoleUpdated(selectedRole);
       }
     } catch (error) {
       alert("Erro ao guardar o cargo.");
+    } finally {
+      setIsSaving(false); // <-- Desativa o estado de "a salvar" no final
     }
   };
 
@@ -154,6 +165,7 @@ const RolesManagerModal = ({ isOpen, onClose, groupDetails }) => {
     if (!selectedRole) return;
     const updatedSelectedRole = { ...selectedRole, [field]: value };
     setSelectedRole(updatedSelectedRole);
+
     if (!isCreating) {
       setRoles((prevRoles) =>
         prevRoles.map((role) =>
@@ -177,6 +189,7 @@ const RolesManagerModal = ({ isOpen, onClose, groupDetails }) => {
         <CloseButton onClick={onClose}>&times;</CloseButton>
         <Title as="h3">Gerir Cargos</Title>
 
+        {/* Agora, o conteúdo só some durante o carregamento inicial */}
         {isLoading ? (
           <p>A carregar cargos...</p>
         ) : (
@@ -233,7 +246,6 @@ const RolesManagerModal = ({ isOpen, onClose, groupDetails }) => {
                       onChange={(e) =>
                         handleFieldChange("icone", e.target.value)
                       }
-                      disabled={isOwnerRoleSelected}
                       maxLength={2}
                     />
                   </FormGroup>
@@ -243,7 +255,6 @@ const RolesManagerModal = ({ isOpen, onClose, groupDetails }) => {
                       type="color"
                       value={selectedRole.cor || "#99aab5"}
                       onChange={(e) => handleFieldChange("cor", e.target.value)}
-                      disabled={isOwnerRoleSelected}
                     />
                   </FormGroup>
                   <PermissionGroup>
@@ -259,11 +270,17 @@ const RolesManagerModal = ({ isOpen, onClose, groupDetails }) => {
                     ))}
                   </PermissionGroup>
                   <ModalActions style={{ justifyContent: "flex-end" }}>
-                    {!isOwnerRoleSelected && (
-                      <SubmitButton type="button" onClick={handleSaveRole}>
-                        {isCreating ? "Criar Cargo" : "Guardar Alterações"}
-                      </SubmitButton>
-                    )}
+                    <SubmitButton
+                      type="button"
+                      onClick={handleSaveRole}
+                      disabled={isSaving}
+                    >
+                      {isSaving
+                        ? "A guardar..."
+                        : isCreating
+                        ? "Criar Cargo"
+                        : "Guardar Alterações"}
+                    </SubmitButton>
                   </ModalActions>
                 </Form>
               )}

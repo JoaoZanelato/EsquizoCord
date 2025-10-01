@@ -1,5 +1,4 @@
 // src/pages/Dashboard/Dashboard.jsx
-
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -30,14 +29,10 @@ const Dashboard = () => {
   const [error, setError] = useState("");
   const [activeChat, setActiveChat] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
-
-  // Estados dos Modais
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
   const [isExploreModalOpen, setIsExploreModalOpen] = useState(false);
   const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false);
   const [viewingProfileId, setViewingProfileId] = useState(null);
-
-  // Estados da UI
   const [isChannelListOpen, setIsChannelListOpen] = useState(false);
   const [notifications, setNotifications] = useState({
     dm: new Set(),
@@ -183,7 +178,7 @@ const Dashboard = () => {
     }
     try {
       await apiClient[method](url, body);
-      fetchData(); // Atualiza todos os dados para refletir a mudança
+      fetchData();
       if (viewingProfileId) {
         setViewingProfileId(null);
         setTimeout(() => setViewingProfileId(id), 0);
@@ -221,6 +216,40 @@ const Dashboard = () => {
   const handleSendMessage = (userToMessage) => {
     setActiveChat({ type: "dm", user: userToMessage });
     setViewingProfileId(null);
+  };
+
+  // --- FUNÇÃO CORRIGIDA ---
+  const handleRoleUpdated = (updatedRole) => {
+    if (!activeChat || activeChat.type !== "group") return;
+
+    setActiveChat((currentActiveChat) => {
+      // Cria cópias apenas dos níveis do objeto que precisam de ser alterados
+      const newActiveChat = {
+        ...currentActiveChat,
+        group: {
+          ...currentActiveChat.group,
+          members: currentActiveChat.group.members.map((member) => {
+            const cargoIndex =
+              member.cargos?.findIndex(
+                (c) => c.id_cargo === updatedRole.id_cargo
+              ) ?? -1;
+
+            if (cargoIndex !== -1) {
+              // Se o membro tiver o cargo, cria um novo membro com os cargos atualizados
+              const newCargos = [...member.cargos];
+              newCargos[cargoIndex] = {
+                ...newCargos[cargoIndex],
+                ...updatedRole,
+              };
+              return { ...member, cargos: newCargos };
+            }
+            // Se não, retorna o membro original sem alterações
+            return member;
+          }),
+        },
+      };
+      return newActiveChat;
+    });
   };
 
   if (loading) {
@@ -305,7 +334,6 @@ const Dashboard = () => {
             ></i>
           </ServerIcon>
 
-          {/* ÁREA CORRETA PARA O ÍCONE DO PERFIL */}
           <div style={{ marginTop: "auto" }}>
             <ServerIcon as={Link} to="/settings" title="Configurações">
               <img src={user.FotoPerfil || "/images/logo.png"} alt="Perfil" />
@@ -362,6 +390,7 @@ const Dashboard = () => {
           fetchData();
           setActiveChat(null);
         }}
+        onRoleUpdated={handleRoleUpdated}
       />
 
       <UserProfileModal
@@ -370,6 +399,7 @@ const Dashboard = () => {
         onClose={() => setViewingProfileId(null)}
         onAction={handleFriendAction}
         onSendMessage={handleSendMessage}
+        activeGroup={activeChat?.type === "group" ? activeChat.group : null}
       />
     </>
   );

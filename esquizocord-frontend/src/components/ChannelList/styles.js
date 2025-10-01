@@ -1,5 +1,5 @@
 // src/components/ChannelList/styles.js
-import styled from 'styled-components';
+import styled from "styled-components";
 
 export const ChannelListContainer = styled.aside`
   width: 260px;
@@ -12,9 +12,9 @@ export const ChannelListContainer = styled.aside`
   @media (max-width: 768px) {
     position: fixed;
     height: 100%;
-    left: ${({ $isOpen }) => ($isOpen ? '0' : '-100%')};
+    left: ${({ $isOpen }) => ($isOpen ? "0" : "-100%")};
     transition: left 0.3s ease-in-out;
-    box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
   }
 `;
 
@@ -38,7 +38,8 @@ export const FriendsNav = styled.div`
 
 export const FriendsNavButton = styled.button`
   flex: 1;
-  background: ${({ theme, $active }) => ($active ? theme.brandExperiment : 'transparent')};
+  background: ${({ theme, $active }) =>
+    $active ? theme.brandExperiment : "transparent"};
   border: none;
   color: ${({ theme }) => theme.textNormal};
   padding: 8px 5px;
@@ -48,7 +49,8 @@ export const FriendsNavButton = styled.button`
   text-align: center;
   transition: background-color 0.2s;
   &:hover {
-    background-color: ${({ theme, $active }) => !$active && 'rgba(255, 255, 255, 0.04)'};
+    background-color: ${({ theme, $active }) =>
+      !$active && "rgba(255, 255, 255, 0.04)"};
   }
 `;
 
@@ -78,7 +80,7 @@ export const UserPanel = styled.div`
   .username {
     font-weight: bold;
   }
-  
+
   .user-tag {
     color: ${({ theme }) => theme.textMuted};
     font-size: 12px;
@@ -102,10 +104,12 @@ export const ChannelItem = styled.div`
   margin: 0 4px;
   border-radius: 4px;
   cursor: pointer;
-  color: ${({ theme, $active }) => $active ? theme.headerPrimary : theme.textMuted};
-  background-color: ${({ theme, $active }) => $active ? 'rgba(255, 255, 255, 0.08)' : 'transparent'};
-  font-weight: ${({ $active }) => $active ? 'bold' : 'normal'};
-  
+  color: ${({ theme, $active }) =>
+    $active ? theme.headerPrimary : theme.textMuted};
+  background-color: ${({ theme, $active }) =>
+    $active ? "rgba(255, 255, 255, 0.08)" : "transparent"};
+  font-weight: ${({ $active }) => ($active ? "bold" : "normal")};
+
   &:hover {
     background-color: rgba(255, 255, 255, 0.04);
     color: ${({ theme }) => theme.headerPrimary};
@@ -124,13 +128,12 @@ export const MemberItem = styled.div`
   gap: 12px;
   padding: 8px;
   border-radius: 4px;
-  cursor: pointer;
   transition: background-color 0.2s;
 
   &:hover {
     background-color: rgba(255, 255, 255, 0.04);
   }
-  
+
   img {
     width: 24px;
     height: 24px;
@@ -143,7 +146,7 @@ export const MemberItem = styled.div`
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  
+
   .online-indicator {
     width: 8px;
     height: 8px;
@@ -153,7 +156,29 @@ export const MemberItem = styled.div`
     flex-shrink: 0;
   }
 
-  i.fa-shield-alt, i.fa-robot {
-      margin-left: auto;
+  i.fa-shield-alt,
+  i.fa-robot {
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+`;
+
+export const ManageMemberButton = styled.button`
+  background: none;
+  border: none;
+  color: ${({ theme }) => theme.textMuted};
+  cursor: pointer;
+  visibility: hidden;
+  opacity: 0;
+  margin-left: 8px;
+  padding: 4px;
+
+  ${MemberItem}:hover & {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  &:hover {
+    color: ${({ theme }) => theme.headerPrimary};
   }
 `;

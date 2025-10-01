@@ -1,8 +1,7 @@
-// TESTE/routes/roles.js
+// esquizocord-backend/routes/roles.js
 const express = require("express");
 const router = express.Router();
 
-// Middleware para verificar se o usuário é o criador do grupo (permissão máxima)
 async function isGroupCreator(req, res, next) {
   try {
     const { groupId } = req.params;
@@ -26,7 +25,6 @@ async function isGroupCreator(req, res, next) {
   }
 }
 
-// ROTA GET: Obter todos os cargos de um grupo
 router.get("/:groupId/roles", async (req, res, next) => {
   try {
     const pool = req.db;
@@ -40,57 +38,76 @@ router.get("/:groupId/roles", async (req, res, next) => {
   }
 });
 
-// ROTA POST: Criar um novo cargo
 router.post("/:groupId/roles", isGroupCreator, async (req, res, next) => {
-  const { nome_cargo, cor, permissoes } = req.body;
+  const { nome_cargo, cor, icone } = req.body;
+  const permissoes =
+    typeof req.body.permissoes === "number" ? req.body.permissoes : 0;
   if (!nome_cargo) {
     return res.status(400).json({ message: "O nome do cargo é obrigatório." });
   }
   try {
     const pool = req.db;
     const [result] = await pool.query(
-      "INSERT INTO Cargos (id_grupo, nome_cargo, cor, permissoes) VALUES (?, ?, ?, ?)",
-      [req.params.groupId, nome_cargo, cor || "#99aab5", permissoes || 0]
+      "INSERT INTO Cargos (id_grupo, nome_cargo, cor, permissoes, icone) VALUES (?, ?, ?, ?, ?)",
+      [
+        req.params.groupId,
+        nome_cargo,
+        cor || "#99aab5",
+        permissoes,
+        icone || null,
+      ]
     );
-    res
-      .status(201)
-      .json({ id_cargo: result.insertId, nome_cargo, cor, permissoes });
+    const [newRole] = await pool.query(
+      "SELECT * FROM Cargos WHERE id_cargo = ?",
+      [result.insertId]
+    );
+    res.status(201).json(newRole[0]);
   } catch (error) {
     next(error);
   }
 });
 
-// ROTA PUT: Atualizar um cargo
 router.put(
   "/:groupId/roles/:roleId",
   isGroupCreator,
   async (req, res, next) => {
-    const { nome_cargo, cor, permissoes } = req.body;
+    const { nome_cargo, cor, icone } = req.body;
+    const permissoes =
+      typeof req.body.permissoes === "number" ? req.body.permissoes : 0;
+
+    // Log para depuração
+    console.log("Recebido para atualizar cargo:", req.body);
+
     try {
       const pool = req.db;
       await pool.query(
-        "UPDATE Cargos SET nome_cargo = ?, cor = ?, permissoes = ? WHERE id_cargo = ? AND id_grupo = ?",
-        [nome_cargo, cor, permissoes, req.params.roleId, req.params.groupId]
+        "UPDATE Cargos SET nome_cargo = ?, cor = ?, permissoes = ?, icone = ? WHERE id_cargo = ? AND id_grupo = ?",
+        [
+          nome_cargo,
+          cor,
+          permissoes,
+          icone || null,
+          req.params.roleId,
+          req.params.groupId,
+        ]
       );
       res.status(200).json({ message: "Cargo atualizado com sucesso." });
     } catch (error) {
+      console.error("ERRO AO ATUALIZAR CARGO:", error.message);
       next(error);
     }
   }
 );
 
-// ROTA DELETE: Apagar um cargo
 router.delete(
   "/:groupId/roles/:roleId",
   isGroupCreator,
   async (req, res, next) => {
     try {
       const pool = req.db;
-      // Primeiro, remove as associações de usuários a este cargo
       await pool.query("DELETE FROM CargosUsuario WHERE id_cargo = ?", [
         req.params.roleId,
       ]);
-      // Depois, apaga o cargo
       await pool.query("DELETE FROM Cargos WHERE id_cargo = ?", [
         req.params.roleId,
       ]);
@@ -101,24 +118,20 @@ router.delete(
   }
 );
 
-// ROTA PUT: Atribuir cargos a um membro
 router.put(
   "/:groupId/members/:memberId/roles",
   isGroupCreator,
   async (req, res, next) => {
-    const { roles } = req.body; // `roles` deve ser um array de IDs de cargos
+    const { roles } = req.body;
     const { memberId } = req.params;
-
     const pool = req.db;
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
-      // Apaga todos os cargos atuais do usuário no grupo
       await connection.query(
         "DELETE FROM CargosUsuario WHERE id_usuario = ? AND id_cargo IN (SELECT id_cargo FROM Cargos WHERE id_grupo = ?)",
         [memberId, req.params.groupId]
       );
-      // Insere os novos cargos, se houver algum
       if (roles && roles.length > 0) {
         const values = roles.map((roleId) => [memberId, roleId]);
         await connection.query(
