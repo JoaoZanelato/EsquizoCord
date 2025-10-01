@@ -28,21 +28,12 @@ function requirePermission(permission) {
       if (!groupId) {
         return res.status(400).json({ message: "ID do grupo não fornecido." });
       }
-
       const pool = req.db;
-
       const [rows] = await pool.query(
-        `
-                SELECT SUM(c.permissoes) AS total_permissoes
-                FROM CargosUsuario cu
-                JOIN Cargos c ON cu.id_cargo = c.id_cargo
-                WHERE cu.id_usuario = ? AND c.id_grupo = ?
-            `,
+        `SELECT SUM(c.permissoes) AS total_permissoes FROM CargosUsuario cu JOIN Cargos c ON cu.id_cargo = c.id_cargo WHERE cu.id_usuario = ? AND c.id_grupo = ?`,
         [userId, groupId]
       );
-
       const userPermissions = rows[0]?.total_permissoes || 0;
-
       if ((userPermissions & permission) > 0) {
         return next();
       } else {
@@ -65,14 +56,14 @@ async function isGroupCreator(req, res, next) {
       "SELECT id_criador FROM Grupos WHERE id_grupo = ?",
       [id]
     );
-    if (rows.length === 0) {
+    if (rows.length === 0)
       return res.status(404).json({ message: "Grupo não encontrado." });
-    }
-    if (rows[0].id_criador !== userId) {
-      return res.status(403).json({
-        message: "Apenas o criador pode alterar as configurações do grupo.",
-      });
-    }
+    if (rows[0].id_criador !== userId)
+      return res
+        .status(403)
+        .json({
+          message: "Apenas o criador pode alterar as configurações do grupo.",
+        });
     return next();
   } catch (error) {
     next(error);
@@ -107,11 +98,9 @@ router.post(
       return res
         .status(400)
         .json({ message: "O nome do grupo é obrigatório." });
-
     const pool = req.db;
     const connection = await pool.getConnection();
     const PERMISSAO_TODAS = 255;
-
     try {
       await connection.beginTransaction();
       const [groupResult] = await connection.query(
@@ -160,33 +149,44 @@ router.post(
   async (req, res, next) => {
     const { channelName } = req.body;
     const { groupId } = req.params;
-
     if (!channelName || channelName.trim() === "") {
       return res
         .status(400)
         .json({ message: "O nome do canal é obrigatório." });
     }
-
     try {
       const pool = req.db;
       const [result] = await pool.query(
         "INSERT INTO Chats (id_grupo, Nome) VALUES (?, ?)",
         [groupId, channelName.trim()]
       );
-
       const newChannel = {
         id_chat: result.insertId,
         id_grupo: parseInt(groupId, 10),
         Nome: channelName.trim(),
       };
-
       res.status(201).json(newChannel);
     } catch (error) {
       next(error);
     }
   }
 );
-// ROTA GET: Obter estatísticas de um grupo
+
+router.get("/search", requireLogin, async (req, res, next) => {
+  const { q } = req.query;
+  const pool = req.db;
+  try {
+    const query = q
+      ? `SELECT id_grupo, Nome, Foto FROM Grupos WHERE IsPrivate = 0 AND (Nome LIKE ? OR id_grupo = ?)`
+      : `SELECT id_grupo, Nome, Foto FROM Grupos WHERE IsPrivate = 0 ORDER BY Nome ASC`;
+    const params = q ? [`%${q}%`, q] : [];
+    const [groups] = await pool.query(query, params);
+    res.json(groups);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get(
   "/:groupId/analytics",
   requireLogin,
@@ -195,68 +195,24 @@ router.get(
     const { groupId } = req.params;
     const pool = req.db;
     try {
-      // 1. Estatísticas Gerais
       const [generalStats] = await pool.query(
-        `SELECT 
-                (SELECT COUNT(*) FROM ParticipantesGrupo WHERE id_grupo = ?) as memberCount,
-                (SELECT COUNT(*) FROM Mensagens m JOIN Chats c ON m.id_chat = c.id_chat WHERE c.id_grupo = ?) as totalMessages,
-                (SELECT data_cadastro FROM Usuarios WHERE id_usuario = (SELECT id_criador FROM Grupos WHERE id_grupo = ?)) as creationDate`,
+        `SELECT (SELECT COUNT(*) FROM ParticipantesGrupo WHERE id_grupo = ?) as memberCount, (SELECT COUNT(*) FROM Mensagens m JOIN Chats c ON m.id_chat = c.id_chat WHERE c.id_grupo = ?) as totalMessages, (SELECT data_cadastro FROM Usuarios WHERE id_usuario = (SELECT id_criador FROM Grupos WHERE id_grupo = ?)) as creationDate`,
         [groupId, groupId, groupId]
       );
-
-      // 2. Membros mais ativos
       const [topMembers] = await pool.query(
-        `SELECT u.Nome, COUNT(m.id_mensagem) as messageCount
-             FROM Mensagens m
-             JOIN Usuarios u ON m.id_usuario = u.id_usuario
-             JOIN Chats c ON m.id_chat = c.id_chat
-             WHERE c.id_grupo = ?
-             GROUP BY u.id_usuario
-             ORDER BY messageCount DESC
-             LIMIT 5`,
+        `SELECT u.Nome, COUNT(m.id_mensagem) as messageCount FROM Mensagens m JOIN Usuarios u ON m.id_usuario = u.id_usuario JOIN Chats c ON m.id_chat = c.id_chat WHERE c.id_grupo = ? GROUP BY u.id_usuario ORDER BY messageCount DESC LIMIT 5`,
         [groupId]
       );
-
-      // 3. Atividade nos últimos 7 dias
       const [dailyActivity] = await pool.query(
-        `SELECT DATE(DataHora) as date, COUNT(id_mensagem) as count
-             FROM Mensagens m
-             JOIN Chats c ON m.id_chat = c.id_chat
-             WHERE c.id_grupo = ? AND m.DataHora >= CURDATE() - INTERVAL 7 DAY
-             GROUP BY DATE(DataHora)
-             ORDER BY date ASC`,
+        `SELECT DATE(DataHora) as date, COUNT(id_mensagem) as count FROM Mensagens m JOIN Chats c ON m.id_chat = c.id_chat WHERE c.id_grupo = ? AND m.DataHora >= CURDATE() - INTERVAL 7 DAY GROUP BY DATE(DataHora) ORDER BY date ASC`,
         [groupId]
       );
-
-      res.json({
-        general: generalStats[0],
-        topMembers,
-        dailyActivity,
-      });
+      res.json({ general: generalStats[0], topMembers, dailyActivity });
     } catch (error) {
       next(error);
     }
   }
 );
-router.get("/search", requireLogin, async (req, res, next) => {
-  const { q } = req.query;
-  const pool = req.db;
-  try {
-    let query;
-    let params;
-    if (q) {
-      query = `SELECT id_grupo, Nome, Foto FROM Grupos WHERE IsPrivate = 0 AND (Nome LIKE ? OR id_grupo = ?)`;
-      params = [`%${q}%`, q];
-    } else {
-      query = `SELECT id_grupo, Nome, Foto FROM Grupos WHERE IsPrivate = 0 ORDER BY Nome ASC`;
-      params = [];
-    }
-    const [groups] = await pool.query(query, params);
-    res.json(groups);
-  } catch (error) {
-    next(error);
-  }
-});
 
 router.post("/:id/join", requireLogin, async (req, res, next) => {
   const groupId = req.params.id;
@@ -382,13 +338,14 @@ router.delete("/:id", requireLogin, isGroupCreator, async (req, res, next) => {
   }
 });
 
-router.get("/chats/:chatId/messages", requireLogin, async (req, res, next) => {
-  const { chatId } = req.params;
-  const pool = req.db;
-  try {
-    const query = `
+// ROTA GET: Obter histórico de mensagens de um chat (CORRIGIDA)
+router.get('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
+    const { chatId } = req.params;
+    const pool = req.db;
+    try {
+        const query = `
             SELECT 
-                m.id_mensagem, m.ConteudoCriptografado, m.Nonce, m.DataHora, m.id_usuario, 
+                m.id_mensagem, m.ConteudoCriptografado, m.Nonce, m.DataHora, m.id_usuario, m.tipo,
                 u.Nome AS autorNome, u.FotoPerfil AS autorFoto,
                 m.id_mensagem_respondida,
                 replied.ConteudoCriptografado as repliedContent, 
@@ -403,68 +360,50 @@ router.get("/chats/:chatId/messages", requireLogin, async (req, res, next) => {
             ORDER BY m.DataHora ASC
             LIMIT 100
         `;
-    const [messages] = await pool.query(query, [chatId]);
-
-    const decryptedMessages = messages.map((msg) => {
-      let repliedTo = null;
-      if (msg.id_mensagem_respondida && msg.repliedContent) {
-        const repliedDecryptedContent = decrypt({
-          ConteudoCriptografado: msg.repliedContent,
-          Nonce: msg.repliedNonce,
+        const [messages] = await pool.query(query, [chatId]);
+        // O resto da função permanece igual...
+        const decryptedMessages = messages.map(msg => {
+            let repliedTo = null;
+            if (msg.id_mensagem_respondida && msg.repliedContent) {
+                const repliedDecryptedContent = decrypt({ ConteudoCriptografado: msg.repliedContent, Nonce: msg.repliedNonce });
+                repliedTo = { autorNome: msg.repliedAuthorName, autorId: msg.repliedAuthorId, Conteudo: repliedDecryptedContent };
+            }
+            return { ...msg, Conteudo: decrypt(msg), repliedTo: repliedTo };
         });
-        repliedTo = {
-          autorNome: msg.repliedAuthorName,
-          autorId: msg.repliedAuthorId,
-          Conteudo: repliedDecryptedContent,
-        };
-      }
-      return {
-        ...msg,
-        Conteudo: decrypt(msg),
-        repliedTo: repliedTo,
-      };
-    });
-
-    res.json(decryptedMessages);
-  } catch (error) {
-    next(error);
-  }
+        res.json(decryptedMessages);
+    } catch (error) {
+        next(error);
+    }
 });
 
 router.post("/chats/:chatId/messages", requireLogin, async (req, res, next) => {
   const { chatId } = req.params;
-  const { content, replyingToMessageId } = req.body;
+  const { content, replyingToMessageId, type } = req.body;
   const user = req.session.user;
   const pool = req.db;
   const io = req.app.get("io");
-
-  if (!content) {
+  if (!content)
     return res
       .status(400)
       .json({ message: "O conteúdo da mensagem não pode estar vazio." });
-  }
-
   const { ciphertext, nonce } = encrypt(content);
   const repliedToId = replyingToMessageId || null;
-
+  const messageType = type || "texto";
   try {
     const [groupRows] = await pool.query(
       "SELECT id_grupo FROM Chats WHERE id_chat = ?",
       [chatId]
     );
-    if (groupRows.length === 0) {
+    if (groupRows.length === 0)
       return res
         .status(404)
         .json({ message: "Chat não pertence a nenhum grupo." });
-    }
     const groupId = groupRows[0].id_grupo;
-
     const [result] = await pool.query(
-      "INSERT INTO Mensagens (id_chat, id_usuario, ConteudoCriptografado, Nonce, id_mensagem_respondida) VALUES (?, ?, ?, ?, ?)",
-      [chatId, user.id_usuario, ciphertext, nonce, repliedToId]
+      "INSERT INTO Mensagens (id_chat, id_usuario, ConteudoCriptografado, Nonce, id_mensagem_respondida, tipo) VALUES (?, ?, ?, ?, ?, ?)",
+      [chatId, user.id_usuario, ciphertext, nonce, repliedToId, messageType]
     );
     const messageId = result.insertId;
-
     const messageData = {
       id_mensagem: messageId,
       id_chat: parseInt(chatId, 10),
@@ -475,45 +414,37 @@ router.post("/chats/:chatId/messages", requireLogin, async (req, res, next) => {
       autorNome: user.Nome,
       autorFoto: user.FotoPerfil,
       id_mensagem_respondida: repliedToId,
+      tipo: messageType,
     };
-
     if (repliedToId) {
       const [repliedMsgArr] = await pool.query(
         "SELECT m.ConteudoCriptografado, m.Nonce, u.Nome as autorNome, u.id_usuario as autorId FROM Mensagens m JOIN Usuarios u ON m.id_usuario = u.id_usuario WHERE m.id_mensagem = ?",
         [repliedToId]
       );
-      if (repliedMsgArr.length > 0) {
+      if (repliedMsgArr.length > 0)
         messageData.repliedTo = {
           autorNome: repliedMsgArr[0].autorNome,
           autorId: repliedMsgArr[0].autorId,
           Conteudo: decrypt(repliedMsgArr[0]),
         };
-      }
     }
-
-    const roomName = `group-${groupId}`;
-    io.to(roomName).emit("new_group_message", messageData);
-
-    const [aiUsers] = await pool.query(
-      "SELECT Nome, FotoPerfil FROM Usuarios WHERE id_usuario = ?",
-      [AI_USER_ID]
-    );
-
-    if (aiUsers.length > 0) {
-      const aiName = aiUsers[0].Nome;
-      const aiPhoto = aiUsers[0].FotoPerfil;
-
-      if (content.includes(`@${aiName}`)) {
+    io.to(`group-${groupId}`).emit("new_group_message", messageData);
+    if (messageType === "texto" && content.includes(`@EsquizoIA`)) {
+      const [aiUsers] = await pool.query(
+        "SELECT Nome, FotoPerfil FROM Usuarios WHERE id_usuario = ?",
+        [AI_USER_ID]
+      );
+      if (aiUsers.length > 0) {
+        const aiName = aiUsers[0].Nome;
+        const aiPhoto = aiUsers[0].FotoPerfil;
         const prompt = content.replace(`@${aiName}`, "").trim();
         const aiResponseText = await getAiResponse(prompt);
         const { ciphertext: aiCiphertext, nonce: aiNonce } =
           encrypt(aiResponseText);
-
         const [aiResult] = await pool.query(
-          "INSERT INTO Mensagens (id_chat, id_usuario, ConteudoCriptografado, Nonce) VALUES (?, ?, ?, ?)",
+          "INSERT INTO Mensagens (id_chat, id_usuario, ConteudoCriptografado, Nonce, tipo) VALUES (?, ?, ?, ?, 'texto')",
           [chatId, AI_USER_ID, aiCiphertext, aiNonce]
         );
-
         const aiMessageData = {
           id_mensagem: aiResult.insertId,
           id_chat: parseInt(chatId, 10),
@@ -523,8 +454,9 @@ router.post("/chats/:chatId/messages", requireLogin, async (req, res, next) => {
           id_usuario: AI_USER_ID,
           autorNome: aiName,
           autorFoto: aiPhoto,
+          tipo: "texto",
         };
-        io.to(roomName).emit("new_group_message", aiMessageData);
+        io.to(`group-${groupId}`).emit("new_group_message", aiMessageData);
       }
     }
     res.status(201).json(messageData);

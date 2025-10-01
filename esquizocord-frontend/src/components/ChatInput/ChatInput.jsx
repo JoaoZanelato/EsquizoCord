@@ -1,68 +1,96 @@
 // src/components/ChatInput/ChatInput.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import apiClient from "../../services/api";
 import {
   InputBarContainer,
   InputWrapper,
-  MentionButton,
+  UploadButton,
   InputField,
   ReplyBar,
   ReplyContent,
   CancelReplyButton,
+  ImagePreviewContainer,
+  PreviewImage,
+  PreviewInfo,
+  PreviewActions,
+  SendButton,
+  CancelButton,
 } from "./styles";
+import { MentionButton } from "./styles"; 
 
 const ChatInput = ({ chatInfo, replyingTo, onCancelReply }) => {
   const [message, setMessage] = useState("");
-  const inputRef = React.useRef(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  useEffect(() => {
-    if (replyingTo) {
-      inputRef.current?.focus();
+  const handleSendMessage = async (content, type = "texto") => {
+    if (content.trim() === "" || chatInfo.disabled) return;
+
+    const messageToSend = content.trim();
+
+    setMessage("");
+    setImageFile(null);
+    setImagePreview("");
+    if (onCancelReply) onCancelReply();
+
+    let url = "";
+    const body = {
+      content: messageToSend,
+      replyingToMessageId: replyingTo?.id_mensagem,
+      type: type,
+    };
+
+    if (chatInfo.type === "dm")
+      url = `/friends/dm/${chatInfo.user.id_usuario}/messages`;
+    else if (chatInfo.type === "group")
+      url = `/groups/chats/${chatInfo.channelId}/messages`;
+
+    if (!url) return;
+
+    try {
+      await apiClient.post(url, body);
+    } catch (error) {
+      console.error("Erro ao enviar mensagem:", error);
+      alert("Não foi possível enviar a sua mensagem.");
+      if (type === "texto") setMessage(messageToSend);
     }
-  }, [replyingTo]);
+  };
 
-  let placeholder = "Selecione uma conversa...";
-  let disabled = true;
-  if (chatInfo?.type === "dm") {
-    placeholder = `Conversar com ${chatInfo.user.Nome}`;
-    disabled = false;
-  } else if (chatInfo?.type === "group" && chatInfo.channelName) {
-    placeholder = `Conversar em #${chatInfo.channelName}`;
-    disabled = false;
-  }
-
-  const handleSendMessage = async (e) => {
-    if (e.key === "Enter" && message.trim() !== "" && !disabled) {
-      e.preventDefault();
-      const messageToSend = message.trim();
-      setMessage("");
-      if (onCancelReply) onCancelReply();
-
-      let url = "";
-      const body = {
-        content: messageToSend,
-        replyingToMessageId: replyingTo?.id_mensagem,
-      };
-
-      if (chatInfo.type === "dm") {
-        url = `/friends/dm/${chatInfo.user.id_usuario}/messages`;
-      } else if (chatInfo.type === "group") {
-        url = `/groups/chats/${chatInfo.channelId}/messages`;
-      }
-
-      if (!url) {
-        setMessage(messageToSend);
-        return;
-      }
-
-      try {
-        await apiClient.post(url, body);
-      } catch (error) {
-        console.error("Erro ao enviar mensagem:", error);
-        alert("Não foi possível enviar a sua mensagem.");
-        setMessage(messageToSend);
-      }
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith("image/")) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
     }
+    e.target.value = null;
+  };
+
+  const handleSendImage = async () => {
+    if (!imageFile) return;
+    setIsUploading(true);
+
+    const formData = new FormData();
+    formData.append("chat-image", imageFile);
+
+    try {
+      const response = await apiClient.post("/upload/chat-image", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      await handleSendMessage(response.data.url, "imagem");
+    } catch (error) {
+      alert("Falha no upload da imagem.");
+      console.error(error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const cancelImageUpload = () => {
+    setImageFile(null);
+    setImagePreview("");
   };
 
   const handleMention = () => {
@@ -72,30 +100,65 @@ const ChatInput = ({ chatInfo, replyingTo, onCancelReply }) => {
 
   return (
     <InputBarContainer>
-      {replyingTo && (
-        <ReplyBar>
-          <ReplyContent>
-            Respondendo a <strong>{replyingTo.autorNome}</strong>
-          </ReplyContent>
-          <CancelReplyButton onClick={onCancelReply}>&times;</CancelReplyButton>
-        </ReplyBar>
+      {imagePreview ? (
+        <ImagePreviewContainer>
+          <PreviewImage src={imagePreview} alt={imageFile.name} />
+          <PreviewInfo>
+            <span>{imageFile.name}</span>
+            <PreviewActions>
+              <SendButton onClick={handleSendImage} disabled={isUploading}>
+                {isUploading ? "A Enviar..." : "Enviar"}
+              </SendButton>
+              <CancelButton onClick={cancelImageUpload}>Cancelar</CancelButton>
+            </PreviewActions>
+          </PreviewInfo>
+        </ImagePreviewContainer>
+      ) : (
+        <>
+          {replyingTo && (
+            <ReplyBar>
+              <ReplyContent>
+                Respondendo a <strong>{replyingTo.autorNome}</strong>
+              </ReplyContent>
+              <CancelReplyButton onClick={onCancelReply}>
+                &times;
+              </CancelReplyButton>
+            </ReplyBar>
+          )}
+          <InputWrapper>
+            <UploadButton
+              onClick={() => fileInputRef.current.click()}
+              title="Enviar Imagem"
+            >
+              <i className="fas fa-plus-circle"></i>
+            </UploadButton>
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              accept="image/*"
+              onChange={handleImageSelect}
+            />
+            <InputField
+              ref={inputRef}
+              type="text"
+              placeholder={chatInfo.placeholder}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSendMessage(message)}
+              disabled={chatInfo.disabled}
+            />
+            {chatInfo?.type === "group" && (
+              <MentionButton
+                onClick={handleMention}
+                title="Mencionar EsquizoIA"
+              >
+                <i className="fas fa-robot"></i>
+              </MentionButton>
+            )}
+          </InputWrapper>
+        </>
       )}
-      <InputWrapper>
-        {chatInfo?.type === "group" && (
-          <MentionButton onClick={handleMention} title="Mencionar EsquizoIA">
-            <i className="fas fa-robot"></i>
-          </MentionButton>
-        )}
-        <InputField
-          ref={inputRef}
-          type="text"
-          placeholder={placeholder}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleSendMessage}
-          disabled={disabled}
-        />
-      </InputWrapper>
     </InputBarContainer>
   );
 };

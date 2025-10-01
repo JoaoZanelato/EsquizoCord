@@ -3,6 +3,7 @@ import React from "react";
 import { useAuth } from "../../context/AuthContext";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import styled from "styled-components";
 import {
   MessageContainer,
   Avatar,
@@ -18,6 +19,14 @@ import {
   ReplyContent,
 } from "./styles";
 
+const ChatImage = styled.img`
+  max-width: 400px;
+  max-height: 300px;
+  border-radius: 8px;
+  margin-top: 4px;
+  cursor: pointer;
+`;
+
 const formatTime = (dateString) => {
   const date = new Date(dateString);
   return date.toLocaleTimeString("pt-BR", {
@@ -28,7 +37,7 @@ const formatTime = (dateString) => {
 
 const MessageItem = ({
   message,
-  canDelete, // Recebe a permissão diretamente
+  canDelete,
   onReply,
   onDelete,
   onViewProfile,
@@ -36,15 +45,10 @@ const MessageItem = ({
   const { user: currentUser } = useAuth();
   const isSentByMe = message.id_usuario === currentUser.id_usuario;
 
-  const handleAvatarClick = () => {
-    if (!isSentByMe && onViewProfile) {
-      onViewProfile(message.id_usuario);
-    }
-  };
-
-  const sanitizedContent = DOMPurify.sanitize(
-    marked.parse(message.Conteudo || "")
-  );
+  const sanitizedContent =
+    message.tipo === "texto"
+      ? DOMPurify.sanitize(marked.parse(message.Conteudo || ""))
+      : "";
 
   return (
     <MessageContainer $isSentByMe={isSentByMe}>
@@ -52,18 +56,13 @@ const MessageItem = ({
         <Avatar
           src={message.autorFoto || "/images/logo.png"}
           alt={message.autorNome}
-          onClick={handleAvatarClick}
-          style={{ cursor: "pointer" }}
+          onClick={() => onViewProfile(message.id_usuario)}
         />
       )}
-
       <MessageContent $isSentByMe={isSentByMe}>
         {!isSentByMe && (
           <MessageHeader>
-            <AuthorName
-              onClick={handleAvatarClick}
-              style={{ cursor: "pointer" }}
-            >
+            <AuthorName onClick={() => onViewProfile(message.id_usuario)}>
               {message.autorNome}
             </AuthorName>
             <Timestamp>{formatTime(message.DataHora)}</Timestamp>
@@ -83,16 +82,26 @@ const MessageItem = ({
           </ReplyContext>
         )}
 
-        <MessageText
-          $isSentByMe={isSentByMe}
-          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-        />
+        {message.tipo === "imagem" ? (
+          <ChatImage
+            src={message.Conteudo}
+            alt="Imagem enviada"
+            onClick={() => window.open(message.Conteudo, "_blank")}
+          />
+        ) : (
+          <MessageText
+            $isSentByMe={isSentByMe}
+            dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+          />
+        )}
       </MessageContent>
 
       <MessageActions>
-        <ActionButton title="Responder" onClick={() => onReply(message)}>
-          <i className="fas fa-reply"></i>
-        </ActionButton>
+        {message.tipo === "texto" && (
+          <ActionButton title="Responder" onClick={() => onReply(message)}>
+            <i className="fas fa-reply"></i>
+          </ActionButton>
+        )}
         {canDelete && (
           <ActionButton
             title="Apagar"

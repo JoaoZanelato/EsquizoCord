@@ -68,7 +68,6 @@ const ChannelList = ({
   const onlineUserIds = data.onlineUserIds || [];
   const AI_USER_ID = 1;
 
-  // --- FUNÇÃO RESTAURADA ---
   const renderFriendsContent = () => {
     switch (activeTab) {
       case "pending":
@@ -155,44 +154,62 @@ const ChannelList = ({
                     gap: "12px",
                     flexGrow: 1,
                     cursor: "pointer",
+                    minWidth: 0,
                   }}
                   onClick={() => onViewProfile(member.id_usuario)}
                 >
                   <img
                     src={member.FotoPerfil || "/images/logo.png"}
                     alt={member.Nome}
+                    style={{ flexShrink: 0 }}
                   />
-                  <span style={{ color: memberRole?.cor }}>{member.Nome}</span>
+                  <span
+                    style={{
+                      color: memberRole?.cor,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {member.Nome}
+                  </span>
                 </div>
 
-                {isAI && (
-                  <i
-                    className="fas fa-robot"
-                    title="Inteligência Artificial"
-                    style={{ color: "#8e9297" }}
-                  ></i>
-                )}
-
-                {memberRole && !isAI && (
-                  <i
-                    className="fas fa-shield-alt"
-                    title={memberRole.nome_cargo}
-                    style={{ color: memberRole.cor }}
-                  ></i>
-                )}
-
-                {!isAI && !memberRole && isOnline && (
-                  <div className="online-indicator" title="Online"></div>
-                )}
-
-                {canManageRoles && !isAI && !isOwner && (
-                  <ManageMemberButton
-                    onClick={() => setManagingMember(member)}
-                    title="Gerir cargos"
-                  >
-                    <i className="fas fa-user-cog"></i>
-                  </ManageMemberButton>
-                )}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    flexShrink: 0,
+                    marginLeft: "auto",
+                  }}
+                >
+                  {memberRole && !isAI && (
+                    <i
+                      className="fas fa-shield-alt"
+                      title={memberRole.nome_cargo}
+                      style={{ color: memberRole.cor }}
+                    ></i>
+                  )}
+                  {isAI && (
+                    <i
+                      className="fas fa-robot"
+                      title="Inteligência Artificial"
+                      style={{ color: "#8e9297" }}
+                    ></i>
+                  )}
+                  {!isAI && !memberRole && isOnline && (
+                    <div className="online-indicator" title="Online"></div>
+                  )}
+                  {canManageRoles && !isAI && !isOwner && (
+                    <ManageMemberButton
+                      onClick={() => setManagingMember(member)}
+                      title="Gerir cargos"
+                    >
+                      <i className="fas fa-user-cog"></i>
+                    </ManageMemberButton>
+                  )}
+                </div>
               </MemberItem>
             );
           })}

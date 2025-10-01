@@ -3,16 +3,16 @@
 /**
  * Módulos necessários.
  */
-const { app, sessionMiddleware } = require('../app');
-const debug = require('debug')('teste:server');
-const http = require('http');
+const { app, sessionMiddleware } = require("../app");
+const debug = require("debug")("esquizocord-backend:server");
+const http = require("http");
 const { Server } = require("socket.io");
 
 /**
  * Obtém a porta do ambiente e guarda no Express.
  */
-const port = normalizePort(process.env.PORT || '3000');
-app.set('port', port);
+const port = normalizePort(process.env.PORT || "3000");
+app.set("port", port);
 
 /**
  * Cria o servidor HTTP.
@@ -20,26 +20,24 @@ app.set('port', port);
 const server = http.createServer(app);
 
 /**
- * --- CORREÇÃO APLICADA AQUI ---
  * Inicializa o Socket.IO com a configuração de CORS explícita.
  */
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:5173", // A origem do seu frontend
     methods: ["GET", "POST"],
-    credentials: true
-  }
+    credentials: true,
+  },
 });
 
-
-// Partilha a sessão do Express com o Socket.IO para autenticação
-io.use((socket, next) => {
-  sessionMiddleware(socket.request, {}, next);
-});
+// Envolve o middleware de sessão para ser compatível com o Socket.IO
+const wrap = (middleware) => (socket, next) =>
+  middleware(socket.request, {}, next);
+io.use(wrap(sessionMiddleware));
 
 // Lógica de gestão de conexões do Socket.IO
-io.on('connection', (socket) => {
-  console.log('Um cliente conectou-se via WebSocket:', socket.id);
+io.on("connection", (socket) => {
+  console.log("Um cliente conectou-se via WebSocket:", socket.id);
 
   const session = socket.request.session;
   if (!session || !session.user) {
@@ -48,58 +46,70 @@ io.on('connection', (socket) => {
   }
 
   const currentUserId = session.user.id_usuario;
-  console.log(`Socket ${socket.id} autenticado como utilizador ${currentUserId}`);
-  
-  const onlineUsers = app.get('onlineUsers') || new Set();
-  onlineUsers.add(currentUserId);
-  app.set('onlineUsers', onlineUsers);
-  io.emit('user_online', { userId: currentUserId });
+  console.log(
+    `Socket ${socket.id} autenticado como utilizador ${currentUserId}`
+  );
 
-  socket.on('join_dm_room', (roomName) => {
+  const onlineUsers = app.get("onlineUsers") || new Set();
+  onlineUsers.add(currentUserId);
+  app.set("onlineUsers", onlineUsers);
+  io.emit("user_online", { userId: currentUserId });
+
+  socket.on("join_dm_room", (roomName) => {
     socket.join(roomName);
     console.log(`Socket ${socket.id} entrou na sala DM: ${roomName}`);
   });
 
-  socket.on('leave_dm_room', (roomName) => {
+  socket.on("leave_dm_room", (roomName) => {
     socket.leave(roomName);
     console.log(`Socket ${socket.id} saiu da sala DM: ${roomName}`);
   });
 
-  socket.on('join_group_room', (roomName) => {
+  socket.on("join_group_room", (roomName) => {
     socket.join(roomName);
     console.log(`Socket ${socket.id} entrou na sala de GRUPO: ${roomName}`);
   });
 
-  socket.on('leave_group_room', (roomName) => {
+  socket.on("leave_group_room", (roomName) => {
     socket.leave(roomName);
     console.log(`Socket ${socket.id} saiu da sala de GRUPO: ${roomName}`);
   });
 
-  socket.on('disconnect', () => {
+  socket.on("disconnect", () => {
+    // Apenas remove o utilizador se todas as suas conexões estiverem fechadas
+    // (Esta é uma lógica mais avançada, por agora mantemos a simples)
     onlineUsers.delete(currentUserId);
-    app.set('onlineUsers', onlineUsers);
-    io.emit('user_offline', { userId: currentUserId });
-    console.log(`Cliente ${socket.id} (Utilizador ${currentUserId}) desconectou-se.`);
+    app.set("onlineUsers", onlineUsers);
+    io.emit("user_offline", { userId: currentUserId });
+    console.log(
+      `Cliente ${socket.id} (Utilizador ${currentUserId}) desconectou-se.`
+    );
   });
 });
 
 // Disponibiliza o 'io' para todas as rotas da app
-app.set('io', io);
+app.set("io", io);
 
 /**
  * O servidor começa a escutar na porta especificada.
  */
 server.listen(port);
-server.on('error', onError);
-server.on('listening', onListening);
+server.on("error", onError);
+server.on("listening", onListening);
 
 /**
  * Normaliza a porta para um número, string ou false.
  */
 function normalizePort(val) {
   const port = parseInt(val, 10);
-  if (isNaN(port)) return val; // named pipe
-  if (port >= 0) return port; // port number
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+  if (port >= 0) {
+    // port number
+    return port;
+  }
   return false;
 }
 
@@ -107,15 +117,17 @@ function normalizePort(val) {
  * Event listener para o evento "error" do servidor HTTP.
  */
 function onError(error) {
-  if (error.syscall !== 'listen') throw error;
-  const bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
+  if (error.syscall !== "listen") {
+    throw error;
+  }
+  const bind = typeof port === "string" ? "Pipe " + port : "Port " + port;
   switch (error.code) {
-    case 'EACCES':
-      console.error(bind + ' requer privilégios elevados');
+    case "EACCES":
+      console.error(bind + " requer privilégios elevados");
       process.exit(1);
       break;
-    case 'EADDRINUSE':
-      console.error(bind + ' já está em uso');
+    case "EADDRINUSE":
+      console.error(bind + " já está em uso");
       process.exit(1);
       break;
     default:
@@ -128,7 +140,7 @@ function onError(error) {
  */
 function onListening() {
   const addr = server.address();
-  const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
-  debug('A escutar em ' + bind);
-  console.log('Servidor a correr em http://localhost:' + port);
+  const bind = typeof addr === "string" ? "pipe " + addr : "port " + addr.port;
+  debug("A escutar em " + bind);
+  console.log("Servidor a correr em http://localhost:" + port);
 }
