@@ -1,39 +1,37 @@
-// TESTE/app.js
+// esquizocord-backend/app.js
 require("dotenv").config();
 const cors = require("cors");
-const createError = require("http-errors");
 const express = require("express");
-const path = require("path");
 const cookieParser = require("cookie-parser");
 const logger = require("morgan");
 const session = require("express-session");
+const createError = require("http-errors");
 
+// Importação de Rotas
 const indexRouter = require("./routes/index");
 const usersRouter = require("./routes/users");
 const groupsRouter = require("./routes/groups");
 const friendsRouter = require("./routes/friends");
-const rolesRouter = require("./routes/roles");
 
 const app = express();
 
+// Middlewares essenciais
 app.set("trust proxy", 1);
-app.set("views", path.join(__dirname, "views"));
-app.set("view engine", "ejs");
-
 app.use(logger("dev"));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, "public")));
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "http://localhost:5173", // URL do seu frontend React
     credentials: true,
   })
 );
 
+// Configuração da Sessão
 const sessionMiddleware = session({
-  secret: "uma_frase_bem_secreta_para_o_esquizocord",
+  secret:
+    process.env.SESSION_SECRET || "uma_frase_bem_secreta_para_o_esquizocord",
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -42,49 +40,34 @@ const sessionMiddleware = session({
     sameSite: "lax",
   },
 });
-
 app.use(sessionMiddleware);
 
+// Pool de Conexão com a Base de Dados
 const pool = require("./db");
 app.use((req, res, next) => {
   req.db = pool;
   next();
 });
 
-app.use((req, res, next) => {
-  res.locals.user = req.session.user;
-  next();
-});
-
+// Rotas da API
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
 app.use("/groups", groupsRouter);
 app.use("/friends", friendsRouter);
-app.use("/groups", rolesRouter);
 
+// Tratamento de Erro 404
 app.use(function (req, res, next) {
-  next(createError(404));
+  next(createError(404, "Endpoint não encontrado."));
 });
 
-// GESTOR DE ERROS CORRIGIDO
+// Gestor de Erros Global
 app.use(function (err, req, res, next) {
-  res.status(err.status || 500);
-  if (req.accepts("json")) {
-    res.json({
-      message: err.message,
-      error: req.app.get("env") === "development" ? err : {},
-    });
-  } else {
-    res.locals.message = err.message;
-    res.locals.error = req.app.get("env") === "development" ? err : {};
-    res.render("error");
-  }
-});
-
-app.use((err, req, res, next) => {
-  console.error('Erro global:', err);
-  if (err.stack) console.error(err.stack);
-  res.status(500).json({ message: 'Erro interno do servidor', error: err.message });
+  console.error(err.stack); // Log do erro para debugging
+  res.status(err.status || 500).json({
+    message: err.message || "Ocorreu um erro interno no servidor.",
+    // Em desenvolvimento, pode ser útil enviar o stack do erro
+    error: req.app.get("env") === "development" ? err : {},
+  });
 });
 
 module.exports = {
