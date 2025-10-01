@@ -182,3 +182,23 @@ export const ManageMemberButton = styled.button`
     color: ${({ theme }) => theme.headerPrimary};
   }
 `;
+export const DeleteChannelButton = styled.button`
+  background: none;
+  border: none;
+  color: ${({ theme }) => theme.textMuted};
+  cursor: pointer;
+  visibility: hidden;
+  opacity: 0;
+  margin-left: auto;
+  padding: 4px;
+  font-size: 14px;
+
+  ${ChannelItem}:hover & {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  &:hover {
+    color: ${({ theme }) => theme.redDanger};
+  }
+`;

@@ -97,14 +97,44 @@ const Dashboard = () => {
         }));
       };
 
+      const handleChannelDeleted = ({ channelId, groupId }) => {
+        if (
+          activeChat &&
+          activeChat.type === "group" &&
+          activeChat.group.details.id_grupo === groupId
+        ) {
+          setActiveChat((currentChat) => {
+            const newChannels = currentChat.group.channels.filter(
+              (c) => c.id_chat !== channelId
+            );
+            // Se o canal ativo foi excluído, volta para o canal "geral"
+            if (currentChat.channelId === channelId) {
+              return {
+                ...currentChat,
+                group: { ...currentChat.group, channels: newChannels },
+                channelId: newChannels[0]?.id_chat,
+                channelName: newChannels[0]?.Nome,
+              };
+            }
+            // Se outro canal foi excluído, apenas atualiza a lista
+            return {
+              ...currentChat,
+              group: { ...currentChat.group, channels: newChannels },
+            };
+          });
+        }
+      };
+
       socket.on("new_dm", handleNewDM);
       socket.on("new_group_message", handleNewGroupMessage);
       socket.on("friend_request_received", handleFriendRequest);
+      socket.on("group_channel_deleted", handleChannelDeleted);
 
       return () => {
         socket.off("new_dm", handleNewDM);
         socket.off("new_group_message", handleNewGroupMessage);
         socket.off("friend_request_received", handleFriendRequest);
+        socket.off("group_channel_deleted", handleChannelDeleted);
       };
     }
   }, [socket, activeChat, user.id_usuario]);
@@ -264,6 +294,26 @@ const Dashboard = () => {
     });
   };
 
+  const handleChannelDeleted = async (channelId) => {
+    if (
+      !window.confirm("Tem a certeza de que deseja apagar este canal de texto?")
+    ) {
+      return;
+    }
+
+    try {
+      if (activeChat?.type === "group") {
+        await apiClient.delete(
+          `/groups/${activeChat.group.details.id_grupo}/channels/${channelId}`
+        );
+      }
+    } catch (error) {
+      alert(
+        error.response?.data?.message || "Não foi possível apagar o canal."
+      );
+    }
+  };
+
   if (loading) {
     return <LoadingContainer>A carregar o seu universo...</LoadingContainer>;
   }
@@ -363,6 +413,7 @@ const Dashboard = () => {
           onFriendAction={handleFriendAction}
           $isChannelListOpen={isChannelListOpen}
           onChannelCreated={handleChannelCreated}
+          onChannelDeleted={handleChannelDeleted}
         />
 
         <ChatArea

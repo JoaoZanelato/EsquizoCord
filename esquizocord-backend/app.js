@@ -81,6 +81,12 @@ app.use(function (err, req, res, next) {
   }
 });
 
+app.use((err, req, res, next) => {
+  console.error('Erro global:', err);
+  if (err.stack) console.error(err.stack);
+  res.status(500).json({ message: 'Erro interno do servidor', error: err.message });
+});
+
 module.exports = {
   app: app,
   sessionMiddleware: sessionMiddleware,

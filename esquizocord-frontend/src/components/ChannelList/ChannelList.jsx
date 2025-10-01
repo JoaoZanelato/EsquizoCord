@@ -21,6 +21,7 @@ import {
   MemberItem,
   ListHeader,
   ManageMemberButton,
+  DeleteChannelButton,
 } from "./styles";
 
 const PERMISSIONS = {
@@ -56,6 +57,7 @@ const ChannelList = ({
   onFriendAction,
   $isChannelListOpen,
   onChannelCreated,
+  onChannelDeleted,
 }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("friends");
@@ -130,6 +132,17 @@ const ChannelList = ({
           >
             <i className="fas fa-hashtag" style={{ width: "12px" }}></i>
             {channel.Nome}
+            {canCreateChannels && channel.Nome !== "geral" && (
+              <DeleteChannelButton
+                title="Excluir Canal"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChannelDeleted(channel.id_chat);
+                }}
+              >
+                <i className="fas fa-trash"></i>
+              </DeleteChannelButton>
+            )}
           </ChannelItem>
         ))}
 

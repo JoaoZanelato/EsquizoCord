@@ -59,11 +59,9 @@ async function isGroupCreator(req, res, next) {
     if (rows.length === 0)
       return res.status(404).json({ message: "Grupo não encontrado." });
     if (rows[0].id_criador !== userId)
-      return res
-        .status(403)
-        .json({
-          message: "Apenas o criador pode alterar as configurações do grupo.",
-        });
+      return res.status(403).json({
+        message: "Apenas o criador pode alterar as configurações do grupo.",
+      });
     return next();
   } catch (error) {
     next(error);
@@ -320,6 +318,46 @@ router.post(
   }
 );
 
+router.delete(
+  "/:groupId/channels/:channelId",
+  requireLogin,
+  requirePermission(PERMISSIONS.CRIAR_CANAIS),
+  async (req, res, next) => {
+    const { groupId, channelId } = req.params;
+    const pool = req.db;
+    const io = req.app.get("io");
+
+    try {
+      // Adicionado para verificar se o canal a ser excluído não é o "geral"
+      const [channelDetails] = await pool.query(
+        "SELECT Nome FROM Chats WHERE id_chat = ?",
+        [channelId]
+      );
+      if (channelDetails.length > 0 && channelDetails[0].Nome === "geral") {
+        return res
+          .status(403)
+          .json({ message: "O canal 'geral' não pode ser excluído." });
+      }
+
+      const [result] = await pool.query("DELETE FROM Chats WHERE id_chat = ?", [
+        channelId,
+      ]);
+
+      if (result.affectedRows > 0) {
+        io.to(`group-${groupId}`).emit("group_channel_deleted", {
+          channelId: parseInt(channelId),
+          groupId: parseInt(groupId),
+        });
+        res.status(200).json({ message: "Canal excluído com sucesso." });
+      } else {
+        res.status(404).json({ message: "Canal não encontrado." });
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 router.delete("/:id", requireLogin, isGroupCreator, async (req, res, next) => {
   const { id } = req.params;
   const pool = req.db;
@@ -340,11 +378,11 @@ router.delete("/:id", requireLogin, isGroupCreator, async (req, res, next) => {
 });
 
 // ROTA GET: Obter histórico de mensagens de um chat (CORRIGIDA)
-router.get('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
-    const { chatId } = req.params;
-    const pool = req.db;
-    try {
-        const query = `
+router.get("/chats/:chatId/messages", requireLogin, async (req, res, next) => {
+  const { chatId } = req.params;
+  const pool = req.db;
+  try {
+    const query = `
             SELECT 
                 m.id_mensagem, m.ConteudoCriptografado, m.Nonce, m.DataHora, m.id_usuario, m.tipo,
                 u.Nome AS autorNome, u.FotoPerfil AS autorFoto,
@@ -361,20 +399,27 @@ router.get('/chats/:chatId/messages', requireLogin, async (req, res, next) => {
             ORDER BY m.DataHora ASC
             LIMIT 100
         `;
-        const [messages] = await pool.query(query, [chatId]);
-        // O resto da função permanece igual...
-        const decryptedMessages = messages.map(msg => {
-            let repliedTo = null;
-            if (msg.id_mensagem_respondida && msg.repliedContent) {
-                const repliedDecryptedContent = decrypt({ ConteudoCriptografado: msg.repliedContent, Nonce: msg.repliedNonce });
-                repliedTo = { autorNome: msg.repliedAuthorName, autorId: msg.repliedAuthorId, Conteudo: repliedDecryptedContent };
-            }
-            return { ...msg, Conteudo: decrypt(msg), repliedTo: repliedTo };
+    const [messages] = await pool.query(query, [chatId]);
+    // O resto da função permanece igual...
+    const decryptedMessages = messages.map((msg) => {
+      let repliedTo = null;
+      if (msg.id_mensagem_respondida && msg.repliedContent) {
+        const repliedDecryptedContent = decrypt({
+          ConteudoCriptografado: msg.repliedContent,
+          Nonce: msg.repliedNonce,
         });
-        res.json(decryptedMessages);
-    } catch (error) {
-        next(error);
-    }
+        repliedTo = {
+          autorNome: msg.repliedAuthorName,
+          autorId: msg.repliedAuthorId,
+          Conteudo: repliedDecryptedContent,
+        };
+      }
+      return { ...msg, Conteudo: decrypt(msg), repliedTo: repliedTo };
+    });
+    res.json(decryptedMessages);
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.post("/chats/:chatId/messages", requireLogin, async (req, res, next) => {

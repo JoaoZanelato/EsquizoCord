@@ -1,3 +1,4 @@
+// esquizocord-backend/routes/index.js
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcrypt");
@@ -33,15 +34,23 @@ const profileStorage = new CloudinaryStorage({
 });
 const profileUpload = multer({ storage: profileStorage });
 
-// --- NOVA CONFIGURAÇÃO PARA IMAGENS DO CHAT ---
 const chatImageStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: (req, file) => ({
-    folder: "esquizocord_chat_images",
-    format: "auto",
-    public_id: `chat-${req.session.user.id_usuario}-${Date.now()}`,
-    transformation: [{ width: 800, height: 800, crop: "limit" }],
-  }),
+  // A alteração é aqui dentro da função 'params'
+  params: (req, file) => {
+    // Adicionamos uma verificação para garantir que req.session.user existe
+    const userId = req.session.user
+      ? req.session.user.id_usuario
+      : "unknown_user";
+    return {
+      folder: "esquizocord_chat_images",
+      public_id: `chat-${userId}-${Date.now()}`,
+      transformation: [
+        { width: 800, height: 800, crop: "limit" },
+        { fetch_format: "auto" },
+      ],
+    };
+  },
 });
 const chatImageUpload = multer({ storage: chatImageStorage });
 
@@ -65,23 +74,33 @@ let transporter = nodemailer.createTransport({
 /* --- ROTAS DA API --- */
 
 // --- NOVA ROTA PARA UPLOAD DE IMAGEM NO CHAT ---
+
+// ...existing code...
 router.post(
   "/upload/chat-image",
   requireLogin,
-  chatImageUpload.single("chat-image"),
   (req, res, next) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "Nenhuma imagem foi enviada." });
+    chatImageUpload.single("chat-image")(req, res, function (err) {
+      if (err) {
+        console.error("Erro no middleware de upload:", err);
+        if (err.stack) console.error(err.stack);
+        return res.status(500).json({ message: "Erro no upload", error: err.message });
       }
-      res.status(200).json({ url: req.file.path });
-    } catch (error) {
-      // Adiciona um log para depuração em caso de falha no Cloudinary
-      console.error("Erro durante o upload da imagem para o chat:", error);
-      next(error);
-    }
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhuma imagem foi enviada." });
+        }
+        res.status(200).json({ url: req.file.path });
+      } catch (error) {
+        console.error("Erro durante o upload da imagem para o chat:", error);
+        if (error.stack) console.error(error.stack);
+        next(error);
+      }
+    });
   }
 );
+// ...existing code...
+
 
 // ROTA POST: /login
 router.post("/login", async (req, res, next) => {
@@ -112,11 +131,9 @@ router.post("/login", async (req, res, next) => {
 
     if (match) {
       if (!user.email_verificado) {
-        return res
-          .status(403)
-          .json({
-            message: "Sua conta ainda não foi ativada. Verifique seu e-mail.",
-          });
+        return res.status(403).json({
+          message: "Sua conta ainda não foi ativada. Verifique seu e-mail.",
+        });
       }
       delete user.Senha;
       req.session.user = user;
@@ -168,19 +185,15 @@ router.post("/cadastro", async (req, res, next) => {
       subject: "Verificação de E-mail - EsquizoCord",
       html: `<b>Olá ${nome}!</b><br><p>Obrigado por se cadastrar. Clique no link a seguir para ativar sua conta: <a href="${verificationLink}">${verificationLink}</a></p>`,
     });
-    res
-      .status(201)
-      .json({
-        message:
-          "Cadastro realizado com sucesso! Um link de verificação foi enviado para o seu e-mail.",
-      });
+    res.status(201).json({
+      message:
+        "Cadastro realizado com sucesso! Um link de verificação foi enviado para o seu e-mail.",
+    });
   } catch (error) {
     console.error("[ERRO NO CADASTRO]:", error);
-    res
-      .status(500)
-      .json({
-        message: "Ocorreu um erro no servidor ao tentar criar a conta.",
-      });
+    res.status(500).json({
+      message: "Ocorreu um erro no servidor ao tentar criar a conta.",
+    });
   }
 });
 
