@@ -329,7 +329,7 @@ router.post("/esqueceu-senha", async (req, res, next) => {
     );
 
     // A URL deve apontar para a rota de redefinição no frontend
-    const resetLink = `http://localhost:3000/redefinir-senha?token=${token}`;
+    const resetLink = `http://localhost:5173/redefinir-senha?token=${token}`;
 
     await transporter.sendMail({
       from: '"EsquizoCord" <no-reply@esquizocord.com>',
