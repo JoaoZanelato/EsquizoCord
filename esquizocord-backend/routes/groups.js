@@ -195,8 +195,28 @@ router.delete(
   }
 );
 
+// --- INÍCIO DA CORREÇÃO ---
+router.get(
+  "/:groupId/analytics",
+  requireLogin,
+  groupIdValidation,
+  validate,
+  async (req, res, next) => {
+    try {
+      const analytics = await groupService.getGroupAnalytics(
+        req.params.groupId,
+        req.session.user.id_usuario,
+        req.db
+      );
+      res.json(analytics);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+// --- FIM DA CORREÇÃO ---
+
 // --- Rotas de Canais ---
-// --- INÍCIO DA ALTERAÇÃO ---
 router.post(
   "/:groupId/channels",
   requireLogin,
@@ -223,7 +243,6 @@ router.post(
     }
   }
 );
-// --- FIM DA ALTERAÇÃO ---
 
 router.delete(
   "/:groupId/channels/:channelId",

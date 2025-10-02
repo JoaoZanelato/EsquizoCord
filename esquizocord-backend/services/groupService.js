@@ -47,6 +47,10 @@ async function banMember(groupId, memberId, currentUserId, db, io) {
     throw { status: 400, message: "Você não pode banir-se a si mesmo." };
   }
 
+  if (memberId === AI_USER_ID) {
+    throw { status: 403, message: "A IA não pode ser banida." };
+  }
+
   const groupCreator = await isGroupCreator(memberId, groupId, db);
   if (groupCreator) {
     throw { status: 403, message: "O dono do grupo não pode ser banido." };
@@ -152,12 +156,10 @@ async function getGroupDetails(groupId, currentUserId, db) {
   return {
     details: details[0],
     channels,
-    // --- INÍCIO DA CORREÇÃO ---
     members: members.map((m) => ({
       ...m,
-      cargos: m.cargos || [], // Apenas usar o valor diretamente
+      cargos: m.cargos || [],
     })),
-    // --- FIM DA CORREÇÃO ---
     currentUserPermissions,
   };
 }
@@ -332,11 +334,39 @@ async function sendGroupMessage(
 
   io.to(`group-${groupId}`).emit("new_group_message", messageData);
 
+  // --- INÍCIO DA CORREÇÃO ---
   if (type === "texto" && content.includes("@EsquizoIA")) {
     const aiResponseText = await getAiResponse(
       content.replace("@EsquizoIA", "").trim()
     );
+    const { ciphertext: aiCiphertext, nonce: aiNonce } =
+      encrypt(aiResponseText);
+    const [aiUser] = await db.query(
+      "SELECT nome, foto_perfil FROM usuarios WHERE id_usuario = ?",
+      [AI_USER_ID]
+    );
+
+    const [aiResult] = await db.query(
+      "INSERT INTO mensagens (id_chat, id_usuario, conteudo_criptografado, nonce, tipo) VALUES (?, ?, ?, ?, 'texto')",
+      [chatId, AI_USER_ID, aiCiphertext, aiNonce]
+    );
+
+    const aiMessageData = {
+      id_mensagem: aiResult.insertId,
+      id_chat: parseInt(chatId),
+      groupId: groupId,
+      Conteudo: aiResponseText,
+      data_hora: new Date(),
+      id_usuario: AI_USER_ID,
+      autorNome: aiUser[0].nome,
+      autorFoto: aiUser[0].foto_perfil,
+      tipo: "texto",
+    };
+
+    io.to(`group-${groupId}`).emit("new_group_message", aiMessageData);
   }
+  // --- FIM DA CORREÇÃO ---
+
   return messageData;
 }
 

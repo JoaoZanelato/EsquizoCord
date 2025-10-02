@@ -23,8 +23,10 @@ export const ServerList = styled.nav`
   overflow-y: auto;
   z-index: 3;
 
-  @media (max-width: 480px) {
+  @media (max-width: 768px) {
     position: fixed;
+    top: 0;
+    bottom: 0;
     height: 100%;
     left: ${({ $isOpen }) => ($isOpen ? "0" : "-100%")};
     transition: left 0.3s ease-in-out;

@@ -6,6 +6,13 @@ export const ChatAreaContainer = styled.main`
   background-color: ${({ theme }) => theme.backgroundPrimary};
   display: flex;
   flex-direction: column;
+  transition: transform 0.3s ease-in-out;
+  width: 100%;
+
+  @media (max-width: 768px) {
+    transform: ${({ $isMenuOpen }) =>
+      $isMenuOpen ? "translateX(calc(72px + 260px))" : "translateX(0)"};
+  }
 `;
 
 export const Header = styled.div`

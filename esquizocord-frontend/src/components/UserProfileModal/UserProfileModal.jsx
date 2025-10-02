@@ -101,9 +101,12 @@ const UserProfileModal = ({
     const isOwner =
       activeGroup && activeGroup.details.id_criador === targetUser.id_usuario;
 
-    // Lógica simplificada: Apenas mostra o botão se for um membro do grupo ativo (e não for o dono).
-    // O backend será responsável por validar se o currentUser tem de facto permissão para banir.
-    if (isMemberOfActiveGroup && !isOwner && onBanMember) {
+    if (
+      isMemberOfActiveGroup &&
+      !isOwner &&
+      onBanMember &&
+      targetUser.id_usuario !== AI_USER_ID // Não mostra o botão se for a IA
+    ) {
       return (
         <ActionButton
           className="danger"

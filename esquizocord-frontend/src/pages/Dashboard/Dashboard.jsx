@@ -1,5 +1,5 @@
 // src/pages/Dashboard/Dashboard.jsx
-import React, { useState, useEffect, useCallback, useRef } from "react"; // 1. Importar o useRef
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useSocket } from "../../context/SocketContext";
@@ -36,30 +36,26 @@ const Dashboard = () => {
   const [isChannelListOpen, setIsChannelListOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
-  // 2. Criar uma ref para manter uma referência atualizada do dashboardData
   const dashboardDataRef = useRef(dashboardData);
   useEffect(() => {
     dashboardDataRef.current = dashboardData;
   }, [dashboardData]);
 
-  const fetchData = useCallback(
-    async (selectChatAfter = null) => {
-      try {
-        const response = await apiClient.get("/dashboard");
-        setDashboardData(response.data);
-        if (selectChatAfter) {
-          setActiveChat(selectChatAfter);
-        }
-      } catch (err) {
-        setError(
-          "Não foi possível carregar os seus dados. Tente atualizar a página."
-        );
-      } finally {
-        setLoading(false);
+  const fetchData = useCallback(async (selectChatAfter = null) => {
+    try {
+      const response = await apiClient.get("/dashboard");
+      setDashboardData(response.data);
+      if (selectChatAfter) {
+        setActiveChat(selectChatAfter);
       }
-    },
-    [] // Array de dependências deve estar vazio para a função ser criada apenas uma vez
-  );
+    } catch (err) {
+      setError(
+        "Não foi possível carregar os seus dados. Tente atualizar a página."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -93,7 +89,6 @@ const Dashboard = () => {
           activeChat.type !== "group" ||
           activeChat.channelId !== msg.id_chat
         ) {
-          // 4. Usar a ref para aceder ao dado mais recente sem causar um novo render
           const groupName =
             dashboardDataRef.current?.groups.find(
               (g) => g.id_grupo === msg.groupId
@@ -224,9 +219,7 @@ const Dashboard = () => {
         socket.off("user_status_changed", handleStatusChanged);
       };
     }
-  }, [socket, activeChat, user.id_usuario]); // 3. Remover dashboardData das dependências
-
-  // ... (O resto do ficheiro permanece exatamente igual)
+  }, [socket, activeChat, user.id_usuario]);
 
   const handleSelectGroup = async (group) => {
     try {
@@ -240,13 +233,12 @@ const Dashboard = () => {
         type: "group",
         group: groupDetails,
         channelId: defaultChannel?.id_chat,
-        channelName: defaultChannel?.nome, 
+        channelName: defaultChannel?.nome,
         channelType: defaultChannel?.tipo,
       });
       setNotifications((prev) =>
         prev.filter((n) => n.groupId !== group.id_grupo)
       );
-      setIsChannelListOpen(false);
     } catch (err) {
       console.error("Erro ao carregar detalhes do grupo:", err);
       alert("Não foi possível carregar os detalhes deste servidor.");

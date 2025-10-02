@@ -108,14 +108,6 @@ export const AuthorName = styled.span`
   }
 `;
 
-export const Timestamp = styled.span`
-  color: ${({ theme, $isSentByMe }) =>
-    $isSentByMe ? "rgba(255, 255, 255, 0.7)" : theme.textMuted};
-  font-size: 0.75rem;
-  /* Garante que o timestamp não quebre a linha */
-  white-space: nowrap;
-`;
-
 export const MessageText = styled.div`
   color: ${({ $isSentByMe, theme }) =>
     $isSentByMe ? "#FFFFFF" : theme.textNormal};
@@ -168,4 +160,11 @@ export const EditActions = styled.div`
       text-decoration: underline;
     }
   }
+`;
+export const ChatImage = styled.img`
+  max-width: 400px;
+  max-height: 300px;
+  border-radius: 8px;
+  margin-top: 4px;
+  cursor: pointer;
 `;

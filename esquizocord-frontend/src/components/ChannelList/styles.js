@@ -11,8 +11,10 @@ export const ChannelListContainer = styled.aside`
 
   @media (max-width: 768px) {
     position: fixed;
+    top: 0;
+    bottom: 0;
     height: 100%;
-    left: ${({ $isOpen }) => ($isOpen ? "0" : "-100%")};
+    left: ${({ $isOpen }) => ($isOpen ? "72px" : "-100%")};
     transition: left 0.3s ease-in-out;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
   }
@@ -99,7 +101,6 @@ export const UserPanel = styled.div`
   }
 `;
 
-// --- INÍCIO DA NOVA ALTERAÇÃO ---
 export const AvatarWithStatus = styled.div`
   position: relative;
   flex-shrink: 0;
@@ -122,7 +123,6 @@ export const UserStatusIndicator = styled.span`
   border: 3px solid ${({ theme }) => theme.backgroundTertiary};
   background-color: ${({ color }) => color};
 `;
-// --- FIM DA NOVA ALTERAÇÃO ---
 
 export const ListHeader = styled.div`
   color: ${({ theme }) => theme.textMuted};

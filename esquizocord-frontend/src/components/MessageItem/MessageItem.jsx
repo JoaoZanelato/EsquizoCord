@@ -3,14 +3,12 @@ import React, { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
-import styled from "styled-components";
 import {
   MessageContainer,
   Avatar,
   MessageContent,
   MessageHeader,
   AuthorName,
-  Timestamp,
   MessageText,
   MessageActions,
   ActionButton,
@@ -21,39 +19,10 @@ import {
   EditInputContainer,
   EditInput,
   EditActions,
+  ChatImage
 } from "./styles";
 
-const ChatImage = styled.img`
-  max-width: 400px;
-  max-height: 300px;
-  border-radius: 8px;
-  margin-top: 4px;
-  cursor: pointer;
-`;
 
-// Função de formatação de tempo robusta e à prova de falhas
-const formatTime = (dateString) => {
-  if (!dateString) return "";
-
-  let date = new Date(dateString);
-
-  // Se a data for inválida, é provável que seja o formato do MySQL (YYYY-MM-DD HH:MM:SS)
-  if (isNaN(date.getTime()) && typeof dateString === "string") {
-    // Substitui o primeiro espaço por 'T' e adiciona 'Z' para tratar como UTC
-    // Isso cria um formato ISO 8601 que o JavaScript entende de forma fiável
-    date = new Date(dateString.replace(" ", "T") + "Z");
-  }
-
-  // Se ainda assim for inválida, retorna uma string vazia para não quebrar a UI
-  if (isNaN(date.getTime())) {
-    return "";
-  }
-
-  return date.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
 
 const MessageItem = ({
   message,
@@ -107,9 +76,6 @@ const MessageItem = ({
             <AuthorName onClick={() => onViewProfile(message.id_usuario)}>
               {message.autorNome}
             </AuthorName>
-            <Timestamp $isSentByMe={isSentByMe}>
-              {formatTime(message.data_hora)}
-            </Timestamp>
           </MessageHeader>
         )}
 
@@ -162,18 +128,17 @@ const MessageItem = ({
                 dangerouslySetInnerHTML={{ __html: sanitizedContent }}
               />
             )}
-            {/* Timestamp para mensagens enviadas */}
-            {isSentByMe && (
-              <Timestamp
-                $isSentByMe={isSentByMe}
-                style={{ textAlign: "right", marginTop: "4px" }}
+            {/* Indicador de edição para ambas as mensagens (enviadas e recebidas) */}
+            {message.foi_editada ? (
+              <EditedIndicator
+                style={{
+                  alignSelf: isSentByMe ? "flex-end" : "flex-start",
+                  marginTop: "4px",
+                }}
               >
-                {formatTime(message.data_hora)}
-                {message.foi_editada && (
-                  <EditedIndicator>(editado)</EditedIndicator>
-                )}
-              </Timestamp>
-            )}
+                (editado)
+              </EditedIndicator>
+            ) : null}
           </>
         )}
       </MessageContent>

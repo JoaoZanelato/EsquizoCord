@@ -5,9 +5,7 @@ import { useSocket } from "../../context/SocketContext";
 import apiClient from "../../services/api";
 import MessageItem from "../MessageItem/MessageItem";
 import ChatInput from "../ChatInput/ChatInput";
-// --- INÍCIO DA ALTERAÇÃO ---
 import VoiceChannel from "../VoiceChannel/VoiceChannel"; // Importar o novo componente
-// --- FIM DA ALTERAÇÃO ---
 import {
   ChatAreaContainer,
   Header,
@@ -201,7 +199,6 @@ const ChatArea = ({
       </>
     );
   } else if (chatInfo.type === "group") {
-    // --- INÍCIO DA ALTERAÇÃO ---
     if (chatInfo.channelType === "VOZ") {
       headerContent = (
         <h3>
@@ -250,7 +247,6 @@ const ChatArea = ({
         </>
       );
     }
-    // --- FIM DA ALTERAÇÃO ---
   }
 
   return (
@@ -268,7 +264,9 @@ const ChatArea = ({
           ...chatInfo,
           disabled: chatInfo?.channelType === "VOZ",
           placeholder:
-            chatInfo?.channelType === "VOZ"
+            chatInfo?.type === "dm"
+              ? `Conversar com @${chatInfo.user.nome}`
+              : chatInfo?.channelType === "VOZ"
               ? "Canais de voz não permitem mensagens."
               : `Conversar em #${chatInfo.channelName}`,
         }}
