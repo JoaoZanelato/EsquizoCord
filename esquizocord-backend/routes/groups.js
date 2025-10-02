@@ -20,6 +20,13 @@ const channelIdValidation = [param("channelId").isInt({ min: 1 })];
 const memberIdValidation = [param("memberId").isInt({ min: 1 })];
 const roleIdValidation = [param("roleId").isInt({ min: 1 })];
 const messageIdValidation = [param("messageId").isInt({ min: 1 })];
+const editMessageValidation = [
+  param("messageId").isInt(),
+  body("content")
+    .notEmpty()
+    .withMessage("O conteúdo não pode estar vazio.")
+    .trim(),
+];
 
 // --- Rotas de Grupo ---
 router.post(
@@ -31,8 +38,6 @@ router.post(
       if (!req.file) {
         throw { status: 400, message: "Nenhum ficheiro de imagem enviado." };
       }
-      // Se o upload for bem-sucedido, o multer-storage-cloudinary adiciona
-      // o caminho (URL) do ficheiro ao objeto req.file.
       res.status(200).json({ url: req.file.path });
     } catch (error) {
       next(error);
@@ -169,12 +174,39 @@ router.delete(
   }
 );
 
+router.delete(
+  "/:groupId/members/:memberId",
+  requireLogin,
+  [...groupIdValidation, ...memberIdValidation],
+  validate,
+  async (req, res, next) => {
+    try {
+      await groupService.banMember(
+        req.params.groupId,
+        req.params.memberId,
+        req.session.user.id_usuario,
+        req.db,
+        req.app.get("io")
+      );
+      res.status(200).json({ message: "Membro banido com sucesso." });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // --- Rotas de Canais ---
+// --- INÍCIO DA ALTERAÇÃO ---
 router.post(
   "/:groupId/channels",
   requireLogin,
   groupIdValidation,
-  [body("channelName").isLength({ min: 1, max: 100 }).trim().escape()],
+  [
+    body("channelName").isLength({ min: 1, max: 100 }).trim().escape(),
+    body("channelType")
+      .isIn(["TEXTO", "VOZ"])
+      .withMessage("Tipo de canal inválido."),
+  ],
   validate,
   async (req, res, next) => {
     try {
@@ -182,6 +214,7 @@ router.post(
         req.params.groupId,
         req.session.user.id_usuario,
         req.body.channelName,
+        req.body.channelType,
         req.db
       );
       res.status(201).json(newChannel);
@@ -190,6 +223,7 @@ router.post(
     }
   }
 );
+// --- FIM DA ALTERAÇÃO ---
 
 router.delete(
   "/:groupId/channels/:channelId",
@@ -249,6 +283,27 @@ router.post(
         req.app.get("io")
       );
       res.status(201).json(messageData);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.put(
+  "/messages/:messageId",
+  requireLogin,
+  editMessageValidation,
+  validate,
+  async (req, res, next) => {
+    try {
+      await groupService.editGroupMessage(
+        req.params.messageId,
+        req.body.content,
+        req.session.user.id_usuario,
+        req.db,
+        req.app.get("io")
+      );
+      res.status(200).json({ message: "Mensagem editada com sucesso." });
     } catch (error) {
       next(error);
     }

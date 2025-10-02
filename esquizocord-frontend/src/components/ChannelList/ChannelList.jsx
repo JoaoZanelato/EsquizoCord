@@ -22,10 +22,12 @@ import {
   ListHeader,
   ManageMemberButton,
   DeleteChannelButton,
+  KickMemberButton,
 } from "./styles";
 
 const PERMISSIONS = {
   GERIR_CARGOS: 1,
+  EXPULSAR_MEMBROS: 2,
   CRIAR_CANAIS: 8,
 };
 
@@ -55,6 +57,7 @@ const ChannelList = ({
   onOpenGroupSettings,
   onViewProfile,
   onFriendAction,
+  onBanMember,
   $isChannelListOpen,
   onChannelCreated,
   onChannelDeleted,
@@ -103,6 +106,15 @@ const ChannelList = ({
       (groupDetails.currentUserPermissions & PERMISSIONS.GERIR_CARGOS) > 0;
     const canCreateChannels =
       (groupDetails.currentUserPermissions & PERMISSIONS.CRIAR_CANAIS) > 0;
+    const canBanMembers =
+      (groupDetails.currentUserPermissions & PERMISSIONS.EXPULSAR_MEMBROS) > 0;
+
+    // --- INÍCIO DA ALTERAÇÃO ---
+    const textChannels =
+      groupDetails.channels?.filter((c) => c.tipo === "TEXTO") || [];
+    const voiceChannels =
+      groupDetails.channels?.filter((c) => c.tipo === "VOZ") || [];
+    // --- FIM DA ALTERAÇÃO ---
 
     return (
       <>
@@ -118,7 +130,8 @@ const ChannelList = ({
           )}
         </ListHeaderContainer>
 
-        {groupDetails.channels?.map((channel) => (
+        {/* --- INÍCIO DA ALTERAÇÃO --- */}
+        {textChannels.map((channel) => (
           <ChannelItem
             key={channel.id_chat}
             $active={activeChat.channelId === channel.id_chat}
@@ -127,6 +140,7 @@ const ChannelList = ({
                 ...activeChat,
                 channelId: channel.id_chat,
                 channelName: channel.nome,
+                channelType: channel.tipo, // Adicionar tipo
               })
             }
           >
@@ -145,6 +159,39 @@ const ChannelList = ({
             )}
           </ChannelItem>
         ))}
+
+        <ListHeaderContainer style={{ marginTop: "20px" }}>
+          <ListHeader>Canais de Voz</ListHeader>
+        </ListHeaderContainer>
+        {voiceChannels.map((channel) => (
+          <ChannelItem
+            key={channel.id_chat}
+            $active={activeChat.channelId === channel.id_chat}
+            onClick={() =>
+              onSelectChat({
+                ...activeChat,
+                channelId: channel.id_chat,
+                channelName: channel.nome,
+                channelType: channel.tipo, // Adicionar tipo
+              })
+            }
+          >
+            <i className="fas fa-volume-up" style={{ width: "12px" }}></i>
+            {channel.nome}
+            {canCreateChannels && (
+              <DeleteChannelButton
+                title="Excluir Canal"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChannelDeleted(channel.id_chat);
+                }}
+              >
+                <i className="fas fa-trash"></i>
+              </DeleteChannelButton>
+            )}
+          </ChannelItem>
+        ))}
+        {/* --- FIM DA ALTERAÇÃO --- */}
 
         <ListHeader style={{ marginTop: "20px" }}>
           Membros — {groupDetails.members?.length}
@@ -221,6 +268,14 @@ const ChannelList = ({
                     >
                       <i className="fas fa-user-cog"></i>
                     </ManageMemberButton>
+                  )}
+                  {canBanMembers && !isAI && !isOwner && (
+                    <KickMemberButton
+                      onClick={() => onBanMember(member)}
+                      title="Banir Membro"
+                    >
+                      <i className="fas fa-gavel"></i>
+                    </KickMemberButton>
                   )}
                 </div>
               </MemberItem>

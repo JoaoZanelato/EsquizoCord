@@ -20,6 +20,7 @@ const ChatArea = ({
   onReply,
   onCancelReply,
   onDeleteMessage,
+  onEditMessage, // <-- Nova prop
   onMenuClick,
 }) => {
   const { user: currentUser } = useAuth();
@@ -103,17 +104,33 @@ const ChatArea = ({
       );
     };
 
+    // --- INÍCIO DA ALTERAÇÃO ---
+    const handleMessageEdited = ({ messageId, newContent }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id_mensagem === messageId
+            ? { ...msg, Conteudo: newContent, foi_editada: 1 }
+            : msg
+        )
+      );
+    };
+
     socket.on("new_dm", handleNewMessage);
     socket.on("new_group_message", handleNewMessage);
     socket.on("dm_message_deleted", handleMessageDeleted);
     socket.on("group_message_deleted", handleMessageDeleted);
+    socket.on("dm_message_edited", handleMessageEdited);
+    socket.on("group_message_edited", handleMessageEdited);
 
     return () => {
       socket.off("new_dm", handleNewMessage);
       socket.off("new_group_message", handleNewMessage);
       socket.off("dm_message_deleted", handleMessageDeleted);
       socket.off("group_message_deleted", handleMessageDeleted);
+      socket.off("dm_message_edited", handleMessageEdited);
+      socket.off("group_message_edited", handleMessageEdited);
     };
+    // --- FIM DA ALTERAÇÃO ---
   }, [socket, currentUser.id_usuario]);
 
   useEffect(scrollToBottom, [messages]);
@@ -188,6 +205,7 @@ const ChatArea = ({
               onViewProfile={onViewProfile}
               onReply={onReply}
               onDelete={onDeleteMessage}
+              onEdit={onEditMessage} // <-- Passar a nova prop
             />
           ))}
         <div ref={messagesEndRef} />

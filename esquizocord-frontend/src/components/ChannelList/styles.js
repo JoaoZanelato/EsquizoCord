@@ -183,6 +183,13 @@ export const ManageMemberButton = styled.button`
     color: ${({ theme }) => theme.headerPrimary};
   }
 `;
+
+export const KickMemberButton = styled(ManageMemberButton)`
+  &:hover {
+    color: ${({ theme }) => theme.redDanger};
+  }
+`;
+
 export const DeleteChannelButton = styled.button`
   background: none;
   border: none;

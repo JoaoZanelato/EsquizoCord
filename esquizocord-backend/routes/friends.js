@@ -30,6 +30,15 @@ const sendMessageValidation = [
   body("type").isIn(["texto", "imagem"]).optional(),
   body("replyingToMessageId").isInt().optional(),
 ];
+// --- INÍCIO DA ALTERAÇÃO ---
+const editMessageValidation = [
+  param("messageId").isInt(),
+  body("content")
+    .notEmpty()
+    .withMessage("O conteúdo não pode estar vazio.")
+    .trim(),
+];
+// --- FIM DA ALTERAÇÃO ---
 
 // --- Rotas ---
 router.get(
@@ -178,6 +187,29 @@ router.post(
     }
   }
 );
+
+// --- INÍCIO DA ALTERAÇÃO ---
+router.put(
+  "/dm/messages/:messageId",
+  requireLogin,
+  editMessageValidation,
+  validate,
+  async (req, res, next) => {
+    try {
+      await friendService.editDirectMessage(
+        req.params.messageId,
+        req.body.content,
+        req.session.user.id_usuario,
+        req.db,
+        req.app.get("io")
+      );
+      res.status(200).json({ message: "Mensagem editada com sucesso." });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+// --- FIM DA ALTERAÇÃO ---
 
 router.delete(
   "/dm/messages/:messageId",

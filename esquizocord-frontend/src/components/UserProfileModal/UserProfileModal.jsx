@@ -27,12 +27,17 @@ import {
   RoleColorDot,
 } from "./styles";
 
+const PERMISSIONS = {
+  EXPULSAR_MEMBROS: 2,
+};
+
 const UserProfileModal = ({
   userId,
   onlineUserIds,
   onClose,
   onAction,
   onSendMessage,
+  onBanMember, // <-- NOVA PROP
   activeGroup,
 }) => {
   const { user: currentUser } = useAuth();
@@ -61,7 +66,6 @@ const UserProfileModal = ({
               }
             : response.data;
 
-        // Adiciona os cargos do servidor ao perfil, se aplicável
         if (activeGroup && data.user) {
           const memberInGroup = activeGroup.members.find(
             (m) => m.id_usuario === data.user.id_usuario
@@ -82,9 +86,8 @@ const UserProfileModal = ({
     };
 
     fetchProfile();
-  }, [userId, activeGroup]); // Adicionado activeGroup como dependência
+  }, [userId, activeGroup]);
 
-  // ... (função renderActionButtons sem alterações) ...
   const renderActionButtons = () => {
     if (
       !profileData ||
@@ -92,8 +95,34 @@ const UserProfileModal = ({
       profileData.user.id_usuario === currentUser.id_usuario
     )
       return null;
+
     const { friendship } = profileData;
     const targetUser = profileData.user;
+
+    // --- INÍCIO DA ALTERAÇÃO ---
+    const isMemberOfActiveGroup = activeGroup?.members.some(
+      (m) => m.id_usuario === targetUser.id_usuario
+    );
+    const canBan =
+      activeGroup &&
+      (activeGroup.currentUserPermissions & PERMISSIONS.EXPULSAR_MEMBROS) > 0;
+    const isOwner =
+      activeGroup && activeGroup.details.id_criador === targetUser.id_usuario;
+
+    // Adiciona o botão de banir se as condições forem cumpridas
+    if (isMemberOfActiveGroup && canBan && !isOwner) {
+      return (
+        <ActionButton
+          className="danger"
+          title="Banir Membro do Grupo"
+          onClick={() => onBanMember(targetUser)}
+        >
+          <i className="fas fa-gavel"></i>
+        </ActionButton>
+      );
+    }
+    // --- FIM DA ALTERAÇÃO ---
+
     if (targetUser.id_usuario === AI_USER_ID) {
       return (
         <ActionButton
@@ -127,7 +156,7 @@ const UserProfileModal = ({
         );
       }
       if (friendship.status === "pendente") {
-        if (friendship.id_utilizador_requisitante === currentUser.id_usuario) {
+        if (friendship.id_requisitante === currentUser.id_usuario) {
           return (
             <ActionButton
               className="secondary"
@@ -224,7 +253,6 @@ const UserProfileModal = ({
                     </p>
                   </Section>
 
-                  {/* NOVA SEÇÃO DE CARGOS */}
                   {profileData.user.cargos &&
                     profileData.user.cargos.length > 0 && (
                       <Section>
@@ -247,8 +275,6 @@ const UserProfileModal = ({
                     </Section>
                   )}
                 </UserInfo>
-
-                {/* ... (seções de amigos e servidores em comum) ... */}
               </ModalBody>
             </>
           )}

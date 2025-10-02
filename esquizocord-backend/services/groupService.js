@@ -32,6 +32,49 @@ async function isGroupCreator(userId, groupId, db) {
   return rows[0].id_criador === userId;
 }
 
+async function banMember(groupId, memberId, currentUserId, db, io) {
+  const hasPermission =
+    (await getUserPermissions(currentUserId, groupId, db)) &
+    PERMISSIONS.EXPULSAR_MEMBROS;
+  if (!hasPermission) {
+    throw {
+      status: 403,
+      message: "Você não tem permissão para banir membros.",
+    };
+  }
+
+  if (currentUserId === memberId) {
+    throw { status: 400, message: "Você não pode banir-se a si mesmo." };
+  }
+
+  const groupCreator = await isGroupCreator(memberId, groupId, db);
+  if (groupCreator) {
+    throw { status: 403, message: "O dono do grupo não pode ser banido." };
+  }
+
+  // Adiciona o utilizador à lista de banidos
+  await db.query(
+    "INSERT INTO banimentos (id_grupo, id_usuario) VALUES (?, ?) ON DUPLICATE KEY UPDATE id_usuario = id_usuario",
+    [groupId, memberId]
+  );
+
+  // Remove o utilizador do grupo
+  const [result] = await db.query(
+    "DELETE FROM participantes_grupo WHERE id_grupo = ? AND id_usuario = ?",
+    [groupId, memberId]
+  );
+
+  if (result.affectedRows > 0) {
+    io.to(`group-${groupId}`).emit("member_kicked", {
+      groupId: parseInt(groupId),
+      kickedUserId: parseInt(memberId),
+      kickerUserId: currentUserId,
+    });
+  } else {
+    throw { status: 404, message: "Membro não encontrado neste grupo." };
+  }
+}
+
 // --- Lógica de Grupos ---
 async function createGroup({ nome, isPrivate, fotoUrl, creatorId }, db) {
   const connection = await db.getConnection();
@@ -88,7 +131,7 @@ async function getGroupDetails(groupId, currentUserId, db) {
     throw { status: 404, message: "Grupo não encontrado." };
 
   const [channels] = await db.query(
-    "SELECT id_chat, nome FROM chats WHERE id_grupo = ?",
+    "SELECT id_chat, nome, tipo FROM chats WHERE id_grupo = ?", // <-- ALTERAÇÃO AQUI
     [groupId]
   );
   const [members] = await db.query(
@@ -166,6 +209,18 @@ async function joinGroup(groupId, userId, db) {
   if (group[0].is_private)
     throw { status: 403, message: "Este grupo é privado." };
 
+  const [isBanned] = await db.query(
+    "SELECT id_banimento FROM banimentos WHERE id_grupo = ? AND id_usuario = ?",
+    [groupId, userId]
+  );
+
+  if (isBanned.length > 0) {
+    throw {
+      status: 403,
+      message: "Você foi banido deste grupo e não pode entrar.",
+    };
+  }
+
   const [existing] = await db.query(
     "SELECT * FROM participantes_grupo WHERE id_usuario = ? AND id_grupo = ?",
     [userId, groupId]
@@ -180,7 +235,8 @@ async function joinGroup(groupId, userId, db) {
 }
 
 // --- Lógica de Canais ---
-async function createChannel(groupId, userId, channelName, db) {
+// --- INÍCIO DA ALTERAÇÃO ---
+async function createChannel(groupId, userId, channelName, channelType, db) {
   if (
     !(
       (await getUserPermissions(userId, groupId, db)) & PERMISSIONS.CRIAR_CANAIS
@@ -189,15 +245,17 @@ async function createChannel(groupId, userId, channelName, db) {
     throw { status: 403, message: "Permissão para criar canais negada." };
   }
   const [result] = await db.query(
-    "INSERT INTO chats (id_grupo, nome) VALUES (?, ?)",
-    [groupId, channelName]
+    "INSERT INTO chats (id_grupo, nome, tipo) VALUES (?, ?, ?)",
+    [groupId, channelName, channelType]
   );
   return {
     id_chat: result.insertId,
     id_grupo: parseInt(groupId),
     nome: channelName,
+    tipo: channelType,
   };
 }
+// --- FIM DA ALTERAÇÃO ---
 
 async function deleteChannel(groupId, channelId, userId, db, io) {
   if (
@@ -284,6 +342,39 @@ async function sendGroupMessage(
     // Enviar a resposta da IA...
   }
   return messageData;
+}
+
+async function editGroupMessage(messageId, newContent, userId, db, io) {
+  const [msg] = await db.query(
+    "SELECT m.id_usuario, m.tipo, c.id_grupo FROM mensagens m JOIN chats c ON m.id_chat = c.id_chat WHERE m.id_mensagem = ?",
+    [messageId]
+  );
+  if (msg.length === 0) {
+    throw { status: 404, message: "Mensagem não encontrada." };
+  }
+
+  if (msg[0].id_usuario !== userId) {
+    throw { status: 403, message: "Apenas o autor pode editar a mensagem." };
+  }
+  if (msg[0].tipo !== "texto") {
+    throw {
+      status: 400,
+      message: "Apenas mensagens de texto podem ser editadas.",
+    };
+  }
+
+  const { ciphertext, nonce } = encrypt(newContent);
+
+  await db.query(
+    "UPDATE mensagens SET conteudo_criptografado = ?, nonce = ?, foi_editada = 1 WHERE id_mensagem = ?",
+    [ciphertext, nonce, messageId]
+  );
+
+  io.to(`group-${msg[0].id_grupo}`).emit("group_message_edited", {
+    messageId: parseInt(messageId),
+    chatId: msg[0].id_chat,
+    newContent: newContent,
+  });
 }
 
 async function deleteGroupMessage(messageId, userId, db, io) {
@@ -380,6 +471,7 @@ module.exports = {
   PERMISSIONS,
   getUserPermissions,
   isGroupCreator,
+  banMember,
   createGroup,
   getGroupDetails,
   updateGroupSettings,
@@ -391,6 +483,7 @@ module.exports = {
   getGroupMessages,
   sendGroupMessage,
   deleteGroupMessage,
+  editGroupMessage,
   getRoles,
   createRole,
   updateRole,

@@ -280,6 +280,42 @@ async function deleteDirectMessage(messageId, currentUserId, db, io) {
     messageId: parseInt(messageId, 10),
   });
 }
+async function editDirectMessage(messageId, newContent, currentUserId, db, io) {
+  const [msgResult] = await db.query(
+    "SELECT id_remetente, id_destinatario, tipo FROM mensagens_diretas WHERE id_mensagem = ?",
+    [messageId]
+  );
+
+  if (msgResult.length === 0) {
+    throw { status: 404, message: "Mensagem não encontrada." };
+  }
+  const message = msgResult[0];
+
+  if (message.id_remetente !== currentUserId) {
+    throw { status: 403, message: "Apenas o autor pode editar a mensagem." };
+  }
+  if (message.tipo !== "texto") {
+    throw {
+      status: 400,
+      message: "Apenas mensagens de texto podem ser editadas.",
+    };
+  }
+
+  const { ciphertext, nonce } = encrypt(newContent);
+
+  await db.query(
+    "UPDATE mensagens_diretas SET conteudo_criptografado = ?, nonce = ?, foi_editada = 1 WHERE id_mensagem = ?",
+    [ciphertext, nonce, messageId]
+  );
+
+  const roomName = `dm-${[message.id_remetente, message.id_destinatario]
+    .sort()
+    .join("-")}`;
+  io.to(roomName).emit("dm_message_edited", {
+    messageId: parseInt(messageId, 10),
+    newContent: newContent,
+  });
+}
 
 module.exports = {
   searchUsers,
@@ -290,4 +326,5 @@ module.exports = {
   getDirectMessages,
   sendDirectMessage,
   deleteDirectMessage,
+  editDirectMessage
 };

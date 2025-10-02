@@ -70,7 +70,6 @@ export const ReplyContent = styled.p`
   text-overflow: ellipsis;
 `;
 
-// ... resto dos estilos (Avatar, MessageContent, etc.) sem alterações
 export const Avatar = styled.img`
   width: 40px;
   height: 40px;
@@ -109,10 +108,13 @@ export const AuthorName = styled.span`
   }
 `;
 
+// --- INÍCIO DA ALTERAÇÃO ---
 export const Timestamp = styled.span`
-  color: ${({ theme }) => theme.textMuted};
+  color: ${({ theme, $isSentByMe }) =>
+    $isSentByMe ? theme.textMuted : theme.brandExperiment};
   font-size: 0.75rem;
 `;
+// --- FIM DA ALTERAÇÃO ---
 
 export const MessageText = styled.div`
   color: ${({ $isSentByMe, theme }) =>
@@ -122,4 +124,45 @@ export const MessageText = styled.div`
   overflow-wrap: break-word;
   word-wrap: break-word;
   word-break: break-word;
+`;
+
+export const EditedIndicator = styled.span`
+  color: ${({ theme }) => theme.textMuted};
+  font-size: 0.7rem;
+  margin-left: 8px;
+`;
+
+export const EditInputContainer = styled.div`
+  width: 100%;
+  margin-top: 8px;
+`;
+
+export const EditInput = styled.textarea`
+  width: 100%;
+  background-color: ${({ theme }) => theme.backgroundTertiary};
+  color: ${({ theme }) => theme.textNormal};
+  border-radius: 4px;
+  padding: 8px;
+  border: 1px solid ${({ theme }) => theme.backgroundPrimary};
+  font-size: 1rem;
+  resize: vertical;
+  min-height: 50px;
+`;
+
+export const EditActions = styled.div`
+  font-size: 12px;
+  margin-top: 4px;
+  color: ${({ theme }) => theme.textMuted};
+
+  button {
+    background: none;
+    border: none;
+    color: ${({ theme }) => theme.purpleAccent};
+    cursor: pointer;
+    padding: 0 4px;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 `;

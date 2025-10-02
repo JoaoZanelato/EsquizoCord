@@ -93,15 +93,18 @@ CREATE TABLE `cargos_usuario` (
   CONSTRAINT `fk_cargousuario_cargo` FOREIGN KEY (`id_cargo`) REFERENCES `cargos` (`id_cargo`) ON DELETE CASCADE
 );
 
--- Tabela de Chats (Canais de Texto)
+-- Tabela de Chats (Canais)
+-- --- INÍCIO DA ALTERAÇÃO ---
 CREATE TABLE `chats` (
   `id_chat` int NOT NULL AUTO_INCREMENT,
   `id_grupo` int NOT NULL,
   `nome` varchar(255) NOT NULL DEFAULT 'geral',
+  `tipo` ENUM('TEXTO', 'VOZ') NOT NULL DEFAULT 'TEXTO',
   PRIMARY KEY (`id_chat`),
   KEY `fk_chat_grupo` (`id_grupo`),
   CONSTRAINT `fk_chat_grupo` FOREIGN KEY (`id_grupo`) REFERENCES `grupos` (`id_grupo`) ON DELETE CASCADE
 );
+-- --- FIM DA ALTERAÇÃO ---
 
 -- Tabela de Mensagens em Grupo
 CREATE TABLE `mensagens` (
@@ -113,6 +116,7 @@ CREATE TABLE `mensagens` (
   `data_hora` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `id_mensagem_respondida` int DEFAULT NULL,
   `tipo` enum('texto','imagem') NOT NULL DEFAULT 'texto',
+  `foi_editada` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id_mensagem`),
   KEY `fk_msg_usuario` (`id_usuario`),
   KEY `fk_msg_chat` (`id_chat`),
@@ -132,6 +136,7 @@ CREATE TABLE `mensagens_diretas` (
   `data_hora` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `id_mensagem_respondida` int DEFAULT NULL,
   `tipo` enum('texto','imagem') NOT NULL DEFAULT 'texto',
+  `foi_editada` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id_mensagem`),
   KEY `fk_dm_remetente` (`id_remetente`),
   KEY `fk_dm_destinatario` (`id_destinatario`),
@@ -139,6 +144,18 @@ CREATE TABLE `mensagens_diretas` (
   CONSTRAINT `fk_dm_remetente` FOREIGN KEY (`id_remetente`) REFERENCES `usuarios` (`id_usuario`) ON DELETE CASCADE,
   CONSTRAINT `fk_dm_destinatario` FOREIGN KEY (`id_destinatario`) REFERENCES `usuarios` (`id_usuario`) ON DELETE CASCADE,
   CONSTRAINT `fk_dm_respondida` FOREIGN KEY (`id_mensagem_respondida`) REFERENCES `mensagens_diretas` (`id_mensagem`) ON DELETE SET NULL
+);
+
+-- Tabela de Banimentos
+CREATE TABLE `banimentos` (
+  `id_banimento` INT NOT NULL AUTO_INCREMENT,
+  `id_grupo` INT NOT NULL,
+  `id_usuario` INT NOT NULL,
+  `data_banimento` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_banimento`),
+  UNIQUE KEY `uq_banimento_grupo_usuario` (`id_grupo`, `id_usuario`),
+  CONSTRAINT `fk_banimento_grupo` FOREIGN KEY (`id_grupo`) REFERENCES `grupos` (`id_grupo`) ON DELETE CASCADE,
+  CONSTRAINT `fk_banimento_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id_usuario`) ON DELETE CASCADE
 );
 
 -- ÍNDICES PARA OTIMIZAÇÃO DE CONSULTAS

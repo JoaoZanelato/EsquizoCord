@@ -107,7 +107,6 @@ const Dashboard = () => {
             const newChannels = currentChat.group.channels.filter(
               (c) => c.id_chat !== channelId
             );
-            // Se o canal ativo foi excluído, volta para o canal "geral"
             if (currentChat.channelId === channelId) {
               return {
                 ...currentChat,
@@ -116,7 +115,6 @@ const Dashboard = () => {
                 channelName: newChannels[0]?.Nome,
               };
             }
-            // Se outro canal foi excluído, apenas atualiza a lista
             return {
               ...currentChat,
               group: { ...currentChat.group, channels: newChannels },
@@ -125,6 +123,34 @@ const Dashboard = () => {
         }
       };
 
+      const handleMemberKicked = ({ groupId, kickedUserId }) => {
+        if (kickedUserId === user.id_usuario) {
+          alert("Você foi banido deste grupo.");
+          setDashboardData((prev) => ({
+            ...prev,
+            groups: prev.groups.filter((g) => g.id_grupo !== groupId),
+          }));
+          setActiveChat(null);
+        } else {
+          if (
+            activeChat &&
+            activeChat.type === "group" &&
+            activeChat.group.details.id_grupo === groupId
+          ) {
+            setActiveChat((currentChat) => ({
+              ...currentChat,
+              group: {
+                ...currentChat.group,
+                members: currentChat.group.members.filter(
+                  (m) => m.id_usuario !== kickedUserId
+                ),
+              },
+            }));
+          }
+        }
+      };
+
+      socket.on("member_kicked", handleMemberKicked);
       socket.on("new_dm", handleNewDM);
       socket.on("new_group_message", handleNewGroupMessage);
       socket.on("friend_request_received", handleFriendRequest);
@@ -135,6 +161,7 @@ const Dashboard = () => {
         socket.off("new_group_message", handleNewGroupMessage);
         socket.off("friend_request_received", handleFriendRequest);
         socket.off("group_channel_deleted", handleChannelDeleted);
+        socket.off("member_kicked", handleMemberKicked);
       };
     }
   }, [socket, activeChat, user.id_usuario]);
@@ -239,6 +266,47 @@ const Dashboard = () => {
     } catch (error) {
       alert(
         error.response?.data?.message || "Não foi possível apagar a mensagem."
+      );
+    }
+  };
+
+  const handleEditMessage = async (messageId, newContent) => {
+    try {
+      let url = "";
+      if (activeChat?.type === "group") {
+        url = `/groups/messages/${messageId}`;
+      } else if (activeChat?.type === "dm") {
+        url = `/friends/dm/messages/${messageId}`;
+      }
+
+      if (url) {
+        await apiClient.put(url, { content: newContent });
+      }
+    } catch (error) {
+      alert(
+        error.response?.data?.message || "Não foi possível editar a mensagem."
+      );
+    }
+  };
+
+  const handleBanMember = async (memberToBan) => {
+    if (
+      !window.confirm(
+        `Tem a certeza de que deseja banir ${memberToBan.Nome} do grupo? Esta ação é irreversível.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      if (activeChat?.type === "group") {
+        await apiClient.delete(
+          `/groups/${activeChat.group.details.id_grupo}/members/${memberToBan.id_usuario}`
+        );
+      }
+    } catch (error) {
+      alert(
+        error.response?.data?.message || "Não foi possível banir o membro."
       );
     }
   };
@@ -411,6 +479,7 @@ const Dashboard = () => {
           onOpenGroupSettings={() => setIsEditGroupModalOpen(true)}
           onViewProfile={setViewingProfileId}
           onFriendAction={handleFriendAction}
+          onBanMember={handleBanMember}
           $isChannelListOpen={isChannelListOpen}
           onChannelCreated={handleChannelCreated}
           onChannelDeleted={handleChannelDeleted}
@@ -423,6 +492,7 @@ const Dashboard = () => {
           onReply={setReplyingTo}
           onCancelReply={() => setReplyingTo(null)}
           onDeleteMessage={handleDeleteMessage}
+          onEditMessage={handleEditMessage}
           onMenuClick={() => setIsChannelListOpen((prev) => !prev)}
         />
       </DashboardLayout>
