@@ -8,6 +8,7 @@ CREATE TABLE `temas` (
 );
 
 -- Tabela de Usuários
+-- --- INÍCIO DA ALTERAÇÃO ---
 CREATE TABLE `usuarios` (
   `id_usuario` int NOT NULL AUTO_INCREMENT,
   `nome` varchar(255) NOT NULL,
@@ -15,6 +16,8 @@ CREATE TABLE `usuarios` (
   `senha` varchar(255) NOT NULL,
   `foto_perfil` varchar(255) DEFAULT NULL,
   `biografia` text,
+  `status` ENUM('online', 'ausente', 'ocupado', 'invisivel') NOT NULL DEFAULT 'online',
+  `status_personalizado` VARCHAR(128) DEFAULT NULL,
   `id_tema` int DEFAULT NULL,
   `data_cadastro` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `token_verificacao` varchar(255) DEFAULT NULL,
@@ -28,6 +31,7 @@ CREATE TABLE `usuarios` (
   KEY `fk_usuario_tema` (`id_tema`),
   CONSTRAINT `fk_usuario_tema` FOREIGN KEY (`id_tema`) REFERENCES `temas` (`id_tema`) ON DELETE SET NULL ON UPDATE CASCADE
 );
+-- --- FIM DA ALTERAÇÃO ---
 
 -- Tabela de Amizades
 CREATE TABLE `amizades` (
@@ -94,7 +98,6 @@ CREATE TABLE `cargos_usuario` (
 );
 
 -- Tabela de Chats (Canais)
--- --- INÍCIO DA ALTERAÇÃO ---
 CREATE TABLE `chats` (
   `id_chat` int NOT NULL AUTO_INCREMENT,
   `id_grupo` int NOT NULL,
@@ -104,7 +107,6 @@ CREATE TABLE `chats` (
   KEY `fk_chat_grupo` (`id_grupo`),
   CONSTRAINT `fk_chat_grupo` FOREIGN KEY (`id_grupo`) REFERENCES `grupos` (`id_grupo`) ON DELETE CASCADE
 );
--- --- FIM DA ALTERAÇÃO ---
 
 -- Tabela de Mensagens em Grupo
 CREATE TABLE `mensagens` (

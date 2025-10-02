@@ -2,11 +2,26 @@
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
 
+// --- INÍCIO DA NOVA FUNÇÃO ---
+async function updateUserStatus({ userId, status, status_personalizado }, db) {
+  const [result] = await db.query(
+    "UPDATE usuarios SET status = ?, status_personalizado = ? WHERE id_usuario = ?",
+    [status, status_personalizado, userId]
+  );
+
+  if (result.affectedRows === 0) {
+    throw { status: 404, message: "Utilizador não encontrado." };
+  }
+}
+// --- FIM DA NOVA FUNÇÃO ---
+
 async function getUserProfile(userId, db) {
+  // --- INÍCIO DA ALTERAÇÃO ---
   const [users] = await db.query(
-    "SELECT id_usuario, nome, foto_perfil, biografia, data_cadastro FROM usuarios WHERE id_usuario = ?",
+    "SELECT id_usuario, nome, foto_perfil, biografia, data_cadastro, status, status_personalizado FROM usuarios WHERE id_usuario = ?",
     [userId]
   );
+  // --- FIM DA ALTERAÇÃO ---
   if (users.length === 0) {
     throw { status: 404, message: "Utilizador não encontrado." };
   }
@@ -130,16 +145,13 @@ async function deleteAccount(userId, password, db) {
     if (!match) {
       throw { status: 403, message: "Senha incorreta." };
     }
-    // A base de dados está configurada com ON DELETE CASCADE,
-    // o que simplifica a exclusão. Apenas apagar o utilizador
-    // irá remover em cascata a maioria dos dados relacionados.
     await connection.query("DELETE FROM usuarios WHERE id_usuario = ?", [
       userId,
     ]);
     await connection.commit();
   } catch (error) {
     await connection.rollback();
-    throw error; // Re-lança o erro para ser tratado pela rota
+    throw error;
   } finally {
     connection.release();
   }
@@ -151,6 +163,7 @@ async function getThemes(db) {
 }
 
 module.exports = {
+  updateUserStatus, // <-- Exportar a nova função
   getUserProfile,
   getFullUserProfile,
   updateUserProfile,

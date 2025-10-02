@@ -5,6 +5,9 @@ import { useSocket } from "../../context/SocketContext";
 import apiClient from "../../services/api";
 import MessageItem from "../MessageItem/MessageItem";
 import ChatInput from "../ChatInput/ChatInput";
+// --- INÍCIO DA ALTERAÇÃO ---
+import VoiceChannel from "../VoiceChannel/VoiceChannel"; // Importar o novo componente
+// --- FIM DA ALTERAÇÃO ---
 import {
   ChatAreaContainer,
   Header,
@@ -20,7 +23,7 @@ const ChatArea = ({
   onReply,
   onCancelReply,
   onDeleteMessage,
-  onEditMessage, // <-- Nova prop
+  onEditMessage,
   onMenuClick,
 }) => {
   const { user: currentUser } = useAuth();
@@ -66,7 +69,11 @@ const ChatArea = ({
       const ids = [currentUser.id_usuario, chatInfo.user.id_usuario].sort();
       socket.emit("join_dm_room", `dm-${ids[0]}-${ids[1]}`);
       url = `/friends/dm/${chatInfo.user.id_usuario}/messages`;
-    } else if (chatInfo.type === "group" && chatInfo.channelId) {
+    } else if (
+      chatInfo.type === "group" &&
+      chatInfo.channelId &&
+      chatInfo.channelType === "TEXTO"
+    ) {
       socket.emit(
         "join_group_room",
         `group-${chatInfo.group.details.id_grupo}`
@@ -104,7 +111,6 @@ const ChatArea = ({
       );
     };
 
-    // --- INÍCIO DA ALTERAÇÃO ---
     const handleMessageEdited = ({ messageId, newContent }) => {
       setMessages((prev) =>
         prev.map((msg) =>
@@ -130,14 +136,13 @@ const ChatArea = ({
       socket.off("dm_message_edited", handleMessageEdited);
       socket.off("group_message_edited", handleMessageEdited);
     };
-    // --- FIM DA ALTERAÇÃO ---
   }, [socket, currentUser.id_usuario]);
 
   useEffect(scrollToBottom, [messages]);
 
   const userPermissions =
     chatInfo?.type === "group" ? chatInfo.group.currentUserPermissions : 0;
-  const canDeleteMessages = (userPermissions & 4) > 0; // 4 = APAGAR_MENSAGENS
+  const canDeleteMessages = (userPermissions & 4) > 0;
 
   if (!chatInfo) {
     return (
@@ -153,6 +158,8 @@ const ChatArea = ({
   }
 
   let headerContent;
+  let chatContent;
+
   if (chatInfo.type === "dm") {
     headerContent = (
       <div
@@ -174,25 +181,8 @@ const ChatArea = ({
         </h3>
       </div>
     );
-  } else if (chatInfo.type === "group") {
-    headerContent = (
-      <h3>
-        <i
-          className="fas fa-hashtag"
-          style={{ color: "var(--text-muted)" }}
-        ></i>{" "}
-        {chatInfo.channelName || "Selecione um canal"}
-      </h3>
-    );
-  }
-
-  return (
-    <ChatAreaContainer>
-      <Header>
-        <MobileMenuButton onClick={onMenuClick}>&#9776;</MobileMenuButton>
-        {headerContent}
-      </Header>
-      <MessagesContainer>
+    chatContent = (
+      <>
         {loading && <p>A carregar mensagens...</p>}
         {!loading &&
           messages.map((msg) => (
@@ -205,13 +195,83 @@ const ChatArea = ({
               onViewProfile={onViewProfile}
               onReply={onReply}
               onDelete={onDeleteMessage}
-              onEdit={onEditMessage} // <-- Passar a nova prop
+              onEdit={onEditMessage}
             />
           ))}
+      </>
+    );
+  } else if (chatInfo.type === "group") {
+    // --- INÍCIO DA ALTERAÇÃO ---
+    if (chatInfo.channelType === "VOZ") {
+      headerContent = (
+        <h3>
+          <i
+            className="fas fa-volume-up"
+            style={{ color: "var(--text-muted)" }}
+          ></i>{" "}
+          {chatInfo.channelName}
+        </h3>
+      );
+      // Renderiza o novo componente VoiceChannel
+      chatContent = (
+        <VoiceChannel
+          channelId={chatInfo.channelId}
+          members={chatInfo.group.members}
+        />
+      );
+    } else {
+      // Canal de texto
+      headerContent = (
+        <h3>
+          <i
+            className="fas fa-hashtag"
+            style={{ color: "var(--text-muted)" }}
+          ></i>{" "}
+          {chatInfo.channelName || "Selecione um canal"}
+        </h3>
+      );
+      chatContent = (
+        <>
+          {loading && <p>A carregar mensagens...</p>}
+          {!loading &&
+            messages.map((msg) => (
+              <MessageItem
+                key={msg.id_mensagem}
+                message={msg}
+                canDelete={
+                  msg.id_usuario === currentUser.id_usuario || canDeleteMessages
+                }
+                onViewProfile={onViewProfile}
+                onReply={onReply}
+                onDelete={onDeleteMessage}
+                onEdit={onEditMessage}
+              />
+            ))}
+        </>
+      );
+    }
+    // --- FIM DA ALTERAÇÃO ---
+  }
+
+  return (
+    <ChatAreaContainer>
+      <Header>
+        <MobileMenuButton onClick={onMenuClick}>&#9776;</MobileMenuButton>
+        {headerContent}
+      </Header>
+      <MessagesContainer>
+        {chatContent}
         <div ref={messagesEndRef} />
       </MessagesContainer>
       <ChatInput
-        chatInfo={chatInfo}
+        chatInfo={{
+          ...chatInfo,
+          disabled: chatInfo?.channelType === "VOZ",
+          placeholder:
+            chatInfo?.channelType === "VOZ"
+              ? "Canais de voz não permitem mensagens."
+              : `Conversar em #${chatInfo.channelName}`,
+        }}
         replyingTo={replyingTo}
         onCancelReply={onCancelReply}
       />

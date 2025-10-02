@@ -18,7 +18,6 @@ app.set("port", port);
  * Cria o servidor HTTP.
  */
 const server = http.createServer(app);
-
 /**
  * Inicializa o Socket.IO com a configuração de CORS explícita.
  */
@@ -29,11 +28,15 @@ const io = new Server(server, {
     credentials: true,
   },
 });
-
 // Envolve o middleware de sessão para ser compatível com o Socket.IO
 const wrap = (middleware) => (socket, next) =>
   middleware(socket.request, {}, next);
 io.use(wrap(sessionMiddleware));
+
+// --- INÍCIO DA ALTERAÇÃO ---
+// Objeto para armazenar os utilizadores por canal de voz
+const voiceChannels = {};
+// --- FIM DA ALTERAÇÃO ---
 
 // Lógica de gestão de conexões do Socket.IO
 io.on("connection", (socket) => {
@@ -75,12 +78,93 @@ io.on("connection", (socket) => {
     console.log(`Socket ${socket.id} saiu da sala de GRUPO: ${roomName}`);
   });
 
+  // --- INÍCIO DAS NOVAS ALTERAÇÕES ---
+
+  // Juntar-se a um canal de voz
+  socket.on("join-voice-channel", (channelId) => {
+    socket.join(`voice-${channelId}`);
+    if (!voiceChannels[channelId]) {
+      voiceChannels[channelId] = [];
+    }
+    // Informa os outros utilizadores no canal que um novo par chegou
+    socket
+      .to(`voice-${channelId}`)
+      .emit("user-joined-voice", {
+        userId: currentUserId,
+        socketId: socket.id,
+      });
+    voiceChannels[channelId].push({
+      userId: currentUserId,
+      socketId: socket.id,
+    });
+    console.log(
+      `Utilizador ${currentUserId} entrou no canal de voz ${channelId}`
+    );
+  });
+
+  // Sinalização WebRTC
+  socket.on("webrtc-offer", ({ targetSocketId, offer }) => {
+    socket
+      .to(targetSocketId)
+      .emit("webrtc-offer", { fromSocketId: socket.id, offer });
+  });
+
+  socket.on("webrtc-answer", ({ targetSocketId, answer }) => {
+    socket
+      .to(targetSocketId)
+      .emit("webrtc-answer", { fromSocketId: socket.id, answer });
+  });
+
+  socket.on("webrtc-ice-candidate", ({ targetSocketId, candidate }) => {
+    socket
+      .to(targetSocketId)
+      .emit("webrtc-ice-candidate", { fromSocketId: socket.id, candidate });
+  });
+
+  // Sair de um canal de voz
+  socket.on("leave-voice-channel", (channelId) => {
+    socket.leave(`voice-${channelId}`);
+    if (voiceChannels[channelId]) {
+      voiceChannels[channelId] = voiceChannels[channelId].filter(
+        (user) => user.socketId !== socket.id
+      );
+      // Informa os restantes que um utilizador saiu
+      io.to(`voice-${channelId}`).emit("user-left-voice", {
+        socketId: socket.id,
+      });
+    }
+    console.log(
+      `Utilizador ${currentUserId} saiu do canal de voz ${channelId}`
+    );
+  });
+
+  // --- FIM DAS NOVAS ALTERAÇÕES ---
+
   socket.on("disconnect", () => {
-    // Apenas remove o utilizador se todas as suas conexões estiverem fechadas
-    // (Esta é uma lógica mais avançada, por agora mantemos a simples)
     onlineUsers.delete(currentUserId);
     app.set("onlineUsers", onlineUsers);
     io.emit("user_offline", { userId: currentUserId });
+
+    // --- INÍCIO DA ALTERAÇÃO ---
+    // Remove o utilizador de qualquer canal de voz em que esteja
+    for (const channelId in voiceChannels) {
+      const userInChannel = voiceChannels[channelId].find(
+        (u) => u.socketId === socket.id
+      );
+      if (userInChannel) {
+        voiceChannels[channelId] = voiceChannels[channelId].filter(
+          (user) => user.socketId !== socket.id
+        );
+        io.to(`voice-${channelId}`).emit("user-left-voice", {
+          socketId: socket.id,
+        });
+        console.log(
+          `Utilizador ${currentUserId} desconectado do canal de voz ${channelId}`
+        );
+      }
+    }
+    // --- FIM DA ALTERAÇÃO ---
+
     console.log(
       `Cliente ${socket.id} (Utilizador ${currentUserId}) desconectou-se.`
     );
@@ -89,14 +173,12 @@ io.on("connection", (socket) => {
 
 // Disponibiliza o 'io' para todas as rotas da app
 app.set("io", io);
-
 /**
  * O servidor começa a escutar na porta especificada.
  */
 server.listen(port);
 server.on("error", onError);
 server.on("listening", onListening);
-
 /**
  * Normaliza a porta para um número, string ou false.
  */
