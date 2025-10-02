@@ -90,14 +90,14 @@ const MessageItem = ({
             <AuthorName onClick={() => onViewProfile(message.id_usuario)}>
               {message.autorNome}
             </AuthorName>
-            {/* --- INÍCIO DA ALTERAÇÃO --- */}
+            {/* --- INÍCIO DA CORREÇÃO --- */}
             <Timestamp $isSentByMe={isSentByMe}>
               {formatTime(message.data_hora)}
               {message.foi_editada && (
                 <EditedIndicator>(editado)</EditedIndicator>
               )}
             </Timestamp>
-            {/* --- FIM DA ALTERAÇÃO --- */}
+            {/* --- FIM DA CORREÇÃO --- */}
           </MessageHeader>
         )}
 
@@ -151,6 +151,7 @@ const MessageItem = ({
               />
             )}
             {isSentByMe && (
+              // --- INÍCIO DA CORREÇÃO ---
               <Timestamp
                 $isSentByMe={isSentByMe}
                 style={{ textAlign: "right", marginTop: "4px" }}
@@ -160,6 +161,7 @@ const MessageItem = ({
                   <EditedIndicator>(editado)</EditedIndicator>
                 )}
               </Timestamp>
+              // --- FIM DA CORREÇÃO ---
             )}
           </>
         )}

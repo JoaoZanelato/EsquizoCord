@@ -144,7 +144,7 @@ async function removeFriend(friendId, currentUserId, db, io) {
 async function getDirectMessages(friendId, currentUserId, db) {
   const query = `
         SELECT 
-            md.id_mensagem, md.id_remetente, md.conteudo_criptografado, md.nonce, md.data_hora, md.tipo,
+            md.id_mensagem, md.id_remetente, md.conteudo_criptografado, md.nonce, md.data_hora, md.tipo, md.foi_editada,
             u.nome as autorNome, u.foto_perfil as autorFoto, u.id_usuario,
             md.id_mensagem_respondida,
             replied.conteudo_criptografado as repliedContent,
@@ -200,22 +200,21 @@ async function sendDirectMessage(
     "INSERT INTO mensagens_diretas (id_remetente, id_destinatario, conteudo_criptografado, nonce, id_mensagem_respondida, tipo) VALUES (?, ?, ?, ?, ?, ?)",
     [sender.id_usuario, recipientId, ciphertext, nonce, repliedToId, type]
   );
+  const newMessageId = result.insertId;
 
+  const [rows] = await db.query(
+    `SELECT
+        md.id_mensagem, md.id_remetente, md.id_destinatario, md.data_hora, md.tipo, md.foi_editada,
+        u.nome as autorNome, u.foto_perfil as autorFoto, u.id_usuario
+     FROM mensagens_diretas md
+     JOIN usuarios u ON md.id_remetente = u.id_usuario
+     WHERE md.id_mensagem = ?`,
+    [newMessageId]
+  );
   const messageData = {
-    id_mensagem: result.insertId,
-    id_remetente: sender.id_usuario,
-    id_destinatario: recipientId,
+    ...rows[0],
     Conteudo: content,
-    data_hora: new Date(),
-    autorNome: sender.nome,
-    autorFoto: sender.foto_perfil,
-    id_usuario: sender.id_usuario,
-    tipo: type,
   };
-
-  if (repliedToId) {
-    // Lógica para adicionar dados da mensagem respondida
-  }
 
   const roomName = `dm-${[sender.id_usuario, recipientId].sort().join("-")}`;
   io.to(roomName).emit("new_dm", messageData);
@@ -225,26 +224,24 @@ async function sendDirectMessage(
     const aiResponseText = await getAiResponse(content);
     const { ciphertext: aiCiphertext, nonce: aiNonce } =
       encrypt(aiResponseText);
-    const [aiUserDetails] = await db.query(
-      "SELECT nome, foto_perfil FROM usuarios WHERE id_usuario = ?",
-      [AI_USER_ID]
-    );
 
     const [aiResult] = await db.query(
       "INSERT INTO mensagens_diretas (id_remetente, id_destinatario, conteudo_criptografado, nonce, tipo) VALUES (?, ?, ?, ?, 'texto')",
       [AI_USER_ID, sender.id_usuario, aiCiphertext, aiNonce]
     );
 
+    const [aiRows] = await db.query(
+      `SELECT
+            md.id_mensagem, md.id_remetente, md.id_destinatario, md.data_hora, md.tipo, md.foi_editada,
+            u.nome as autorNome, u.foto_perfil as autorFoto, u.id_usuario
+         FROM mensagens_diretas md
+         JOIN usuarios u ON md.id_remetente = u.id_usuario
+         WHERE md.id_mensagem = ?`,
+      [aiResult.insertId]
+    );
     const aiMessageData = {
-      id_mensagem: aiResult.insertId,
-      id_remetente: AI_USER_ID,
-      id_destinatario: sender.id_usuario,
+      ...aiRows[0],
       Conteudo: aiResponseText,
-      data_hora: new Date(),
-      autorNome: aiUserDetails[0].nome,
-      autorFoto: aiUserDetails[0].foto_perfil,
-      id_usuario: AI_USER_ID,
-      tipo: "texto",
     };
     io.to(roomName).emit("new_dm", aiMessageData);
   }
@@ -280,6 +277,7 @@ async function deleteDirectMessage(messageId, currentUserId, db, io) {
     messageId: parseInt(messageId, 10),
   });
 }
+
 async function editDirectMessage(messageId, newContent, currentUserId, db, io) {
   const [msgResult] = await db.query(
     "SELECT id_remetente, id_destinatario, tipo FROM mensagens_diretas WHERE id_mensagem = ?",
@@ -326,5 +324,5 @@ module.exports = {
   getDirectMessages,
   sendDirectMessage,
   deleteDirectMessage,
-  editDirectMessage
+  editDirectMessage,
 };

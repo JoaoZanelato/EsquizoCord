@@ -62,7 +62,6 @@ export const Content = styled.div`
   flex-direction: column;
 `;
 
-// --- INÍCIO DA ALTERAÇÃO ---
 export const UserPanel = styled.div`
   background-color: ${({ theme }) => theme.backgroundTertiary};
   padding: 8px;
@@ -99,7 +98,31 @@ export const UserPanel = styled.div`
     overflow: hidden;
   }
 `;
-// --- FIM DA ALTERAÇÃO ---
+
+// --- INÍCIO DA NOVA ALTERAÇÃO ---
+export const AvatarWithStatus = styled.div`
+  position: relative;
+  flex-shrink: 0;
+  margin-right: 8px;
+
+  img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+  }
+`;
+
+export const UserStatusIndicator = styled.span`
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid ${({ theme }) => theme.backgroundTertiary};
+  background-color: ${({ color }) => color};
+`;
+// --- FIM DA NOVA ALTERAÇÃO ---
 
 export const ListHeader = styled.div`
   color: ${({ theme }) => theme.textMuted};

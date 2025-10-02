@@ -8,6 +8,7 @@ import PendingRequests from "../PendingRequests/PendingRequests";
 import AddFriend from "../AddFriend/AddFriend";
 import ManageMemberRolesModal from "../ManageMemberRolesModal/ManageMemberRolesModal";
 import CreateChannelModal from "../CreateChannelModal/CreateChannelModal";
+import StatusModal from "../StatusModal/StatusModal"; // <-- 1. IMPORTAR O MODAL
 
 import {
   ChannelListContainer,
@@ -23,6 +24,8 @@ import {
   ManageMemberButton,
   DeleteChannelButton,
   KickMemberButton,
+  AvatarWithStatus, // <-- 2. IMPORTAR NOVOS ESTILOS
+  UserStatusIndicator, // <-- 2. IMPORTAR NOVOS ESTILOS
 } from "./styles";
 
 const PERMISSIONS = {
@@ -30,6 +33,15 @@ const PERMISSIONS = {
   EXPULSAR_MEMBROS: 2,
   CRIAR_CANAIS: 8,
 };
+
+// --- INÍCIO DA ALTERAÇÃO ---
+const STATUS_COLORS = {
+  online: "#43b581",
+  ausente: "#faa61a",
+  ocupado: "#f04747",
+  invisivel: "#747f8d",
+};
+// --- FIM DA ALTERAÇÃO ---
 
 const ListHeaderContainer = styled.div`
   display: flex;
@@ -67,6 +79,9 @@ const ChannelList = ({
   const [managingMember, setManagingMember] = useState(null);
   const [isCreateChannelModalOpen, setIsCreateChannelModalOpen] =
     useState(false);
+  // --- INÍCIO DA ALTERAÇÃO ---
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false); // 3. Adicionar estado para o modal de status
+  // --- FIM DA ALTERAÇÃO ---
 
   const isGroupView = activeChat?.type === "group";
   const groupDetails = isGroupView ? activeChat.group : null;
@@ -109,12 +124,10 @@ const ChannelList = ({
     const canBanMembers =
       (groupDetails.currentUserPermissions & PERMISSIONS.EXPULSAR_MEMBROS) > 0;
 
-    // --- INÍCIO DA ALTERAÇÃO ---
     const textChannels =
       groupDetails.channels?.filter((c) => c.tipo === "TEXTO") || [];
     const voiceChannels =
       groupDetails.channels?.filter((c) => c.tipo === "VOZ") || [];
-    // --- FIM DA ALTERAÇÃO ---
 
     return (
       <>
@@ -130,7 +143,6 @@ const ChannelList = ({
           )}
         </ListHeaderContainer>
 
-        {/* --- INÍCIO DA ALTERAÇÃO --- */}
         {textChannels.map((channel) => (
           <ChannelItem
             key={channel.id_chat}
@@ -140,7 +152,7 @@ const ChannelList = ({
                 ...activeChat,
                 channelId: channel.id_chat,
                 channelName: channel.nome,
-                channelType: channel.tipo, // Adicionar tipo
+                channelType: channel.tipo,
               })
             }
           >
@@ -172,7 +184,7 @@ const ChannelList = ({
                 ...activeChat,
                 channelId: channel.id_chat,
                 channelName: channel.nome,
-                channelType: channel.tipo, // Adicionar tipo
+                channelType: channel.tipo,
               })
             }
           >
@@ -191,7 +203,6 @@ const ChannelList = ({
             )}
           </ChannelItem>
         ))}
-        {/* --- FIM DA ALTERAÇÃO --- */}
 
         <ListHeader style={{ marginTop: "20px" }}>
           Membros — {groupDetails.members?.length}
@@ -330,11 +341,19 @@ const ChannelList = ({
           {isGroupView ? renderGroupContent() : renderFriendsContent()}
         </Content>
 
-        <UserPanel>
-          <img src={user.fotoPerfil || "/images/logo.png"} alt={user.nome} />
-          <div>
+        {/* --- INÍCIO DA ALTERAÇÃO --- */}
+        <UserPanel onClick={() => setIsStatusModalOpen(true)}>
+          <AvatarWithStatus>
+            <img src={user.foto_perfil || "/images/logo.png"} alt={user.nome} />
+            <UserStatusIndicator
+              color={STATUS_COLORS[user.status || "online"]}
+            />
+          </AvatarWithStatus>
+          <div className="user-info">
             <span className="username">{user.nome}</span>
-            <span className="user-tag">#{user.id_usuario}</span>
+            <span className="user-status">
+              {user.status_personalizado || user.status}
+            </span>
           </div>
         </UserPanel>
       </ChannelListContainer>
@@ -353,6 +372,12 @@ const ChannelList = ({
         groupDetails={groupDetails?.details}
         onChannelCreated={onChannelCreated}
       />
+
+      <StatusModal
+        isOpen={isStatusModalOpen}
+        onClose={() => setIsStatusModalOpen(false)}
+      />
+      {/* --- FIM DA ALTERAÇÃO --- */}
     </>
   );
 };

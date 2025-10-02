@@ -34,10 +34,7 @@ const Dashboard = () => {
   const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false);
   const [viewingProfileId, setViewingProfileId] = useState(null);
   const [isChannelListOpen, setIsChannelListOpen] = useState(false);
-  const [notifications, setNotifications] = useState({
-    dm: new Set(),
-    groups: new Set(),
-  });
+  const [notifications, setNotifications] = useState([]);
 
   const fetchData = useCallback(
     async (selectChatAfter = null) => {
@@ -71,10 +68,16 @@ const Dashboard = () => {
           activeChat.user.id_usuario !== msg.id_remetente
         ) {
           if (msg.id_remetente !== user.id_usuario) {
-            setNotifications((prev) => ({
-              ...prev,
-              dm: new Set(prev.dm).add(msg.id_remetente),
-            }));
+            const newNotification = {
+              id: `dm-${msg.id_remetente}`,
+              type: "dm",
+              message: `Nova mensagem de ${msg.autorNome}`,
+              senderId: msg.id_remetente,
+            };
+            setNotifications((prev) => [
+              ...prev.filter((n) => n.id !== newNotification.id),
+              newNotification,
+            ]);
           }
         }
       };
@@ -84,17 +87,32 @@ const Dashboard = () => {
           activeChat.type !== "group" ||
           activeChat.channelId !== msg.id_chat
         ) {
-          setNotifications((prev) => ({
-            ...prev,
-            groups: new Set(prev.groups).add(msg.groupId),
-          }));
+          const groupName =
+            dashboardData?.groups.find((g) => g.id_grupo === msg.groupId)
+              ?.Nome || "um grupo";
+          const newNotification = {
+            id: `group-${msg.groupId}`,
+            type: "group",
+            message: `Nova mensagem em ${groupName}`,
+            groupId: msg.groupId,
+          };
+          setNotifications((prev) => [
+            ...prev.filter((n) => n.id !== newNotification.id),
+            newNotification,
+          ]);
         }
       };
-      const handleFriendRequest = () => {
-        setNotifications((prev) => ({
-          ...prev,
-          dm: new Set(prev.dm).add("pending"),
-        }));
+      const handleFriendRequest = (request) => {
+        const newNotification = {
+          id: `friend_request-${request.id_usuario}`,
+          type: "friend_request",
+          message: `${request.nome} enviou-lhe um pedido de amizade.`,
+          senderId: request.id_usuario,
+        };
+        setNotifications((prev) => [
+          ...prev.filter((n) => n.id !== newNotification.id),
+          newNotification,
+        ]);
       };
 
       const handleChannelDeleted = ({ channelId, groupId }) => {
@@ -150,6 +168,44 @@ const Dashboard = () => {
         }
       };
 
+      // --- INÍCIO DA ALTERAÇÃO ---
+      const handleStatusChanged = ({
+        userId,
+        status,
+        status_personalizado,
+      }) => {
+        setDashboardData((prevData) => {
+          if (!prevData) return prevData;
+
+          const newFriends = prevData.friends.map((friend) =>
+            friend.id_usuario === userId
+              ? { ...friend, status, status_personalizado }
+              : friend
+          );
+
+          // Atualiza também os membros nos grupos (se estiverem visíveis)
+          // Esta parte é mais complexa e pode ser otimizada, mas para já funciona
+          if (activeChat?.type === "group") {
+            setActiveChat((currentChat) => ({
+              ...currentChat,
+              group: {
+                ...currentChat.group,
+                members: currentChat.group.members.map((m) =>
+                  m.id_usuario === userId
+                    ? { ...m, status, status_personalizado }
+                    : m
+                ),
+              },
+            }));
+          }
+
+          return { ...prevData, friends: newFriends };
+        });
+      };
+
+      socket.on("user_status_changed", handleStatusChanged);
+      // --- FIM DA ALTERAÇÃO ---
+
       socket.on("member_kicked", handleMemberKicked);
       socket.on("new_dm", handleNewDM);
       socket.on("new_group_message", handleNewGroupMessage);
@@ -162,27 +218,29 @@ const Dashboard = () => {
         socket.off("friend_request_received", handleFriendRequest);
         socket.off("group_channel_deleted", handleChannelDeleted);
         socket.off("member_kicked", handleMemberKicked);
+        socket.off("user_status_changed", handleStatusChanged); // Limpar o listener
       };
     }
-  }, [socket, activeChat, user.id_usuario]);
+  }, [socket, activeChat, user.id_usuario, dashboardData]);
 
   const handleSelectGroup = async (group) => {
     try {
       const response = await apiClient.get(`/groups/${group.id_grupo}/details`);
       const groupDetails = response.data;
-      const defaultChannel = groupDetails.channels[0];
+      const defaultChannel = groupDetails.channels.find(
+        (c) => c.tipo === "TEXTO"
+      );
 
       setActiveChat({
         type: "group",
         group: groupDetails,
         channelId: defaultChannel?.id_chat,
         channelName: defaultChannel?.Nome,
+        channelType: defaultChannel?.tipo,
       });
-      setNotifications((prev) => {
-        const newGroups = new Set(prev.groups);
-        newGroups.delete(group.id_grupo);
-        return { ...prev, groups: newGroups };
-      });
+      setNotifications((prev) =>
+        prev.filter((n) => n.groupId !== group.id_grupo)
+      );
       setIsChannelListOpen(false);
     } catch (err) {
       console.error("Erro ao carregar detalhes do grupo:", err);
@@ -194,11 +252,9 @@ const Dashboard = () => {
     setActiveChat(chat);
     setReplyingTo(null);
     if (chat.type === "dm") {
-      setNotifications((prev) => {
-        const newDms = new Set(prev.dm);
-        newDms.delete(chat.user.id_usuario);
-        return { ...prev, dm: newDms };
-      });
+      setNotifications((prev) =>
+        prev.filter((n) => n.senderId !== chat.user.id_usuario)
+      );
     }
     setIsChannelListOpen(false);
   };
@@ -358,6 +414,7 @@ const Dashboard = () => {
         group: newGroupData,
         channelId: newChannel.id_chat,
         channelName: newChannel.Nome,
+        channelType: newChannel.tipo,
       };
     });
   };
@@ -415,11 +472,17 @@ const Dashboard = () => {
               setActiveChat(null);
               setReplyingTo(null);
               setIsChannelListOpen(true);
-              setNotifications((prev) => ({ ...prev, dm: new Set() }));
+              setNotifications((prev) =>
+                prev.filter(
+                  (n) => n.type !== "dm" && n.type !== "friend_request"
+                )
+              );
             }}
           >
             <img src="/images/logo.png" alt="Início" />
-            {notifications.dm.size > 0 && <NotificationBadge />}
+            {notifications.some(
+              (n) => n.type === "dm" || n.type === "friend_request"
+            ) && <NotificationBadge />}
           </ServerIcon>
           <Divider />
 
@@ -439,7 +502,7 @@ const Dashboard = () => {
                 src={group.Foto || "/images/default-group-icon.png"}
                 alt={group.Nome}
               />
-              {notifications.groups.has(group.id_grupo) && (
+              {notifications.some((n) => n.groupId === group.id_grupo) && (
                 <NotificationBadge />
               )}
             </ServerIcon>
@@ -466,7 +529,7 @@ const Dashboard = () => {
 
           <div style={{ marginTop: "auto" }}>
             <ServerIcon as={Link} to="/settings" title="Configurações">
-              <img src={user.fotoPerfil || "/images/logo.png"} alt="Perfil" />
+              <img src={user.foto_perfil || "/images/logo.png"} alt="Perfil" />
             </ServerIcon>
           </div>
         </ServerList>
@@ -537,6 +600,7 @@ const Dashboard = () => {
         onlineUserIds={dashboardData.onlineUserIds || []}
         onClose={() => setViewingProfileId(null)}
         onAction={handleFriendAction}
+        onBanMember={handleBanMember}
         onSendMessage={handleSendMessage}
         activeGroup={activeChat?.type === "group" ? activeChat.group : null}
       />

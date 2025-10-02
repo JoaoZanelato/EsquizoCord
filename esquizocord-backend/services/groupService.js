@@ -52,13 +52,11 @@ async function banMember(groupId, memberId, currentUserId, db, io) {
     throw { status: 403, message: "O dono do grupo não pode ser banido." };
   }
 
-  // Adiciona o utilizador à lista de banidos
   await db.query(
     "INSERT INTO banimentos (id_grupo, id_usuario) VALUES (?, ?) ON DUPLICATE KEY UPDATE id_usuario = id_usuario",
     [groupId, memberId]
   );
 
-  // Remove o utilizador do grupo
   const [result] = await db.query(
     "DELETE FROM participantes_grupo WHERE id_grupo = ? AND id_usuario = ?",
     [groupId, memberId]
@@ -131,11 +129,11 @@ async function getGroupDetails(groupId, currentUserId, db) {
     throw { status: 404, message: "Grupo não encontrado." };
 
   const [channels] = await db.query(
-    "SELECT id_chat, nome, tipo FROM chats WHERE id_grupo = ?", // <-- ALTERAÇÃO AQUI
+    "SELECT id_chat, nome, tipo FROM chats WHERE id_grupo = ?",
     [groupId]
   );
   const [members] = await db.query(
-    `SELECT u.id_usuario, u.nome, u.foto_perfil,
+    `SELECT u.id_usuario, u.nome, u.foto_perfil, u.status, u.status_personalizado,
             (SELECT JSON_ARRAYAGG(JSON_OBJECT('id_cargo', c.id_cargo, 'nome_cargo', c.nome_cargo, 'cor', c.cor, 'icone', c.icone, 'permissoes', c.permissoes))
              FROM cargos_usuario cu JOIN cargos c ON cu.id_cargo = c.id_cargo
              WHERE cu.id_usuario = u.id_usuario AND c.id_grupo = pg.id_grupo) as cargos
@@ -154,10 +152,12 @@ async function getGroupDetails(groupId, currentUserId, db) {
   return {
     details: details[0],
     channels,
+    // --- INÍCIO DA CORREÇÃO ---
     members: members.map((m) => ({
       ...m,
-      cargos: m.cargos ? JSON.parse(m.cargos) : [],
+      cargos: m.cargos || [], // Apenas usar o valor diretamente
     })),
+    // --- FIM DA CORREÇÃO ---
     currentUserPermissions,
   };
 }
@@ -235,7 +235,6 @@ async function joinGroup(groupId, userId, db) {
 }
 
 // --- Lógica de Canais ---
-// --- INÍCIO DA ALTERAÇÃO ---
 async function createChannel(groupId, userId, channelName, channelType, db) {
   if (
     !(
@@ -255,7 +254,6 @@ async function createChannel(groupId, userId, channelName, channelType, db) {
     tipo: channelType,
   };
 }
-// --- FIM DA ALTERAÇÃO ---
 
 async function deleteChannel(groupId, channelId, userId, db, io) {
   if (
@@ -290,7 +288,6 @@ async function getGroupMessages(chatId, db) {
     `;
   const [messages] = await db.query(query, [chatId]);
 
-  // Decriptar em lote
   return messages.map((msg) => ({
     ...msg,
     Conteudo: decrypt({
@@ -329,7 +326,7 @@ async function sendGroupMessage(
     id_usuario: sender.id_usuario,
     autorNome: sender.nome,
     autorFoto: sender.foto_perfil,
-    tipo,
+    tipo: type,
     id_mensagem_respondida: repliedToId,
   };
 
@@ -339,7 +336,6 @@ async function sendGroupMessage(
     const aiResponseText = await getAiResponse(
       content.replace("@EsquizoIA", "").trim()
     );
-    // Enviar a resposta da IA...
   }
   return messageData;
 }
@@ -432,7 +428,6 @@ async function updateRole(groupId, roleId, userId, roleData, db) {
 async function deleteRole(groupId, roleId, userId, db) {
   if (!(await isGroupCreator(userId, groupId, db)))
     throw { status: 403, message: "Apenas o criador pode gerir cargos." };
-  // ON DELETE CASCADE trata da tabela cargos_usuario
   await db.query("DELETE FROM cargos WHERE id_cargo = ? AND id_grupo = ?", [
     roleId,
     groupId,
@@ -446,7 +441,6 @@ async function updateUserRoles(groupId, memberId, userId, roleIds, db) {
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
-    // Apaga apenas os cargos deste grupo para este utilizador
     await connection.query(
       "DELETE FROM cargos_usuario WHERE id_usuario = ? AND id_cargo IN (SELECT id_cargo FROM cargos WHERE id_grupo = ?)",
       [memberId, groupId]
@@ -466,6 +460,55 @@ async function updateUserRoles(groupId, memberId, userId, roleIds, db) {
     connection.release();
   }
 }
+
+// --- INÍCIO DA NOVA FUNÇÃO ---
+async function getGroupAnalytics(groupId, userId, db) {
+  const hasPermission =
+    (await getUserPermissions(userId, groupId, db)) &
+    PERMISSIONS.VISUALIZAR_RELATORIOS;
+  if (!hasPermission) {
+    throw {
+      status: 403,
+      message: "Você não tem permissão para ver os relatórios.",
+    };
+  }
+
+  const [general] = await db.query(
+    `SELECT 
+            (SELECT COUNT(*) FROM participantes_grupo WHERE id_grupo = ?) as memberCount,
+            (SELECT COUNT(*) FROM mensagens m JOIN chats c ON m.id_chat = c.id_chat WHERE c.id_grupo = ?) as totalMessages`,
+    [groupId, groupId]
+  );
+
+  const [dailyActivity] = await db.query(
+    `SELECT DATE(data_hora) as date, COUNT(*) as count 
+         FROM mensagens m
+         JOIN chats c ON m.id_chat = c.id_chat
+         WHERE c.id_grupo = ? AND m.data_hora >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+         GROUP BY DATE(data_hora)
+         ORDER BY date ASC`,
+    [groupId]
+  );
+
+  const [topMembers] = await db.query(
+    `SELECT u.nome, COUNT(m.id_mensagem) as messageCount
+         FROM mensagens m
+         JOIN usuarios u ON m.id_usuario = u.id_usuario
+         JOIN chats c ON m.id_chat = c.id_chat
+         WHERE c.id_grupo = ?
+         GROUP BY u.id_usuario
+         ORDER BY messageCount DESC
+         LIMIT 5`,
+    [groupId]
+  );
+
+  return {
+    general: general[0],
+    dailyActivity,
+    topMembers,
+  };
+}
+// --- FIM DA NOVA FUNÇÃO ---
 
 module.exports = {
   PERMISSIONS,
@@ -489,4 +532,5 @@ module.exports = {
   updateRole,
   deleteRole,
   updateUserRoles,
+  getGroupAnalytics, // Exportar a nova função
 };
