@@ -19,6 +19,42 @@ const passwordValidation = [
   }),
 ];
 
+// --- INÍCIO DA NOVA ROTA E VALIDAÇÃO ---
+const statusValidation = [
+  body("status").isIn(["online", "ausente", "ocupado", "invisivel"]),
+  body("status_personalizado").isLength({ max: 128 }).trim().escape(),
+];
+
+router.post(
+  "/status",
+  requireLogin,
+  statusValidation,
+  validate,
+  async (req, res, next) => {
+    try {
+      await userService.updateUserStatus(
+        {
+          userId: req.session.user.id_usuario,
+          ...req.body,
+        },
+        req.db
+      );
+
+      // Notificar outros utilizadores sobre a mudança de status via Socket.IO
+      req.app.get("io").emit("user_status_changed", {
+        userId: req.session.user.id_usuario,
+        status: req.body.status,
+        status_personalizado: req.body.status_personalizado,
+      });
+
+      res.status(200).json({ message: "Status atualizado com sucesso!" });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+// --- FIM DA NOVA ROTA E VALIDAÇÃO ---
+
 router.get("/temas", requireLogin, async (req, res, next) => {
   try {
     const themes = await userService.getThemes(req.db);

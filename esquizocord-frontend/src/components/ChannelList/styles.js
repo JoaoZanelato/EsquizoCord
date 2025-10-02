@@ -62,31 +62,44 @@ export const Content = styled.div`
   flex-direction: column;
 `;
 
+// --- INÍCIO DA ALTERAÇÃO ---
 export const UserPanel = styled.div`
   background-color: ${({ theme }) => theme.backgroundTertiary};
-  padding: 12px;
+  padding: 8px;
   display: flex;
   align-items: center;
   margin-top: auto;
-  height: 52px;
+  min-height: 52px;
+  cursor: pointer;
+  transition: background-color 0.2s;
 
-  img {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    margin-right: 8px;
+  &:hover {
+    background-color: ${({ theme }) => theme.backgroundModifierHover};
+  }
+
+  .user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+    white-space: nowrap;
   }
 
   .username {
     font-weight: bold;
-    margin-right: 5px;
+    font-size: 14px;
+    text-overflow: ellipsis;
+    overflow: hidden;
   }
 
-  .user-tag {
+  .user-status {
     color: ${({ theme }) => theme.textMuted};
     font-size: 12px;
+    text-overflow: ellipsis;
+    overflow: hidden;
   }
 `;
+// --- FIM DA ALTERAÇÃO ---
 
 export const ListHeader = styled.div`
   color: ${({ theme }) => theme.textMuted};
