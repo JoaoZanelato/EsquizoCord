@@ -1,5 +1,5 @@
 // src/pages/Dashboard/Dashboard.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react"; // 1. Importar o useRef
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useSocket } from "../../context/SocketContext";
@@ -36,6 +36,12 @@ const Dashboard = () => {
   const [isChannelListOpen, setIsChannelListOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
+  // 2. Criar uma ref para manter uma referência atualizada do dashboardData
+  const dashboardDataRef = useRef(dashboardData);
+  useEffect(() => {
+    dashboardDataRef.current = dashboardData;
+  }, [dashboardData]);
+
   const fetchData = useCallback(
     async (selectChatAfter = null) => {
       try {
@@ -49,10 +55,10 @@ const Dashboard = () => {
           "Não foi possível carregar os seus dados. Tente atualizar a página."
         );
       } finally {
-        if (loading) setLoading(false);
+        setLoading(false);
       }
     },
-    [loading]
+    [] // Array de dependências deve estar vazio para a função ser criada apenas uma vez
   );
 
   useEffect(() => {
@@ -87,9 +93,11 @@ const Dashboard = () => {
           activeChat.type !== "group" ||
           activeChat.channelId !== msg.id_chat
         ) {
+          // 4. Usar a ref para aceder ao dado mais recente sem causar um novo render
           const groupName =
-            dashboardData?.groups.find((g) => g.id_grupo === msg.groupId)
-              ?.Nome || "um grupo";
+            dashboardDataRef.current?.groups.find(
+              (g) => g.id_grupo === msg.groupId
+            )?.Nome || "um grupo";
           const newNotification = {
             id: `group-${msg.groupId}`,
             type: "group",
@@ -168,7 +176,6 @@ const Dashboard = () => {
         }
       };
 
-      // --- INÍCIO DA ALTERAÇÃO ---
       const handleStatusChanged = ({
         userId,
         status,
@@ -183,8 +190,6 @@ const Dashboard = () => {
               : friend
           );
 
-          // Atualiza também os membros nos grupos (se estiverem visíveis)
-          // Esta parte é mais complexa e pode ser otimizada, mas para já funciona
           if (activeChat?.type === "group") {
             setActiveChat((currentChat) => ({
               ...currentChat,
@@ -204,8 +209,6 @@ const Dashboard = () => {
       };
 
       socket.on("user_status_changed", handleStatusChanged);
-      // --- FIM DA ALTERAÇÃO ---
-
       socket.on("member_kicked", handleMemberKicked);
       socket.on("new_dm", handleNewDM);
       socket.on("new_group_message", handleNewGroupMessage);
@@ -218,10 +221,12 @@ const Dashboard = () => {
         socket.off("friend_request_received", handleFriendRequest);
         socket.off("group_channel_deleted", handleChannelDeleted);
         socket.off("member_kicked", handleMemberKicked);
-        socket.off("user_status_changed", handleStatusChanged); // Limpar o listener
+        socket.off("user_status_changed", handleStatusChanged);
       };
     }
-  }, [socket, activeChat, user.id_usuario, dashboardData]);
+  }, [socket, activeChat, user.id_usuario]); // 3. Remover dashboardData das dependências
+
+  // ... (O resto do ficheiro permanece exatamente igual)
 
   const handleSelectGroup = async (group) => {
     try {
@@ -235,7 +240,7 @@ const Dashboard = () => {
         type: "group",
         group: groupDetails,
         channelId: defaultChannel?.id_chat,
-        channelName: defaultChannel?.Nome,
+        channelName: defaultChannel?.nome, 
         channelType: defaultChannel?.tipo,
       });
       setNotifications((prev) =>
@@ -420,9 +425,7 @@ const Dashboard = () => {
   };
 
   const handleChannelDeleted = async (channelId) => {
-    if (
-      !window.confirm("Tem a certeza de que deseja apagar este canal de texto?")
-    ) {
+    if (!window.confirm("Tem a certeza de que deseja apagar este canal?")) {
       return;
     }
 

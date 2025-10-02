@@ -27,17 +27,13 @@ import {
   RoleColorDot,
 } from "./styles";
 
-const PERMISSIONS = {
-  EXPULSAR_MEMBROS: 2,
-};
-
 const UserProfileModal = ({
   userId,
   onlineUserIds,
   onClose,
   onAction,
   onSendMessage,
-  onBanMember, // <-- NOVA PROP
+  onBanMember,
   activeGroup,
 }) => {
   const { user: currentUser } = useAuth();
@@ -86,7 +82,7 @@ const UserProfileModal = ({
     };
 
     fetchProfile();
-  }, [userId, activeGroup]);
+  }, [userId, activeGroup, onClose]);
 
   const renderActionButtons = () => {
     if (
@@ -99,18 +95,15 @@ const UserProfileModal = ({
     const { friendship } = profileData;
     const targetUser = profileData.user;
 
-    // --- INÍCIO DA ALTERAÇÃO ---
     const isMemberOfActiveGroup = activeGroup?.members.some(
       (m) => m.id_usuario === targetUser.id_usuario
     );
-    const canBan =
-      activeGroup &&
-      (activeGroup.currentUserPermissions & PERMISSIONS.EXPULSAR_MEMBROS) > 0;
     const isOwner =
       activeGroup && activeGroup.details.id_criador === targetUser.id_usuario;
 
-    // Adiciona o botão de banir se as condições forem cumpridas
-    if (isMemberOfActiveGroup && canBan && !isOwner) {
+    // Lógica simplificada: Apenas mostra o botão se for um membro do grupo ativo (e não for o dono).
+    // O backend será responsável por validar se o currentUser tem de facto permissão para banir.
+    if (isMemberOfActiveGroup && !isOwner && onBanMember) {
       return (
         <ActionButton
           className="danger"
@@ -121,7 +114,6 @@ const UserProfileModal = ({
         </ActionButton>
       );
     }
-    // --- FIM DA ALTERAÇÃO ---
 
     if (targetUser.id_usuario === AI_USER_ID) {
       return (

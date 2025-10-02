@@ -23,7 +23,7 @@ apiClient.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      // Para todos os outros erros 401, o usuário está realmente deslogado
+      // Para todos os outros erros 401, o utilizador está realmente deslogado
       // e deve ser redirecionado.
       window.location = "/login";
     }

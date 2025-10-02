@@ -108,13 +108,13 @@ export const AuthorName = styled.span`
   }
 `;
 
-// --- INÍCIO DA ALTERAÇÃO ---
 export const Timestamp = styled.span`
   color: ${({ theme, $isSentByMe }) =>
-    $isSentByMe ? theme.textMuted : theme.brandExperiment};
+    $isSentByMe ? "rgba(255, 255, 255, 0.7)" : theme.textMuted};
   font-size: 0.75rem;
+  /* Garante que o timestamp não quebre a linha */
+  white-space: nowrap;
 `;
-// --- FIM DA ALTERAÇÃO ---
 
 export const MessageText = styled.div`
   color: ${({ $isSentByMe, theme }) =>
@@ -124,6 +124,9 @@ export const MessageText = styled.div`
   overflow-wrap: break-word;
   word-wrap: break-word;
   word-break: break-word;
+
+  /* Adiciona margem se a mensagem for enviada por si, para separar do timestamp */
+  ${({ $isSentByMe }) => $isSentByMe && `margin-bottom: 4px;`}
 `;
 
 export const EditedIndicator = styled.span`

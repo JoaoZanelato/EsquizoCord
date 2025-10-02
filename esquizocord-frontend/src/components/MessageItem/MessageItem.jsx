@@ -31,8 +31,24 @@ const ChatImage = styled.img`
   cursor: pointer;
 `;
 
+// Função de formatação de tempo robusta e à prova de falhas
 const formatTime = (dateString) => {
-  const date = new Date(dateString);
+  if (!dateString) return "";
+
+  let date = new Date(dateString);
+
+  // Se a data for inválida, é provável que seja o formato do MySQL (YYYY-MM-DD HH:MM:SS)
+  if (isNaN(date.getTime()) && typeof dateString === "string") {
+    // Substitui o primeiro espaço por 'T' e adiciona 'Z' para tratar como UTC
+    // Isso cria um formato ISO 8601 que o JavaScript entende de forma fiável
+    date = new Date(dateString.replace(" ", "T") + "Z");
+  }
+
+  // Se ainda assim for inválida, retorna uma string vazia para não quebrar a UI
+  if (isNaN(date.getTime())) {
+    return "";
+  }
+
   return date.toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
@@ -85,19 +101,15 @@ const MessageItem = ({
         />
       )}
       <MessageContent $isSentByMe={isSentByMe}>
+        {/* O cabeçalho só é renderizado para mensagens recebidas */}
         {!isSentByMe && (
           <MessageHeader>
             <AuthorName onClick={() => onViewProfile(message.id_usuario)}>
               {message.autorNome}
             </AuthorName>
-            {/* --- INÍCIO DA CORREÇÃO --- */}
             <Timestamp $isSentByMe={isSentByMe}>
               {formatTime(message.data_hora)}
-              {message.foi_editada && (
-                <EditedIndicator>(editado)</EditedIndicator>
-              )}
             </Timestamp>
-            {/* --- FIM DA CORREÇÃO --- */}
           </MessageHeader>
         )}
 
@@ -150,8 +162,8 @@ const MessageItem = ({
                 dangerouslySetInnerHTML={{ __html: sanitizedContent }}
               />
             )}
+            {/* Timestamp para mensagens enviadas */}
             {isSentByMe && (
-              // --- INÍCIO DA CORREÇÃO ---
               <Timestamp
                 $isSentByMe={isSentByMe}
                 style={{ textAlign: "right", marginTop: "4px" }}
@@ -161,7 +173,6 @@ const MessageItem = ({
                   <EditedIndicator>(editado)</EditedIndicator>
                 )}
               </Timestamp>
-              // --- FIM DA CORREÇÃO ---
             )}
           </>
         )}
