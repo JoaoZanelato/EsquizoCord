@@ -1,20 +1,50 @@
 // esquizocord-backend/services/authService.js
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
+const axios = require("axios"); // Usaremos o axios em vez do nodemailer
 const saltRounds = 10;
 
-const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 587,
-  secure: false, // O Brevo usa STARTTLS na porta 587, então 'secure' é false
-  auth: {
-    user: process.env.EMAIL_USER, // O seu e-mail de login do Brevo
-    pass: process.env.EMAIL_PASS, // A sua chave SMTP do Brevo
-  },
-});
+// --- FUNÇÃO PARA ENVIAR E-MAIL VIA API HTTP DO BREVO ---
+async function sendTransactionalEmail(toEmail, toName, subject, htmlContent) {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) {
+    console.error("### ERRO CRÍTICO: BREVO_API_KEY não está definida! ###");
+    return; // Não tenta enviar se a chave não existir
+  }
 
-// --- NOVO TEMPLATE DE E-MAIL ---
+  const endpoint = "https://api.brevo.com/v3/smtp/email";
+  const sender = {
+    name: "EsquizoCord",
+    // IMPORTANTE: Use um e-mail que você tenha verificado como remetente no Brevo, se necessário.
+    email: "esquizocord@gmail.com",
+  };
+
+  const data = {
+    sender,
+    to: [{ email: toEmail, name: toName }],
+    subject,
+    htmlContent,
+  };
+
+  try {
+    console.log(`A tentar enviar e-mail via API para: ${toEmail}`);
+    await axios.post(endpoint, data, {
+      headers: {
+        "api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+    });
+    console.log("E-mail enviado com sucesso via API.");
+  } catch (error) {
+    // Este log agora mostrará o erro exato da API do Brevo
+    console.error(
+      "### ERRO AO ENVIAR E-MAIL VIA API ###:",
+      error.response ? JSON.stringify(error.response.data) : error.message
+    );
+  }
+}
+
+// Template HTML (permanece o mesmo)
 const createEmailTemplate = (
   title,
   preheader,
@@ -89,7 +119,6 @@ async function registerUser({ nome, email, senha }, db) {
 
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
   const verificationLink = `${frontendUrl}/verificar-email?token=${token}`;
-
   const emailBody = `Obrigado por se registar no EsquizoCord! Para começar a conversar, por favor, verifique a sua conta clicando no botão abaixo.`;
   const emailHtml = createEmailTemplate(
     "Verificação de E-mail - EsquizoCord",
@@ -100,20 +129,90 @@ async function registerUser({ nome, email, senha }, db) {
     "Verificar E-mail"
   );
 
-  try {
-    console.log("A tentar enviar e-mail de verificação para:", email);
-    await transporter.sendMail({
-      from: '"EsquizoCord" <no-reply@esquizocord.com>',
-      to: email,
-      subject: "Verificação de E-mail - EsquizoCord",
-      html: emailHtml,
-    });
-    console.log("E-mail de verificação enviado com sucesso.");
-  } catch (emailError) {
-    console.error("### ERRO AO ENVIAR E-MAIL DE VERIFICAÇÃO ###:", emailError);
-  }
+  // Usa a nova função de envio
+  await sendTransactionalEmail(
+    email,
+    nome,
+    "Verificação de E-mail - EsquizoCord",
+    emailHtml
+  );
 }
 
+async function resendVerification(email, db) {
+  const [users] = await db.query(
+    "SELECT nome, token_verificacao, email_verificado FROM usuarios WHERE email = ?",
+    [email]
+  );
+  if (users.length === 0)
+    throw { status: 404, message: "E-mail não registado." };
+  const user = users[0];
+  if (user.email_verificado)
+    throw { status: 400, message: "Este e-mail já foi verificado." };
+
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const verificationLink = `${frontendUrl}/verificar-email?token=${user.token_verificacao}`;
+  const emailBody =
+    "Recebemos um pedido para reenviar o seu e-mail de verificação. Clique no botão abaixo para ativar a sua conta.";
+  const emailHtml = createEmailTemplate(
+    "Reenvio de Verificação de E-mail",
+    "Ative a sua conta",
+    user.nome,
+    emailBody,
+    verificationLink,
+    "Ativar Conta"
+  );
+
+  await sendTransactionalEmail(
+    email,
+    user.nome,
+    "Reenvio de Verificação de E-mail - EsquizoCord",
+    emailHtml
+  );
+}
+
+async function forgotPassword(email, db) {
+  const [users] = await db.query("SELECT * FROM usuarios WHERE email = ?", [
+    email,
+  ]);
+  if (users.length === 0) {
+    // Não lança erro para não revelar se um e-mail existe
+    console.log(
+      `Tentativa de recuperação de senha para e-mail não registado: ${email}`
+    );
+    return;
+  }
+  const user = users[0];
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiryDate = new Date();
+  expiryDate.setHours(expiryDate.getHours() + 1);
+
+  await db.query(
+    "UPDATE usuarios SET token_redefinir_senha = ?, expiracao_token_redefinir_senha = ? WHERE id_usuario = ?",
+    [token, expiryDate, user.id_usuario]
+  );
+
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const resetLink = `${frontendUrl}/redefinir-senha?token=${token}`;
+  const emailBody =
+    "Recebemos um pedido para redefinir a sua senha. Se não foi você, ignore este e-mail. Caso contrário, clique no botão abaixo para criar uma nova senha.";
+  const emailHtml = createEmailTemplate(
+    "Recuperação de Senha",
+    "Redefina a sua senha.",
+    user.nome,
+    emailBody,
+    resetLink,
+    "Redefinir Senha"
+  );
+
+  await sendTransactionalEmail(
+    email,
+    user.nome,
+    "Recuperação de Senha - EsquizoCord",
+    emailHtml
+  );
+}
+
+// Funções que não enviam e-mail (permanecem iguais)
 async function loginUser(email, senha, db) {
   const sql = `
     SELECT u.*, t.bckgrnd_color, t.main_color 
@@ -129,21 +228,17 @@ async function loginUser(email, senha, db) {
       message: "Utilizador não encontrado com este e-mail.",
     };
   }
-
   const user = rows[0];
   const match = await bcrypt.compare(senha, user.senha);
-
   if (!match) {
     throw { status: 401, message: "Senha incorreta." };
   }
-
   if (!user.email_verificado) {
     throw {
       status: 403,
       message: "A sua conta ainda não foi ativada. Verifique o seu e-mail.",
     };
   }
-
   delete user.senha;
   return user;
 }
@@ -166,98 +261,19 @@ async function verifyEmail(token, db) {
   );
 }
 
-async function resendVerification(email, db) {
-  const [users] = await db.query(
-    "SELECT nome, token_verificacao, email_verificado FROM usuarios WHERE email = ?",
-    [email]
-  );
-  if (users.length === 0) {
-    throw { status: 404, message: "E-mail não registado." };
-  }
-  const user = users[0];
-  if (user.email_verificado) {
-    throw { status: 400, message: "Este e-mail já foi verificado." };
-  }
-
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-  const verificationLink = `${frontendUrl}/verificar-email?token=${user.token_verificacao}`;
-  const emailBody =
-    "Recebemos um pedido para reenviar o seu e-mail de verificação. Clique no botão abaixo para ativar a sua conta.";
-  const emailHtml = createEmailTemplate(
-    "Reenvio de Verificação de E-mail - EsquizoCord",
-    "Ative a sua conta EsquizoCord.",
-    user.nome,
-    emailBody,
-    verificationLink,
-    "Ativar Conta"
-  );
-
-  await transporter.sendMail({
-    from: '"EsquizoCord" <no-reply@esquizocord.com>',
-    to: email,
-    subject: "Reenvio de Verificação de E-mail - EsquizoCord",
-    html: emailHtml,
-  });
-}
-
-async function forgotPassword(email, db) {
-  const [users] = await db.query("SELECT * FROM usuarios WHERE email = ?", [
-    email,
-  ]);
-  if (users.length === 0) {
-    throw {
-      status: 404,
-      message: "Este e-mail não está registado na nossa plataforma.",
-    };
-  }
-
-  const user = users[0];
-  const token = crypto.randomBytes(32).toString("hex");
-  const expiryDate = new Date();
-  expiryDate.setHours(expiryDate.getHours() + 1);
-
-  await db.query(
-    "UPDATE usuarios SET token_redefinir_senha = ?, expiracao_token_redefinir_senha = ? WHERE id_usuario = ?",
-    [token, expiryDate, user.id_usuario]
-  );
-
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-  const resetLink = `${frontendUrl}/redefinir-senha?token=${token}`;
-  const emailBody =
-    "Recebemos um pedido para redefinir a sua senha. Se não foi você, por favor ignore este e-mail. Caso contrário, clique no botão abaixo para criar uma nova senha.";
-  const emailHtml = createEmailTemplate(
-    "Recuperação de Senha - EsquizoCord",
-    "Redefina a sua senha do EsquizoCord.",
-    user.nome,
-    emailBody,
-    resetLink,
-    "Redefinir Senha"
-  );
-
-  await transporter.sendMail({
-    from: '"EsquizoCord" <no-reply@esquizocord.com>',
-    to: user.email,
-    subject: "Recuperação de Senha - EsquizoCord",
-    html: emailHtml,
-  });
-}
-
 async function resetPassword(token, newPassword, db) {
   const [users] = await db.query(
     "SELECT * FROM usuarios WHERE token_redefinir_senha = ? AND expiracao_token_redefinir_senha > NOW()",
     [token]
   );
-
   if (users.length === 0) {
     throw {
       status: 400,
       message: "O link de redefinição é inválido ou expirou.",
     };
   }
-
   const user = users[0];
   const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
-
   await db.query(
     "UPDATE usuarios SET senha = ?, token_redefinir_senha = NULL, expiracao_token_redefinir_senha = NULL WHERE id_usuario = ?",
     [hashedNewPassword, user.id_usuario]
