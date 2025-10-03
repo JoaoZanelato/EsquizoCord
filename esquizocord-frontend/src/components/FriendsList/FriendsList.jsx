@@ -35,12 +35,12 @@ const FriendsList = ({
               <AvatarContainer>
                 <img
                   src={friend.foto_perfil || "/images/logo.png"}
-                  alt={friend.nome}
+                  alt={friend.Nome}
                 />
                 <StatusIndicator $isOnline={isOnline} />
               </AvatarContainer>
               <NameTag>
-                {friend.nome}
+                {friend.Nome}
                 {!isAI && (
                   <span className="user-tag">#{friend.id_usuario}</span>
                 )}
@@ -78,4 +78,4 @@ const FriendsList = ({
   );
 };
 
-export default FriendsList; // <-- A LINHA QUE FALTAVA FOI ADICIONADA AQUI
+export default FriendsList;
