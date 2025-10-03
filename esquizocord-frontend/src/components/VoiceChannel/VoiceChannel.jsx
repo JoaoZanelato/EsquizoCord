@@ -167,6 +167,7 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
       users.forEach((user) => {
         usersMap[user.socketId] = user;
         if (user.socketId !== socket.id && localStreamRef.current) {
+          // O novo utilizador (este cliente) cria uma conexão e envia uma "oferta".
           const peer = createPeer(user.socketId, localStreamRef.current);
           peersRef.current[user.socketId] = peer;
           peersToCreate[user.socketId] = { peer };
@@ -185,15 +186,18 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
       }
     };
 
+    // CORREÇÃO: Esta função agora serve APENAS para atualizar a UI,
+    // mostrando que um novo utilizador entrou. Não cria mais conexões.
     const handleUserJoined = (user) => {
       if (isComponentMounted) {
         setConnectedUsers((prev) => ({ ...prev, [user.socketId]: user }));
       }
     };
 
+    // CORREÇÃO: Esta função agora é o único local onde um utilizador
+    // que JÁ ESTÁ no canal cria uma conexão, e apenas em resposta a uma "oferta".
     const handleOffer = ({ fromSocketId, offer }) => {
       if (isComponentMounted && localStreamRef.current) {
-        // O 'peer' é criado aqui, quando a oferta é recebida.
         const peer = createPeer(fromSocketId, localStreamRef.current);
         peersRef.current[fromSocketId] = peer;
         peer.setRemoteDescription(new RTCSessionDescription(offer));
@@ -204,7 +208,7 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
             answer,
           });
         });
-        // Atualiza o estado para que o componente <Audio> seja renderizado.
+        // Atualiza o estado para renderizar o componente de áudio para este novo utilizador.
         setPeers((prev) => ({ ...prev, [fromSocketId]: { peer } }));
       }
     };
