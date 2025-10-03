@@ -15,22 +15,20 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (user) {
-      // O `withCredentials: true` é VITAL para que o backend possa ler a cookie de sessão
-      const newSocket = io("http://localhost:3000", {
+      // ALTERAÇÃO AQUI: Use a variável de ambiente VITE_API_URL
+      const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+      const newSocket = io(socketUrl, {
         withCredentials: true,
       });
       setSocket(newSocket);
 
-      // A boa prática é desconectar-se quando o componente é desmontado ou o utilizador muda
       return () => newSocket.close();
     } else {
-      // Se não houver utilizador, garante que não há conexão de socket ativa
       if (socket) {
         socket.close();
         setSocket(null);
       }
     }
-    // A dependência de 'user' garante que a conexão seja refeita no login/logout
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 

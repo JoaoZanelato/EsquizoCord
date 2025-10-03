@@ -23,7 +23,7 @@ const server = http.createServer(app);
  */
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // A origem do seu frontend
+    origin: process.env.FRONTEND_URL || "http://localhost:5173", // A origem do seu frontend
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -46,6 +46,12 @@ io.on("connection", (socket) => {
   }
 
   const currentUserId = session.user.id_usuario;
+  const currentUserInfo = {
+    id_usuario: currentUserId,
+    socketId: socket.id,
+    nome: session.user.nome,
+    foto_perfil: session.user.foto_perfil,
+  };
   console.log(
     `Socket ${socket.id} autenticado como utilizador ${currentUserId}`
   );
@@ -55,25 +61,10 @@ io.on("connection", (socket) => {
   app.set("onlineUsers", onlineUsers);
   io.emit("user_online", { userId: currentUserId });
 
-  socket.on("join_dm_room", (roomName) => {
-    socket.join(roomName);
-    console.log(`Socket ${socket.id} entrou na sala DM: ${roomName}`);
-  });
-
-  socket.on("leave_dm_room", (roomName) => {
-    socket.leave(roomName);
-    console.log(`Socket ${socket.id} saiu da sala DM: ${roomName}`);
-  });
-
-  socket.on("join_group_room", (roomName) => {
-    socket.join(roomName);
-    console.log(`Socket ${socket.id} entrou na sala de GRUPO: ${roomName}`);
-  });
-
-  socket.on("leave_group_room", (roomName) => {
-    socket.leave(roomName);
-    console.log(`Socket ${socket.id} saiu da sala de GRUPO: ${roomName}`);
-  });
+  socket.on("join_dm_room", (roomName) => socket.join(roomName));
+  socket.on("leave_dm_room", (roomName) => socket.leave(roomName));
+  socket.on("join_group_room", (roomName) => socket.join(roomName));
+  socket.on("leave_group_room", (roomName) => socket.leave(roomName));
 
   // --- LÓGICA DE CANAL DE VOZ ATUALIZADA ---
   socket.on("join-voice-channel", (channelId) => {
@@ -87,18 +78,8 @@ io.on("connection", (socket) => {
     socket.emit("all-users-in-voice-channel", usersInChannel);
 
     // Adiciona o novo utilizador à lista e informa os outros
-    const newUser = {
-      id_usuario: currentUserId,
-      socketId: socket.id,
-      nome: session.user.nome,
-      foto_perfil: session.user.foto_perfil,
-    };
-    voiceChannels[channelId][socket.id] = newUser;
-
-    socket.to(`voice-${channelId}`).emit("user-joined-voice", newUser);
-    console.log(
-      `Utilizador ${currentUserId} entrou no canal de voz ${channelId}`
-    );
+    voiceChannels[channelId][socket.id] = currentUserInfo;
+    socket.to(`voice-${channelId}`).emit("user-joined-voice", currentUserInfo);
   });
 
   socket.on("webrtc-offer", ({ targetSocketId, offer }) => {
@@ -127,9 +108,6 @@ io.on("connection", (socket) => {
         io.to(`voice-${channelId}`).emit("user-left-voice", {
           socketId: socket.id,
         });
-        console.log(
-          `Utilizador ${currentUserId} saiu do canal de voz ${channelId}`
-        );
       }
     }
   };
@@ -141,9 +119,7 @@ io.on("connection", (socket) => {
     onlineUsers.delete(currentUserId);
     app.set("onlineUsers", onlineUsers);
     io.emit("user_offline", { userId: currentUserId });
-
     handleLeaveVoice(); // Reutiliza a lógica de saída ao desconectar
-
     console.log(
       `Cliente ${socket.id} (Utilizador ${currentUserId}) desconectou-se.`
     );

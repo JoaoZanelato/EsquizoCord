@@ -22,7 +22,6 @@ const Audio = ({ peer, onAudioActivity }) => {
       if (audioRef.current) {
         audioRef.current.srcObject = event.streams[0];
 
-        // Evita criar múltiplos AudioContexts
         if (!audioContextRef.current) {
           const context = new (window.AudioContext ||
             window.webkitAudioContext)();
@@ -46,7 +45,9 @@ const Audio = ({ peer, onAudioActivity }) => {
           return () => {
             cancelAnimationFrame(animationFrameId);
             source.disconnect();
-            context.close();
+            if (context.state !== "closed") {
+              context.close();
+            }
           };
         }
       }
@@ -55,7 +56,10 @@ const Audio = ({ peer, onAudioActivity }) => {
     peer.addEventListener("track", handleTrack);
     return () => {
       peer.removeEventListener("track", handleTrack);
-      if (audioContextRef.current) {
+      if (
+        audioContextRef.current &&
+        audioContextRef.current.state !== "closed"
+      ) {
         audioContextRef.current.close();
         audioContextRef.current = null;
       }
@@ -142,7 +146,9 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
         localAudioCleanup = () => {
           cancelAnimationFrame(animationFrameId);
           source.disconnect();
-          audioContext.close();
+          if (audioContext.state !== "closed") {
+            audioContext.close();
+          }
         };
 
         socket.emit("join-voice-channel", channelId);
@@ -180,13 +186,11 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
     };
 
     const handleUserJoined = (user) => {
-      if (isComponentMounted) {
+      if (isComponentMounted && localStreamRef.current) {
         setConnectedUsers((prev) => ({ ...prev, [user.socketId]: user }));
-        if (localStreamRef.current) {
-          const peer = createPeer(user.socketId, localStreamRef.current);
-          peersRef.current[user.socketId] = peer;
-          setPeers((prev) => ({ ...prev, [user.socketId]: { peer } }));
-        }
+        const peer = createPeer(user.socketId, localStreamRef.current);
+        peersRef.current[user.socketId] = peer;
+        setPeers((prev) => ({ ...prev, [user.socketId]: { peer } }));
       }
     };
 
@@ -223,14 +227,16 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
         peersRef.current[socketId].close();
         delete peersRef.current[socketId];
       }
-      setPeers((prev) => {
-        const { [socketId]: _, ...rest } = prev;
-        return rest;
-      });
-      setConnectedUsers((prev) => {
-        const { [socketId]: _, ...rest } = prev;
-        return rest;
-      });
+      if (isComponentMounted) {
+        setPeers((prev) => {
+          const { [socketId]: _, ...rest } = prev;
+          return rest;
+        });
+        setConnectedUsers((prev) => {
+          const { [socketId]: _, ...rest } = prev;
+          return rest;
+        });
+      }
     };
 
     socket.on("all-users-in-voice-channel", handleAllUsers);
@@ -285,7 +291,7 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
         {usersToRender.map(
           (member) =>
             member && (
-              <VoiceUser key={member.socketId}>
+              <VoiceUser key={member.socketId || member.id_usuario}>
                 <AvatarContainer $isSpeaking={speaking[member.id_usuario]}>
                   <img
                     src={member.foto_perfil || "/images/logo.png"}
