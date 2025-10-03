@@ -1,5 +1,5 @@
 // src/components/ChatArea/ChatArea.jsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useSocket } from "../../context/SocketContext";
 import apiClient from "../../services/api";
@@ -39,6 +39,22 @@ const ChatArea = ({
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  const handleVoiceDisconnect = useCallback(() => {
+    if (chatInfo?.type === "group") {
+      const defaultTextChannel = chatInfo.group.channels.find(
+        (ch) => ch.tipo === "TEXTO"
+      );
+      if (defaultTextChannel && onSelectChat) {
+        onSelectChat({
+          ...chatInfo,
+          channelId: defaultTextChannel.id_chat,
+          channelName: defaultTextChannel.nome,
+          channelType: "TEXTO",
+        });
+      }
+    }
+  }, [chatInfo, onSelectChat]);
 
   useEffect(() => {
     if (!socket) return;
@@ -214,22 +230,7 @@ const ChatArea = ({
       chatContent = (
         <VoiceChannel
           channelId={chatInfo.channelId}
-          members={chatInfo.group.members}
-          onDisconnect={() => {
-            // Encontra o primeiro canal de texto para ser o padrão ao sair
-            const defaultTextChannel = chatInfo.group.channels.find(
-              (ch) => ch.tipo === "TEXTO"
-            );
-            if (defaultTextChannel && onSelectChat) {
-              // Muda o chat ativo de volta para o canal de texto
-              onSelectChat({
-                ...chatInfo,
-                channelId: defaultTextChannel.id_chat,
-                channelName: defaultTextChannel.nome,
-                channelType: "TEXTO",
-              });
-            }
-          }}
+          onDisconnect={handleVoiceDisconnect}
         />
       );
     } else {
