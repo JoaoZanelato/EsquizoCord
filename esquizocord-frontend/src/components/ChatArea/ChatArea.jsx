@@ -5,7 +5,7 @@ import { useSocket } from "../../context/SocketContext";
 import apiClient from "../../services/api";
 import MessageItem from "../MessageItem/MessageItem";
 import ChatInput from "../ChatInput/ChatInput";
-import VoiceChannel from "../VoiceChannel/VoiceChannel"; // Importar o novo componente
+import VoiceChannel from "../VoiceChannel/VoiceChannel";
 import {
   ChatAreaContainer,
   Header,
@@ -40,6 +40,7 @@ const ChatArea = ({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // --- CORREÇÃO APLICADA AQUI ---
   const handleVoiceDisconnect = useCallback(() => {
     if (chatInfo?.type === "group") {
       const defaultTextChannel = chatInfo.group.channels.find(
@@ -55,6 +56,7 @@ const ChatArea = ({
       }
     }
   }, [chatInfo, onSelectChat]);
+  // --- FIM DA CORREÇÃO ---
 
   useEffect(() => {
     if (!socket) return;
@@ -226,7 +228,6 @@ const ChatArea = ({
           {chatInfo.channelName}
         </h3>
       );
-      // Renderiza o novo componente VoiceChannel
       chatContent = (
         <VoiceChannel
           channelId={chatInfo.channelId}
@@ -234,7 +235,6 @@ const ChatArea = ({
         />
       );
     } else {
-      // Canal de texto
       headerContent = (
         <h3>
           <i

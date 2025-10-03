@@ -61,6 +61,7 @@ const Dashboard = () => {
     fetchData();
   }, [fetchData]);
 
+  // --- CORREÇÃO APLICADA AQUI ---
   const handleSelectChat = useCallback((chat) => {
     setActiveChat(chat);
     setReplyingTo(null);
@@ -71,6 +72,8 @@ const Dashboard = () => {
     }
     setIsChannelListOpen(false);
   }, []);
+  // --- FIM DA CORREÇÃO ---
+
   useEffect(() => {
     if (socket) {
       const handleNewDM = (msg) => {
@@ -229,7 +232,7 @@ const Dashboard = () => {
         socket.off("user_status_changed", handleStatusChanged);
       };
     }
-  }, [socket, activeChat, user.id_usuario]);
+  }, [socket, activeChat, user.id_usuario, fetchData, handleSelectChat]);
 
   const handleSelectGroup = async (group) => {
     try {

@@ -212,7 +212,7 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
       socket.off("webrtc-ice-candidate", handleIceCandidate);
       socket.off("user-left-voice", handleUserLeft);
     };
-  }, [channelId, socket]); // <-- CORREÇÃO PRINCIPAL: onDisconnect foi removido das dependências.
+  }, [channelId, socket]); // <-- CORREÇÃO PRINCIPAL: onDisconnect foi removido das dependências para garantir estabilidade.
 
   const toggleMute = () => {
     if (localStreamRef.current) {
