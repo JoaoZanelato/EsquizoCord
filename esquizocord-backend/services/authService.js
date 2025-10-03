@@ -5,12 +5,12 @@ const nodemailer = require("nodemailer");
 const saltRounds = 10;
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // true for 465, false for other ports
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  secure: false, // O Brevo usa STARTTLS na porta 587, então 'secure' é false
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // A sua senha de app de 16 dígitos
+    user: process.env.EMAIL_USER, // O seu e-mail de login do Brevo
+    pass: process.env.EMAIL_PASS, // A sua chave SMTP do Brevo
   },
 });
 
