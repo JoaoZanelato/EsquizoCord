@@ -111,7 +111,7 @@ const AnalyticsModal = ({ isOpen, onClose, groupDetails }) => {
                 {analytics.topMembers.map((member, index) => (
                   <MemberItem key={index}>
                     <span>
-                      {index + 1}. {member.Nome}
+                      {index + 1}. {member.nome}
                     </span>
                     <strong>{member.messageCount} mensagens</strong>
                   </MemberItem>

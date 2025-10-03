@@ -11,57 +11,55 @@ import {
   ControlButton,
 } from "./styles";
 
+// Componente de Áudio Otimizado
 const Audio = ({ peer, onAudioActivity }) => {
   const audioRef = useRef(null);
-  const audioContextRef = useRef(null);
 
   useEffect(() => {
     if (!peer) return;
 
+    let animationFrameId;
+    let audioContext;
+    let source;
+
     const handleTrack = (event) => {
-      if (audioRef.current) {
+      if (audioRef.current && event.streams && event.streams[0]) {
         audioRef.current.srcObject = event.streams[0];
 
-        if (!audioContextRef.current) {
-          const context = new (window.AudioContext ||
-            window.webkitAudioContext)();
-          audioContextRef.current = context;
-          const source = context.createMediaStreamSource(event.streams[0]);
-          const analyser = context.createAnalyser();
-          analyser.fftSize = 256;
-          source.connect(analyser);
-          const dataArray = new Uint8Array(analyser.frequencyBinCount);
-          let animationFrameId;
-
-          const analyze = () => {
-            analyser.getByteFrequencyData(dataArray);
-            const average =
-              dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-            onAudioActivity(average > 10);
-            animationFrameId = requestAnimationFrame(analyze);
-          };
-          analyze();
-
-          return () => {
-            cancelAnimationFrame(animationFrameId);
-            source.disconnect();
-            if (context.state !== "closed") {
-              context.close();
-            }
-          };
+        // --- CORREÇÃO: Garante que o AudioContext é criado e destruído corretamente ---
+        if (audioContext && audioContext.state !== "closed") {
+          audioContext.close();
         }
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        source = audioContext.createMediaStreamSource(event.streams[0]);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        const analyze = () => {
+          analyser.getByteFrequencyData(dataArray);
+          const average =
+            dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+          onAudioActivity(average > 10); // Limiar de sensibilidade
+          animationFrameId = requestAnimationFrame(analyze);
+        };
+        analyze();
       }
     };
 
     peer.addEventListener("track", handleTrack);
+
     return () => {
       peer.removeEventListener("track", handleTrack);
-      if (
-        audioContextRef.current &&
-        audioContextRef.current.state !== "closed"
-      ) {
-        audioContextRef.current.close();
-        audioContextRef.current = null;
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+      if (source) {
+        source.disconnect();
+      }
+      if (audioContext && audioContext.state !== "closed") {
+        audioContext.close();
       }
     };
   }, [peer, onAudioActivity]);
@@ -69,6 +67,7 @@ const Audio = ({ peer, onAudioActivity }) => {
   return <audio ref={audioRef} autoPlay playsInline />;
 };
 
+// Componente Principal do Canal de Voz Refatorado
 const VoiceChannel = ({ channelId, onDisconnect }) => {
   const { user: currentUser } = useAuth();
   const socket = useSocket();
@@ -81,27 +80,29 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
   const localStreamRef = useRef(null);
   const peersRef = useRef({});
 
-  const handleAudioActivity = useCallback((id, isSpeaking) => {
-    setSpeaking((prev) => ({ ...prev, [id]: isSpeaking }));
+  const handleAudioActivity = useCallback((userId, isSpeaking) => {
+    setSpeaking((prev) => ({ ...prev, [userId]: isSpeaking }));
   }, []);
-
-  const handleDisconnectClick = useCallback(() => {
-    if (onDisconnect) {
-      onDisconnect();
-    }
-  }, [onDisconnect]);
 
   useEffect(() => {
     if (!socket) return;
 
     let isComponentMounted = true;
-    let localAudioCleanup = () => {};
+    let localAudioAnalyserCleanup = () => {};
 
+    // --- LÓGICA CENTRALIZADA PARA CRIAR CONEXÕES ---
     const createPeer = (targetSocketId, stream) => {
+      // Se já existir uma conexão, reutiliza-a
+      if (peersRef.current[targetSocketId]) {
+        return peersRef.current[targetSocketId];
+      }
+
       const peer = new RTCPeerConnection({
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       });
+
       stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+
       peer.onicecandidate = (e) => {
         if (e.candidate) {
           socket.emit("webrtc-ice-candidate", {
@@ -110,10 +111,15 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
           });
         }
       };
+
+      peersRef.current[targetSocketId] = peer;
+      setPeers((prev) => ({ ...prev, [targetSocketId]: peer }));
+
       return peer;
     };
 
-    const connect = async () => {
+    // Função para iniciar o áudio local e a análise de "a falar"
+    const startLocalAudio = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
@@ -122,7 +128,6 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
           stream.getTracks().forEach((track) => track.stop());
           return;
         }
-
         localStreamRef.current = stream;
 
         const audioContext = new (window.AudioContext ||
@@ -138,39 +143,36 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
           analyser.getByteFrequencyData(dataArray);
           const average =
             dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-          handleAudioActivity(currentUser.id_usuario, average > 5 && !isMuted);
+          handleAudioActivity(socket.id, average > 5 && !isMuted);
           animationFrameId = requestAnimationFrame(analyze);
         };
         analyze();
 
-        localAudioCleanup = () => {
+        localAudioAnalyserCleanup = () => {
           cancelAnimationFrame(animationFrameId);
           source.disconnect();
-          if (audioContext.state !== "closed") {
-            audioContext.close();
-          }
+          if (audioContext.state !== "closed") audioContext.close();
         };
 
         socket.emit("join-voice-channel", channelId);
       } catch (err) {
         console.error("Erro ao aceder ao microfone:", err);
         alert("Não foi possível aceder ao microfone. Verifique as permissões.");
-        handleDisconnectClick();
+        if (onDisconnect) onDisconnect();
       }
     };
 
-    connect();
+    startLocalAudio();
 
+    // --- NOVAS FUNÇÕES DE EVENTO SIMPLIFICADAS ---
+
+    // 1. Quando ESTE utilizador entra, recebe a lista dos outros e inicia a conexão com eles.
     const handleAllUsers = (users) => {
       const usersMap = {};
-      const peersToCreate = {};
       users.forEach((user) => {
         usersMap[user.socketId] = user;
-        if (user.socketId !== socket.id && localStreamRef.current) {
-          // O novo utilizador (este cliente) cria uma conexão e envia uma "oferta".
+        if (localStreamRef.current) {
           const peer = createPeer(user.socketId, localStreamRef.current);
-          peersRef.current[user.socketId] = peer;
-          peersToCreate[user.socketId] = { peer };
           peer.createOffer().then((offer) => {
             peer.setLocalDescription(offer);
             socket.emit("webrtc-offer", {
@@ -180,26 +182,21 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
           });
         }
       });
-      if (isComponentMounted) {
-        setConnectedUsers(usersMap);
-        setPeers(peersToCreate);
-      }
+      if (isComponentMounted) setConnectedUsers(usersMap);
     };
 
-    // CORREÇÃO: Esta função agora serve APENAS para atualizar a UI,
-    // mostrando que um novo utilizador entrou. Não cria mais conexões.
+    // 2. Quando um utilizador JÁ PRESENTE é notificado de um novo, ele apenas o adiciona à lista.
+    // A conexão será iniciada pelo novo utilizador.
     const handleUserJoined = (user) => {
       if (isComponentMounted) {
         setConnectedUsers((prev) => ({ ...prev, [user.socketId]: user }));
       }
     };
 
-    // CORREÇÃO: Esta função agora é o único local onde um utilizador
-    // que JÁ ESTÁ no canal cria uma conexão, e apenas em resposta a uma "oferta".
+    // 3. Quando um utilizador JÁ PRESENTE recebe uma "oferta" de conexão do novo.
     const handleOffer = ({ fromSocketId, offer }) => {
       if (isComponentMounted && localStreamRef.current) {
         const peer = createPeer(fromSocketId, localStreamRef.current);
-        peersRef.current[fromSocketId] = peer;
         peer.setRemoteDescription(new RTCSessionDescription(offer));
         peer.createAnswer().then((answer) => {
           peer.setLocalDescription(answer);
@@ -208,23 +205,24 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
             answer,
           });
         });
-        // Atualiza o estado para renderizar o componente de áudio para este novo utilizador.
-        setPeers((prev) => ({ ...prev, [fromSocketId]: { peer } }));
       }
     };
 
+    // 4. O utilizador que fez a "oferta" recebe a "resposta".
     const handleAnswer = ({ fromSocketId, answer }) => {
       peersRef.current[fromSocketId]?.setRemoteDescription(
         new RTCSessionDescription(answer)
       );
     };
 
+    // 5. Troca de informações de rede entre os pares.
     const handleIceCandidate = ({ fromSocketId, candidate }) => {
       peersRef.current[fromSocketId]
         ?.addIceCandidate(new RTCIceCandidate(candidate))
         .catch((e) => console.error("Erro ao adicionar ICE candidate:", e));
     };
 
+    // 6. Quando alguém sai, limpamos a sua conexão e estado.
     const handleUserLeft = ({ socketId }) => {
       if (peersRef.current[socketId]) {
         peersRef.current[socketId].close();
@@ -232,16 +230,19 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
       }
       if (isComponentMounted) {
         setPeers((prev) => {
-          const { [socketId]: _, ...rest } = prev;
-          return rest;
+          const newPeers = { ...prev };
+          delete newPeers[socketId];
+          return newPeers;
         });
         setConnectedUsers((prev) => {
-          const { [socketId]: _, ...rest } = prev;
-          return rest;
+          const newUsers = { ...prev };
+          delete newUsers[socketId];
+          return newUsers;
         });
       }
     };
 
+    // Registo dos eventos
     socket.on("all-users-in-voice-channel", handleAllUsers);
     socket.on("user-joined-voice", handleUserJoined);
     socket.on("webrtc-offer", handleOffer);
@@ -249,9 +250,10 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
     socket.on("webrtc-ice-candidate", handleIceCandidate);
     socket.on("user-left-voice", handleUserLeft);
 
+    // Função de limpeza
     return () => {
       isComponentMounted = false;
-      localAudioCleanup();
+      localAudioAnalyserCleanup();
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
       }
@@ -271,7 +273,8 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
     socket,
     currentUser.id_usuario,
     handleAudioActivity,
-    handleDisconnectClick,
+    onDisconnect,
+    isMuted,
   ]);
 
   const toggleMute = () => {
@@ -285,7 +288,7 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
 
   const usersToRender = [
     { ...currentUser, socketId: socket?.id },
-    ...Object.values(connectedUsers).filter((u) => u.socketId !== socket?.id),
+    ...Object.values(connectedUsers),
   ];
 
   return (
@@ -295,7 +298,11 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
           (member) =>
             member && (
               <VoiceUser key={member.socketId || member.id_usuario}>
-                <AvatarContainer $isSpeaking={speaking[member.id_usuario]}>
+                <AvatarContainer
+                  $isSpeaking={
+                    speaking[member.socketId] || speaking[member.id_usuario]
+                  }
+                >
                   <img
                     src={member.foto_perfil || "/images/logo.png"}
                     alt={member.nome}
@@ -309,9 +316,9 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
                 {member.id_usuario !== currentUser.id_usuario &&
                   peers[member.socketId] && (
                     <Audio
-                      peer={peers[member.socketId].peer}
+                      peer={peers[member.socketId]}
                       onAudioActivity={(isSpeaking) =>
-                        handleAudioActivity(member.id_usuario, isSpeaking)
+                        handleAudioActivity(member.socketId, isSpeaking)
                       }
                     />
                   )}
@@ -333,7 +340,7 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
         </ControlButton>
         <ControlButton
           $active={false}
-          onClick={handleDisconnectClick}
+          onClick={onDisconnect}
           title="Desconectar"
         >
           <i className="fas fa-phone-slash"></i>

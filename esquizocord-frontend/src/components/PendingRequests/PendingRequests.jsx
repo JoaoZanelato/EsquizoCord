@@ -20,12 +20,12 @@ const PendingRequests = ({ pending, sent, onAction }) => {
             <UserInfo>
               <StyledAvatarContainer>
                 <img
-                  src={req.FotoPerfil || "/images/logo.png"}
-                  alt={req.Nome}
+                  src={req.foto_perfil || "/images/logo.png"}
+                  alt={req.nome}
                 />
               </StyledAvatarContainer>
               <StyledNameTag>
-                {req.Nome}
+                {req.nome}
                 <span className="user-tag">#{req.id_usuario}</span>
               </StyledNameTag>
             </UserInfo>
@@ -62,12 +62,12 @@ const PendingRequests = ({ pending, sent, onAction }) => {
             <UserInfo>
               <StyledAvatarContainer>
                 <img
-                  src={req.FotoPerfil || "/images/logo.png"}
-                  alt={req.Nome}
+                  src={req.foto_perfil || "/images/logo.png"}
+                  alt={req.nome}
                 />
               </StyledAvatarContainer>
               <StyledNameTag>
-                {req.Nome}
+                {req.nome}
                 <span className="user-tag">#{req.id_usuario}</span>
               </StyledNameTag>
             </UserInfo>

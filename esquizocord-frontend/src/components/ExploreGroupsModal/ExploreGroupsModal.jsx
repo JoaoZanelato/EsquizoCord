@@ -69,7 +69,7 @@ const ExploreGroupsModal = ({ isOpen, onClose, onGroupJoined }) => {
                             <GroupInfo>
                                 <img src={group.foto || '/images/default-group-icon.png'} alt={group.nome} />
                                 <GroupName>
-                                    {group.Nome}
+                                    {group.nome}
                                     <span> #{group.id_grupo}</span>
                                 </GroupName>
                             </GroupInfo>

@@ -171,7 +171,7 @@ const ChatArea = ({
         }}
       >
         <img
-          src={chatInfo.user.fotoPerfil || "/images/logo.png"}
+          src={chatInfo.user.foto_perfil || "/images/logo.png"}
           alt={chatInfo.user.nome}
         />
         <h3>

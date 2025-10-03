@@ -133,7 +133,7 @@ const Dashboard = () => {
                 ...currentChat,
                 group: { ...currentChat.group, channels: newChannels },
                 channelId: newChannels[0]?.id_chat,
-                channelName: newChannels[0]?.Nome,
+                channelName: newChannels[0]?.nome,
               };
             }
             return {
@@ -345,7 +345,7 @@ const Dashboard = () => {
   const handleBanMember = async (memberToBan) => {
     if (
       !window.confirm(
-        `Tem a certeza de que deseja banir ${memberToBan.Nome} do grupo? Esta ação é irreversível.`
+        `Tem a certeza de que deseja banir ${memberToBan.nome} do grupo? Esta ação é irreversível.`
       )
     ) {
       return;
@@ -410,7 +410,7 @@ const Dashboard = () => {
         ...currentChat,
         group: newGroupData,
         channelId: newChannel.id_chat,
-        channelName: newChannel.Nome,
+        channelName: newChannel.nome,
         channelType: newChannel.tipo,
       };
     });
@@ -484,7 +484,7 @@ const Dashboard = () => {
           {dashboardData.groups.map((group) => (
             <ServerIcon
               key={group.id_grupo}
-              title={group.Nome}
+              title={group.nome}
               className={
                 activeChat?.type === "group" &&
                 activeChat.group.details.id_grupo === group.id_grupo

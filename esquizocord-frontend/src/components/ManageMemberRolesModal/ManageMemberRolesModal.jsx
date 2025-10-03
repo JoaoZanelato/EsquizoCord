@@ -76,7 +76,7 @@ const ManageMemberRolesModal = ({
     <ModalOverlay $isOpen={isOpen} onClick={onClose}>
       <ModalContent onClick={(e) => e.stopPropagation()}>
         <CloseButton onClick={onClose}>&times;</CloseButton>
-        <Title as="h3">Gerir Cargos de {member?.Nome}</Title>
+        <Title as="h3">Gerir Cargos de {member?.nome}</Title>
         <RolesListContainer>
           {allRoles.map((role) => (
             <RoleCheckboxItem key={role.id_cargo} color={role.cor}>

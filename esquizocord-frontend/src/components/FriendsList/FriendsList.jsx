@@ -35,12 +35,12 @@ const FriendsList = ({
               <AvatarContainer>
                 <img
                   src={friend.foto_perfil || "/images/logo.png"}
-                  alt={friend.Nome}
+                  alt={friend.nome}
                 />
                 <StatusIndicator $isOnline={isOnline} />
               </AvatarContainer>
               <NameTag>
-                {friend.Nome}
+                {friend.nome}
                 {!isAI && (
                   <span className="user-tag">#{friend.id_usuario}</span>
                 )}
