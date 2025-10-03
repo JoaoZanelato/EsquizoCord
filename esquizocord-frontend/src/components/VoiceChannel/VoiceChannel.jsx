@@ -22,7 +22,6 @@ const Audio = ({ peer, onAudioActivity }) => {
     let source;
 
     const handleTrack = (event) => {
-      console.log("[VC] Audio Component: Received remote track event.", event);
       if (audioRef.current && event.streams && event.streams[0]) {
         audioRef.current.srcObject = event.streams[0];
 
@@ -50,7 +49,6 @@ const Audio = ({ peer, onAudioActivity }) => {
     peer.addEventListener("track", handleTrack);
 
     return () => {
-      console.log("[VC] Audio Component: Cleaning up track listener.");
       peer.removeEventListener("track", handleTrack);
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
       if (source) source.disconnect();
@@ -79,30 +77,16 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
 
   useEffect(() => {
     if (!socket) return;
-    console.log("[VC] Component Mounted. Socket available.", socket.id);
 
     let isComponentMounted = true;
 
     const createPeer = (targetSocketId, stream) => {
-      console.log(
-        `[VC] createPeer: Creating peer for target ${targetSocketId}`
-      );
       const peer = new RTCPeerConnection({
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       });
-
-      stream.getTracks().forEach((track) => {
-        console.log(
-          `[VC] createPeer: Adding local track to peer for ${targetSocketId}`
-        );
-        peer.addTrack(track, stream);
-      });
-
+      stream.getTracks().forEach((track) => peer.addTrack(track, stream));
       peer.onicecandidate = (e) => {
         if (e.candidate) {
-          console.log(
-            `[VC] onicecandidate: Sending ICE candidate to ${targetSocketId}`
-          );
           socket.emit("webrtc-ice-candidate", {
             targetSocketId,
             candidate: e.candidate,
@@ -113,7 +97,6 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
     };
 
     const connect = async () => {
-      console.log("[VC] connect: Attempting to get user media (microphone).");
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
@@ -122,16 +105,10 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
           stream.getTracks().forEach((track) => track.stop());
           return;
         }
-        console.log("[VC] connect: Successfully got local stream.");
         localStreamRef.current = stream;
-
-        console.log(
-          "[VC] connect: Emitting 'join-voice-channel' for channel:",
-          channelId
-        );
         socket.emit("join-voice-channel", channelId);
       } catch (err) {
-        console.error("[VC] FATAL: Error getting user media.", err);
+        console.error("Erro ao aceder ao microfone:", err);
         alert("Não foi possível aceder ao microfone. Verifique as permissões.");
         if (onDisconnect) onDisconnect();
       }
@@ -141,24 +118,14 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
 
     const handleAllUsers = (users) => {
       if (!isComponentMounted) return;
-      console.log(
-        "[VC] handleAllUsers: Received list of existing users.",
-        users
-      );
-
       const usersMap = {};
       const newPeers = {};
-
       users.forEach((user) => {
         usersMap[user.socketId] = user;
         if (localStreamRef.current) {
-          console.log(
-            `[VC] handleAllUsers: Creating peer and sending offer to ${user.socketId}`
-          );
           const peer = createPeer(user.socketId, localStreamRef.current);
           peersRef.current[user.socketId] = peer;
           newPeers[user.socketId] = peer;
-
           peer.createOffer().then((offer) => {
             peer.setLocalDescription(offer);
             socket.emit("webrtc-offer", {
@@ -168,31 +135,23 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
           });
         }
       });
-
       setConnectedUsers(usersMap);
       setPeers((prev) => ({ ...prev, ...newPeers }));
     };
 
     const handleUserJoined = (user) => {
       if (isComponentMounted && user.socketId !== socket.id) {
-        console.log(
-          "[VC] handleUserJoined: New user joined the channel.",
-          user
-        );
         setConnectedUsers((prev) => ({ ...prev, [user.socketId]: user }));
       }
     };
 
     const handleOffer = ({ fromSocketId, offer }) => {
       if (isComponentMounted && localStreamRef.current) {
-        console.log(`[VC] handleOffer: Received offer from ${fromSocketId}.`);
         const peer = createPeer(fromSocketId, localStreamRef.current);
         peersRef.current[fromSocketId] = peer;
         setPeers((prev) => ({ ...prev, [fromSocketId]: peer }));
-
         peer.setRemoteDescription(new RTCSessionDescription(offer));
         peer.createAnswer().then((answer) => {
-          console.log(`[VC] handleOffer: Sending answer to ${fromSocketId}.`);
           peer.setLocalDescription(answer);
           socket.emit("webrtc-answer", {
             targetSocketId: fromSocketId,
@@ -203,23 +162,18 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
     };
 
     const handleAnswer = ({ fromSocketId, answer }) => {
-      console.log(`[VC] handleAnswer: Received answer from ${fromSocketId}.`);
       peersRef.current[fromSocketId]?.setRemoteDescription(
         new RTCSessionDescription(answer)
       );
     };
 
     const handleIceCandidate = ({ fromSocketId, candidate }) => {
-      console.log(
-        `[VC] handleIceCandidate: Received ICE candidate from ${fromSocketId}.`
-      );
       peersRef.current[fromSocketId]
         ?.addIceCandidate(new RTCIceCandidate(candidate))
-        .catch((e) => console.error("[VC] Error adding ICE candidate:", e));
+        .catch((e) => console.error("Erro ao adicionar ICE candidate:", e));
     };
 
     const handleUserLeft = ({ socketId }) => {
-      console.log(`[VC] handleUserLeft: User with socketId ${socketId} left.`);
       if (peersRef.current[socketId]) {
         peersRef.current[socketId].close();
         delete peersRef.current[socketId];
@@ -244,9 +198,6 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
     socket.on("user-left-voice", handleUserLeft);
 
     return () => {
-      console.log(
-        "[VC] Component Unmounting: Cleaning up all connections and listeners."
-      );
       isComponentMounted = false;
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -254,7 +205,6 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
       socket.emit("leave-voice-channel", channelId);
       Object.values(peersRef.current).forEach((peer) => peer.close());
       peersRef.current = {};
-
       socket.off("all-users-in-voice-channel", handleAllUsers);
       socket.off("user-joined-voice", handleUserJoined);
       socket.off("webrtc-offer", handleOffer);
@@ -262,19 +212,16 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
       socket.off("webrtc-ice-candidate", handleIceCandidate);
       socket.off("user-left-voice", handleUserLeft);
     };
-  }, [channelId, socket, onDisconnect]);
+  }, [channelId, socket]); // <-- CORREÇÃO PRINCIPAL: onDisconnect foi removido das dependências.
 
   const toggleMute = () => {
     if (localStreamRef.current) {
       const audioTracks = localStreamRef.current.getAudioTracks();
       if (audioTracks.length > 0) {
-        // Determina o novo estado com base no estado atual do primeiro track
         const newEnabledState = !audioTracks[0].enabled;
-        // Aplica o novo estado a todos os tracks
         audioTracks.forEach((track) => {
           track.enabled = newEnabledState;
         });
-        // Atualiza o estado do React para refletir na UI
         setIsMuted(!newEnabledState);
       }
     }

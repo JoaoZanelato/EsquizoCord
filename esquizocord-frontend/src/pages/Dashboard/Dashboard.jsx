@@ -71,7 +71,6 @@ const Dashboard = () => {
     }
     setIsChannelListOpen(false);
   }, []);
-
   useEffect(() => {
     if (socket) {
       const handleNewDM = (msg) => {
