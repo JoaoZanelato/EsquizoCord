@@ -8,7 +8,7 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
   const socket = useSocket();
 
   const [connectedUsers, setConnectedUsers] = useState({});
-  const [peers, setPeers] = useState({});
+  const [remoteStreams, setRemoteStreams] = useState({});
   const [isMuted, setIsMuted] = useState(false);
   const [speaking, setSpeaking] = useState({});
 
@@ -19,51 +19,54 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
     setSpeaking((prev) => ({ ...prev, [id]: isSpeaking }));
   }, []);
 
-  // Limpa todas as conexões e listeners
   const cleanup = useCallback(() => {
-    console.log("[useVoice] Cleaning up all voice connections.");
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
     }
-
     Object.values(peersRef.current).forEach((peer) => peer.close());
     peersRef.current = {};
-
-    setPeers({});
+    setRemoteStreams({});
     setConnectedUsers({});
-    setSpeaking({});
-
     if (socket && channelId) {
       socket.emit("leave-voice-channel", channelId);
     }
   }, [socket, channelId]);
 
   useEffect(() => {
-    if (!socket || !channelId) {
-      return;
-    }
+    if (!socket || !channelId) return;
 
-    let isComponentMounted = true;
+    let isMounted = true;
 
     const createPeer = (targetSocketId, stream) => {
+      if (peersRef.current[targetSocketId]) {
+        return peersRef.current[targetSocketId];
+      }
       const peer = new RTCPeerConnection({
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       });
 
       stream.getTracks().forEach((track) => peer.addTrack(track, stream));
 
-      peer.onicecandidate = (e) => {
-        if (e.candidate) {
+      peer.ontrack = (event) => {
+        if (isMounted) {
+          setRemoteStreams((prev) => ({
+            ...prev,
+            [targetSocketId]: event.streams[0],
+          }));
+        }
+      };
+
+      peer.onicecandidate = (event) => {
+        if (event.candidate) {
           socket.emit("webrtc-ice-candidate", {
             targetSocketId,
-            candidate: e.candidate,
+            candidate: event.candidate,
           });
         }
       };
 
       peersRef.current[targetSocketId] = peer;
-      setPeers((prev) => ({ ...prev, [targetSocketId]: peer }));
       return peer;
     };
 
@@ -72,7 +75,7 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
         });
-        if (!isComponentMounted) {
+        if (!isMounted) {
           stream.getTracks().forEach((track) => track.stop());
           return;
         }
@@ -81,7 +84,7 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
         socket.emit("join-voice-channel", channelId);
       } catch (err) {
         console.error("Microphone access error:", err);
-        alert("Could not access microphone. Please check permissions.");
+        alert("Não foi possível aceder ao microfone. Verifique as permissões.");
         if (onDisconnect) onDisconnect();
       }
     };
@@ -89,7 +92,7 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
     initialize();
 
     const handleAllUsers = (users) => {
-      if (!isComponentMounted || !localStreamRef.current) return;
+      if (!isMounted || !localStreamRef.current) return;
       const usersMap = {};
       users.forEach((user) => {
         usersMap[user.socketId] = user;
@@ -103,13 +106,18 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
     };
 
     const handleUserJoined = (user) => {
-      if (isComponentMounted) {
+      if (isMounted && localStreamRef.current && user.socketId !== socket.id) {
         setConnectedUsers((prev) => ({ ...prev, [user.socketId]: user }));
+        const peer = createPeer(user.socketId, localStreamRef.current);
+        peer.createOffer().then((offer) => {
+          peer.setLocalDescription(offer);
+          socket.emit("webrtc-offer", { targetSocketId: user.socketId, offer });
+        });
       }
     };
 
     const handleOffer = ({ fromSocketId, offer }) => {
-      if (isComponentMounted && localStreamRef.current) {
+      if (isMounted && localStreamRef.current) {
         const peer = createPeer(fromSocketId, localStreamRef.current);
         peer.setRemoteDescription(new RTCSessionDescription(offer));
         peer.createAnswer().then((answer) => {
@@ -119,6 +127,10 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
             answer,
           });
         });
+        setConnectedUsers((prev) => ({
+          ...prev,
+          [fromSocketId]: { socketId: fromSocketId },
+        }));
       }
     };
 
@@ -139,8 +151,8 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
         peersRef.current[socketId].close();
         delete peersRef.current[socketId];
       }
-      if (isComponentMounted) {
-        setPeers((prev) => {
+      if (isMounted) {
+        setRemoteStreams((prev) => {
           const { [socketId]: _, ...rest } = prev;
           return rest;
         });
@@ -159,7 +171,7 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
     socket.on("user-left-voice", handleUserLeft);
 
     return () => {
-      isComponentMounted = false;
+      isMounted = false;
       cleanup();
       socket.off("all-users-in-voice-channel", handleAllUsers);
       socket.off("user-joined-voice", handleUserJoined);
@@ -175,9 +187,7 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
       const audioTracks = localStreamRef.current.getAudioTracks();
       if (audioTracks.length > 0) {
         const newEnabledState = !audioTracks[0].enabled;
-        audioTracks.forEach((track) => {
-          track.enabled = newEnabledState;
-        });
+        audioTracks.forEach((track) => (track.enabled = newEnabledState));
         setIsMuted(!newEnabledState);
       }
     }
@@ -190,7 +200,7 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
 
   return {
     usersToRender,
-    peers,
+    remoteStreams,
     isMuted,
     speaking,
     toggleMute,
