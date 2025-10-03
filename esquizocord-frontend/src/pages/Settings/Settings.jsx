@@ -1,7 +1,7 @@
 // src/pages/Settings/Settings.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { useNotification } from "../../context/NotificationContext/NotificationContext"; 
+import { useNotification } from "../../context/NotificationContext/NotificationContext";
 import apiClient from "../../services/api";
 
 import ImageCropModal from "../../components/ImageCropModal/ImageCropModal";
@@ -29,13 +29,13 @@ import {
   ModalOverlay,
   ModalContent,
   CloseButton,
+  SectionDivider,
 } from "./styles";
 
 const Settings = () => {
   const { user, setUser, logout } = useAuth();
   const { addNotification } = useNotification();
 
-  // --- CORREÇÃO 1: Usar snake_case para o estado inicial ---
   const [formData, setFormData] = useState({
     nome: user.nome,
     biografia: user.biografia || "",
@@ -120,8 +120,49 @@ const Settings = () => {
     }
   };
 
-  // ... (Restante das funções: handlePasswordChange, handlePasswordSubmit, handleDeleteAccount) ...
-  // Nenhuma alteração necessária nessas funções
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      addNotification("As novas senhas não coincidem.", "error");
+      return;
+    }
+    try {
+      await apiClient.post("/users/change-password", passwordData);
+      addNotification("Senha alterada com sucesso!", "success");
+      setIsPasswordModalOpen(false);
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error) {
+      addNotification(
+        error.response?.data?.message || "Erro ao alterar a senha.",
+        "error"
+      );
+    }
+  };
+
+  const handleDeleteAccount = async (e) => {
+    e.preventDefault();
+    try {
+      await apiClient.delete("/users/me", {
+        data: { senha: deletePassword },
+      });
+      addNotification("Conta apagada com sucesso. Adeus!", "success");
+      logout();
+    } catch (error) {
+      addNotification(
+        error.response?.data?.message || "Erro ao apagar a conta.",
+        "error"
+      );
+    }
+  };
 
   return (
     <>
@@ -132,7 +173,6 @@ const Settings = () => {
           </BackLink>
           <Title>Configurações de {user.nome}</Title>
 
-          {/* --- CORREÇÃO 2: Adicionar os campos que faltavam ao formulário --- */}
           <Form onSubmit={handleProfileSubmit}>
             <ProfilePhotoContainer>
               <img src={preview} alt="Prévia" />
@@ -162,7 +202,6 @@ const Settings = () => {
               />
             </FormGroup>
 
-            {/* CAMPO DE BIOGRAFIA ADICIONADO */}
             <FormGroup>
               <Label htmlFor="biografia">Biografia</Label>
               <Textarea
@@ -174,7 +213,6 @@ const Settings = () => {
               />
             </FormGroup>
 
-            {/* CAMPO DE TEMAS ADICIONADO */}
             <FormGroup>
               <Label htmlFor="id_tema">Tema</Label>
               <Select
@@ -194,12 +232,103 @@ const Settings = () => {
             <SubmitButton type="submit">Salvar Alterações</SubmitButton>
           </Form>
 
+
           <FooterActions>
+            <div>
+              <ActionLink onClick={() => setIsPasswordModalOpen(true)}>
+                Alterar Senha
+              </ActionLink>
+              <ActionLink onClick={logout}>Terminar Sessão</ActionLink>
+            </div>
+            <ActionLink $danger onClick={() => setShowDelete(!showDelete)}>
+              Apagar Conta
+            </ActionLink>
           </FooterActions>
+
+          {showDelete && (
+            <DeleteContainer>
+              <p>
+                Tem a certeza de que deseja apagar a sua conta? Esta ação é
+                irreversível.
+              </p>
+              <Form onSubmit={handleDeleteAccount}>
+                <FormGroup>
+                  <Label htmlFor="delete-password">Confirme a sua senha</Label>
+                  <Input
+                    type="password"
+                    id="delete-password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    required
+                  />
+                </FormGroup>
+                <SubmitButton
+                  style={{ backgroundColor: "var(--red-danger)" }}
+                  type="submit"
+                >
+                  Apagar Conta Permanentemente
+                </SubmitButton>
+              </Form>
+            </DeleteContainer>
+          )}
         </SettingsCard>
       </SettingsPageContainer>
 
-      {/* ... (Modais sem alterações) ... */}
+      <ImageCropModal
+        isOpen={isCropModalOpen}
+        onClose={() => setIsCropModalOpen(false)}
+        imageSrc={imageToCrop}
+        onCropComplete={onCropComplete}
+        aspect={1}
+      />
+
+      <ModalOverlay
+        $isOpen={isPasswordModalOpen}
+        onClick={() => setIsPasswordModalOpen(false)}
+      >
+        <ModalContent onClick={(e) => e.stopPropagation()}>
+          <CloseButton onClick={() => setIsPasswordModalOpen(false)}>
+            &times;
+          </CloseButton>
+          <Title as="h3">Alterar Senha</Title>
+          <Form onSubmit={handlePasswordSubmit}>
+            <FormGroup>
+              <Label htmlFor="currentPassword">Senha Atual</Label>
+              <Input
+                type="password"
+                id="currentPassword"
+                name="currentPassword"
+                value={passwordData.currentPassword}
+                onChange={handlePasswordChange}
+                required
+              />
+            </FormGroup>
+            <FormGroup>
+              <Label htmlFor="newPassword">Nova Senha</Label>
+              <Input
+                type="password"
+                id="newPassword"
+                name="newPassword"
+                value={passwordData.newPassword}
+                onChange={handlePasswordChange}
+                required
+              />
+            </FormGroup>
+            <FormGroup>
+              <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
+              <Input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                value={passwordData.confirmPassword}
+                onChange={handlePasswordChange}
+                required
+              />
+            </FormGroup>
+            <SubmitButton type="submit">Salvar Nova Senha</SubmitButton>
+          </Form>
+        </ModalContent>
+      </ModalOverlay>
     </>
   );
 };

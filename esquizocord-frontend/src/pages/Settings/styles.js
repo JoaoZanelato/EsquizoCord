@@ -5,13 +5,13 @@ import { Link } from "react-router-dom";
 export const SettingsPageContainer = styled.div`
   display: flex;
   justify-content: center;
-  align-items: flex-start; 
+  align-items: flex-start;
   min-height: 100vh;
   padding: 40px 20px;
   background-image: url("/images/background.png");
   background-size: cover;
   background-attachment: fixed;
-  overflow-y: auto; 
+  overflow-y: auto;
 `;
 
 export const SettingsCard = styled.div`
@@ -23,7 +23,6 @@ export const SettingsCard = styled.div`
   max-width: 500px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 
-  
   max-height: 90vh; /* Define uma altura máxima para o cartão */
   overflow-y: auto; /* Adiciona a barra de rolagem vertical apenas quando o conteúdo do cartão ultrapassa a altura máxima */
 `;
@@ -41,7 +40,7 @@ export const BackLink = styled(Link)`
   align-items: center;
   justify-content: center;
   transition: background-color 0.2s;
-  z-index: 1; 
+  z-index: 1;
   &:hover {
     background-color: ${({ theme }) => theme.backgroundTertiary};
   }
@@ -148,17 +147,36 @@ export const FooterActions = styled.div`
   margin-top: 24px;
   padding-top: 20px;
   border-top: 1px solid ${({ theme }) => theme.backgroundSecondary};
+
+  > div {
+    display: flex;
+    gap: 10px;
+  }
 `;
 
-export const ActionLink = styled.a`
+export const ActionLink = styled.button`
+  background-color: ${({ theme, $danger }) =>
+    $danger ? "transparent" : theme.backgroundSecondary};
+  border: 1px solid
+    ${({ theme, $danger }) =>
+      $danger ? theme.redDanger : theme.backgroundTertiary};
   color: ${({ theme, $danger }) =>
-    $danger ? theme.redDanger : theme.textMuted};
-  text-decoration: none;
-  font-size: 14px;
-  padding: 8px;
+    $danger ? theme.redDanger : theme.textNormal};
+  padding: 8px 16px;
+  border-radius: 4px;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+
   &:hover {
-    text-decoration: underline;
+    background-color: ${({ theme, $danger }) =>
+      $danger ? theme.redDanger : theme.backgroundModifierHover};
+    border-color: ${({ theme, $danger }) =>
+      $danger ? theme.redDanger : theme.backgroundTertiary};
+    color: #fff;
+    text-decoration: none;
   }
 `;
 

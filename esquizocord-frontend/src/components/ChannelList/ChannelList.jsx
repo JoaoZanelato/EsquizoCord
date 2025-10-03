@@ -230,7 +230,7 @@ const ChannelList = ({
                   onClick={() => onViewProfile(member.id_usuario)}
                 >
                   <img
-                    src={member.fotoPerfil || "/images/logo.png"}
+                    src={member.foto_perfil || "/images/logo.png"}
                     alt={member.nome}
                     style={{ flexShrink: 0 }}
                   />

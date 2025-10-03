@@ -494,8 +494,8 @@ const Dashboard = () => {
               onClick={() => handleSelectGroup(group)}
             >
               <img
-                src={group.Foto || "/images/default-group-icon.png"}
-                alt={group.Nome}
+                src={group.foto || "/images/default-group-icon.png"}
+                alt={group.nome}
               />
               {notifications.some((n) => n.groupId === group.id_grupo) && (
                 <NotificationBadge />
@@ -552,6 +552,7 @@ const Dashboard = () => {
           onDeleteMessage={handleDeleteMessage}
           onEditMessage={handleEditMessage}
           onMenuClick={() => setIsChannelListOpen((prev) => !prev)}
+          onSelectChat={handleSelectChat}
         />
       </DashboardLayout>
 

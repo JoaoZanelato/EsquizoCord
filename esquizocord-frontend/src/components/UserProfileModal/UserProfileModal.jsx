@@ -105,7 +105,7 @@ const UserProfileModal = ({
       isMemberOfActiveGroup &&
       !isOwner &&
       onBanMember &&
-      targetUser.id_usuario !== AI_USER_ID // Não mostra o botão se for a IA
+      targetUser.id_usuario !== AI_USER_ID 
     ) {
       return (
         <ActionButton
@@ -223,7 +223,7 @@ const UserProfileModal = ({
               <ModalBody>
                 <AvatarContainer>
                   <Avatar
-                    src={profileData.user.FotoPerfil || "/images/logo.png"}
+                    src={profileData.user.foto_perfil || "/images/logo.png"}
                     onClick={() => setShowImagePreview(true)}
                   />
                   <StatusIndicator
@@ -278,7 +278,7 @@ const UserProfileModal = ({
       {showImagePreview && (
         <ImagePreviewOverlay onClick={() => setShowImagePreview(false)}>
           <img
-            src={profileData.user.fotoPerfil || "/images/logo.png"}
+            src={profileData.user.foto_perfil || "/images/logo.png"}
             alt="Preview"
           />
         </ImagePreviewOverlay>

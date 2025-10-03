@@ -23,6 +23,7 @@ const ChatArea = ({
   onDeleteMessage,
   onEditMessage,
   onMenuClick,
+  onSelectChat,
 }) => {
   const { user: currentUser } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -214,6 +215,21 @@ const ChatArea = ({
         <VoiceChannel
           channelId={chatInfo.channelId}
           members={chatInfo.group.members}
+          onDisconnect={() => {
+            // Encontra o primeiro canal de texto para ser o padrão ao sair
+            const defaultTextChannel = chatInfo.group.channels.find(
+              (ch) => ch.tipo === "TEXTO"
+            );
+            if (defaultTextChannel && onSelectChat) {
+              // Muda o chat ativo de volta para o canal de texto
+              onSelectChat({
+                ...chatInfo,
+                channelId: defaultTextChannel.id_chat,
+                channelName: defaultTextChannel.nome,
+                channelType: "TEXTO",
+              });
+            }
+          }}
         />
       );
     } else {
