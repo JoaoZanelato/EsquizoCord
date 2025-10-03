@@ -5,10 +5,12 @@ const nodemailer = require("nodemailer");
 const saltRounds = 10;
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // true for 465, false for other ports
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    pass: process.env.EMAIL_PASS, // A sua senha de app de 16 dígitos
   },
 });
 
