@@ -12,6 +12,59 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// --- NOVO TEMPLATE DE E-MAIL ---
+const createEmailTemplate = (
+  title,
+  preheader,
+  name,
+  body,
+  buttonLink,
+  buttonText
+) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${title}</title>
+        <style>
+            body { margin: 0; padding: 0; background-color: #202225; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+            .container { width: 100%; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #2f3136; color: #dcddde; border-radius: 8px; }
+            .header { text-align: center; margin-bottom: 20px; }
+            .header img { width: 80px; height: 80px; border-radius: 50%; }
+            .content { padding: 20px; background-color: #36393f; border-radius: 8px; }
+            h1 { color: #ffffff; font-size: 24px; }
+            p { font-size: 16px; line-height: 1.5; }
+            .button-container { text-align: center; margin-top: 30px; }
+            .button { background-color: #5865F2; color: #ffffff; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px; }
+            .footer { margin-top: 20px; text-align: center; font-size: 12px; color: #72767d; }
+        </style>
+    </head>
+    <body>
+        <div style="display: none; font-size: 1px; color: #333333; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
+            ${preheader}
+        </div>
+        <div class="container">
+            <div class="header">
+                <img src="https://raw.githubusercontent.com/JoaoZanelato/EsquizoCord/main/esquizocord-frontend/public/images/logo.png" alt="EsquizoCord Logo">
+            </div>
+            <div class="content">
+                <h1>Olá, ${name}!</h1>
+                <p>${body}</p>
+                <div class="button-container">
+                    <a href="${buttonLink}" class="button">${buttonText}</a>
+                </div>
+            </div>
+            <div class="footer">
+                <p>&copy; 2025 EsquizoCord. Se não solicitou este e-mail, pode ignorá-lo com segurança.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+};
+
 async function registerUser({ nome, email, senha }, db) {
   const [userExists] = await db.query(
     "SELECT id_usuario FROM usuarios WHERE nome = ? OR email = ?",
@@ -32,13 +85,31 @@ async function registerUser({ nome, email, senha }, db) {
     [nome, email, senhaCriptografada, token]
   );
 
-  const verificationLink = `http://localhost:5173/verificar-email?token=${token}`;
-  await transporter.sendMail({
-    from: '"EsquizoCord" <no-reply@esquizocord.com>',
-    to: email,
-    subject: "Verificação de E-mail - EsquizoCord",
-    html: `<b>Olá ${nome}!</b><br><p>Obrigado por se registar. Clique no link a seguir para ativar a sua conta: <a href="${verificationLink}">${verificationLink}</a></p>`,
-  });
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const verificationLink = `${frontendUrl}/verificar-email?token=${token}`;
+
+  const emailBody = `Obrigado por se registar no EsquizoCord! Para começar a conversar, por favor, verifique a sua conta clicando no botão abaixo.`;
+  const emailHtml = createEmailTemplate(
+    "Verificação de E-mail - EsquizoCord",
+    "Confirme o seu e-mail para ativar a sua conta.",
+    nome,
+    emailBody,
+    verificationLink,
+    "Verificar E-mail"
+  );
+
+  try {
+    console.log("A tentar enviar e-mail de verificação para:", email);
+    await transporter.sendMail({
+      from: '"EsquizoCord" <no-reply@esquizocord.com>',
+      to: email,
+      subject: "Verificação de E-mail - EsquizoCord",
+      html: emailHtml,
+    });
+    console.log("E-mail de verificação enviado com sucesso.");
+  } catch (emailError) {
+    console.error("### ERRO AO ENVIAR E-MAIL DE VERIFICAÇÃO ###:", emailError);
+  }
 }
 
 async function loginUser(email, senha, db) {
@@ -105,12 +176,25 @@ async function resendVerification(email, db) {
   if (user.email_verificado) {
     throw { status: 400, message: "Este e-mail já foi verificado." };
   }
-  const verificationLink = `http://localhost:5173/verificar-email?token=${user.token_verificacao}`;
+
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const verificationLink = `${frontendUrl}/verificar-email?token=${user.token_verificacao}`;
+  const emailBody =
+    "Recebemos um pedido para reenviar o seu e-mail de verificação. Clique no botão abaixo para ativar a sua conta.";
+  const emailHtml = createEmailTemplate(
+    "Reenvio de Verificação de E-mail - EsquizoCord",
+    "Ative a sua conta EsquizoCord.",
+    user.nome,
+    emailBody,
+    verificationLink,
+    "Ativar Conta"
+  );
+
   await transporter.sendMail({
     from: '"EsquizoCord" <no-reply@esquizocord.com>',
     to: email,
     subject: "Reenvio de Verificação de E-mail - EsquizoCord",
-    html: `<b>Olá ${user.nome}!</b><br><p>Clique no link a seguir para ativar a sua conta: <a href="${verificationLink}">${verificationLink}</a></p>`,
+    html: emailHtml,
   });
 }
 
@@ -135,12 +219,24 @@ async function forgotPassword(email, db) {
     [token, expiryDate, user.id_usuario]
   );
 
-  const resetLink = `http://localhost:5173/redefinir-senha?token=${token}`;
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const resetLink = `${frontendUrl}/redefinir-senha?token=${token}`;
+  const emailBody =
+    "Recebemos um pedido para redefinir a sua senha. Se não foi você, por favor ignore este e-mail. Caso contrário, clique no botão abaixo para criar uma nova senha.";
+  const emailHtml = createEmailTemplate(
+    "Recuperação de Senha - EsquizoCord",
+    "Redefina a sua senha do EsquizoCord.",
+    user.nome,
+    emailBody,
+    resetLink,
+    "Redefinir Senha"
+  );
+
   await transporter.sendMail({
     from: '"EsquizoCord" <no-reply@esquizocord.com>',
     to: user.email,
     subject: "Recuperação de Senha - EsquizoCord",
-    html: `<b>Olá ${user.nome}!</b><br><p>Recebemos um pedido para redefinir a sua senha. Clique no link a seguir para criar uma nova senha: <a href="${resetLink}">${resetLink}</a></p><p>Se não foi você que solicitou, por favor ignore este e-mail.</p>`,
+    html: emailHtml,
   });
 }
 

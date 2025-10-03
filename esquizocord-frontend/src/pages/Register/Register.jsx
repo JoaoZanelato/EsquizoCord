@@ -1,50 +1,57 @@
 // src/pages/Register/Register.jsx
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext'; // Importar o hook
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { useNotification } from "../../context/NotificationContext/NotificationContext"; // 1. IMPORTAR O HOOK DE NOTIFICAÇÃO
 import {
   RegisterPageContainer,
   RegisterBox,
   RegisterTitle,
-  RegisterFeedbackMessage,
+  RegisterFeedbackMessage, // Manteremos para o caso de erros de validação local
   RegisterForm,
   RegisterLabel,
   RegisterInput,
   RegisterButton,
   RegisterBackLink,
-} from './styles.js';
+} from "./styles.js";
 
 const Register = () => {
-  const [nome, setNome] = useState('');
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
-  const [confirmarSenha, setConfirmarSenha] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const { register } = useAuth(); // <-- Obter a função correta do contexto
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
+  const [error, setError] = useState(""); // Para erros de validação local (ex: senhas não conferem)
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { register } = useAuth();
+  const { addNotification } = useNotification(); // 2. USAR O HOOK
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setError("");
+    setIsSubmitting(true);
 
     if (senha !== confirmarSenha) {
-      setError('As senhas não conferem.');
+      setError("As senhas não conferem.");
+      setIsSubmitting(false);
       return;
     }
 
     try {
-      // Usar a função 'register' do contexto
       const response = await register(nome, email, senha, confirmarSenha);
-      setSuccess(response.data.message + ' Você será redirecionado para o login.');
-      
-      setTimeout(() => {
-        navigate('/login');
-      }, 3000);
+      // 3. USAR A NOTIFICAÇÃO DE SUCESSO
+      addNotification(response.data.message, "success");
 
+      setTimeout(() => {
+        navigate("/login");
+      }, 3000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Erro ao tentar fazer o cadastro.');
+      // 4. USAR A NOTIFICAÇÃO DE ERRO PARA ERROS DA API
+      const errorMessage =
+        err.response?.data?.message || "Erro ao tentar fazer o cadastro.";
+      addNotification(errorMessage, "error");
+      setIsSubmitting(false);
     }
   };
 
@@ -52,8 +59,12 @@ const Register = () => {
     <RegisterPageContainer>
       <RegisterBox>
         <RegisterTitle>Crie sua Conta</RegisterTitle>
-        {error && <RegisterFeedbackMessage><p>{error}</p></RegisterFeedbackMessage>}
-        {success && <RegisterFeedbackMessage style={{backgroundColor: 'rgba(67, 181, 129, 0.2)', borderLeftColor: 'var(--green-accent)'}}><p>{success}</p></RegisterFeedbackMessage>}
+        {/* O feedback de erro local ainda é útil para validações do lado do cliente */}
+        {error && (
+          <RegisterFeedbackMessage>
+            <p>{error}</p>
+          </RegisterFeedbackMessage>
+        )}
 
         <RegisterForm onSubmit={handleSubmit}>
           <RegisterLabel htmlFor="nome">Nome de Usuário:</RegisterLabel>
@@ -86,7 +97,9 @@ const Register = () => {
             autoComplete="new-password"
           />
 
-          <RegisterLabel htmlFor="confirmar_senha">Confirmar Senha:</RegisterLabel>
+          <RegisterLabel htmlFor="confirmar_senha">
+            Confirmar Senha:
+          </RegisterLabel>
           <RegisterInput
             type="password"
             id="confirmar_senha"
@@ -96,7 +109,9 @@ const Register = () => {
             autoComplete="new-password"
           />
 
-          <RegisterButton type="submit" disabled={!!success}>Cadastrar</RegisterButton>
+          <RegisterButton type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Aguarde..." : "Cadastrar"}
+          </RegisterButton>
         </RegisterForm>
         <RegisterBackLink as={Link} to="/login">
           Já tem uma conta? Faça Login
