@@ -186,16 +186,14 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
     };
 
     const handleUserJoined = (user) => {
-      if (isComponentMounted && localStreamRef.current) {
+      if (isComponentMounted) {
         setConnectedUsers((prev) => ({ ...prev, [user.socketId]: user }));
-        const peer = createPeer(user.socketId, localStreamRef.current);
-        peersRef.current[user.socketId] = peer;
-        setPeers((prev) => ({ ...prev, [user.socketId]: { peer } }));
       }
     };
 
     const handleOffer = ({ fromSocketId, offer }) => {
       if (isComponentMounted && localStreamRef.current) {
+        // O 'peer' é criado aqui, quando a oferta é recebida.
         const peer = createPeer(fromSocketId, localStreamRef.current);
         peersRef.current[fromSocketId] = peer;
         peer.setRemoteDescription(new RTCSessionDescription(offer));
@@ -206,6 +204,7 @@ const VoiceChannel = ({ channelId, onDisconnect }) => {
             answer,
           });
         });
+        // Atualiza o estado para que o componente <Audio> seja renderizado.
         setPeers((prev) => ({ ...prev, [fromSocketId]: { peer } }));
       }
     };
