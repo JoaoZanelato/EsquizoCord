@@ -67,7 +67,7 @@ const ExploreGroupsModal = ({ isOpen, onClose, onGroupJoined }) => {
                     {!loading && results.map(group => (
                         <ResultItem key={group.id_grupo}>
                             <GroupInfo>
-                                <img src={group.Foto || '/images/default-group-icon.png'} alt={group.Nome} />
+                                <img src={group.foto || '/images/default-group-icon.png'} alt={group.nome} />
                                 <GroupName>
                                     {group.Nome}
                                     <span> #{group.id_grupo}</span>
