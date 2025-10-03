@@ -1,7 +1,7 @@
 // src/components/VoiceChannel/VoiceChannel.jsx
-import React, { useEffect, useState, useRef, useCallback } from "react";
-import { useSocket } from "../../context/SocketContext";
+import React, { useRef, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { useVoiceChannel } from "../../hooks/useVoiceChannel"; // <-- IMPORTA O NOVO HOOK
 import {
   VoiceChannelContainer,
   VoiceUserList,
@@ -11,6 +11,7 @@ import {
   ControlButton,
 } from "./styles";
 
+// O componente de áudio permanece igual
 const Audio = ({ peer, onAudioActivity }) => {
   const audioRef = useRef(null);
 
@@ -59,178 +60,17 @@ const Audio = ({ peer, onAudioActivity }) => {
   return <audio ref={audioRef} autoPlay playsInline />;
 };
 
+// O componente principal agora é muito mais simples
 const VoiceChannel = ({ channelId, onDisconnect }) => {
   const { user: currentUser } = useAuth();
-  const socket = useSocket();
-
-  const [peers, setPeers] = useState({});
-  const [isMuted, setIsMuted] = useState(false);
-  const [speaking, setSpeaking] = useState({});
-  const [connectedUsers, setConnectedUsers] = useState({});
-
-  const localStreamRef = useRef(null);
-  const peersRef = useRef({});
-
-  const handleAudioActivity = useCallback((id, isSpeaking) => {
-    setSpeaking((prev) => ({ ...prev, [id]: isSpeaking }));
-  }, []);
-
-  useEffect(() => {
-    if (!socket) return;
-
-    let isComponentMounted = true;
-
-    const createPeer = (targetSocketId, stream) => {
-      const peer = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-      });
-      stream.getTracks().forEach((track) => peer.addTrack(track, stream));
-      peer.onicecandidate = (e) => {
-        if (e.candidate) {
-          socket.emit("webrtc-ice-candidate", {
-            targetSocketId,
-            candidate: e.candidate,
-          });
-        }
-      };
-      return peer;
-    };
-
-    const connect = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
-        if (!isComponentMounted) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-        localStreamRef.current = stream;
-        socket.emit("join-voice-channel", channelId);
-      } catch (err) {
-        console.error("Erro ao aceder ao microfone:", err);
-        alert("Não foi possível aceder ao microfone. Verifique as permissões.");
-        if (onDisconnect) onDisconnect();
-      }
-    };
-
-    connect();
-
-    const handleAllUsers = (users) => {
-      if (!isComponentMounted) return;
-      const usersMap = {};
-      const newPeers = {};
-      users.forEach((user) => {
-        usersMap[user.socketId] = user;
-        if (localStreamRef.current) {
-          const peer = createPeer(user.socketId, localStreamRef.current);
-          peersRef.current[user.socketId] = peer;
-          newPeers[user.socketId] = peer;
-          peer.createOffer().then((offer) => {
-            peer.setLocalDescription(offer);
-            socket.emit("webrtc-offer", {
-              targetSocketId: user.socketId,
-              offer,
-            });
-          });
-        }
-      });
-      setConnectedUsers(usersMap);
-      setPeers((prev) => ({ ...prev, ...newPeers }));
-    };
-
-    const handleUserJoined = (user) => {
-      if (isComponentMounted && user.socketId !== socket.id) {
-        setConnectedUsers((prev) => ({ ...prev, [user.socketId]: user }));
-      }
-    };
-
-    const handleOffer = ({ fromSocketId, offer }) => {
-      if (isComponentMounted && localStreamRef.current) {
-        const peer = createPeer(fromSocketId, localStreamRef.current);
-        peersRef.current[fromSocketId] = peer;
-        setPeers((prev) => ({ ...prev, [fromSocketId]: peer }));
-        peer.setRemoteDescription(new RTCSessionDescription(offer));
-        peer.createAnswer().then((answer) => {
-          peer.setLocalDescription(answer);
-          socket.emit("webrtc-answer", {
-            targetSocketId: fromSocketId,
-            answer,
-          });
-        });
-      }
-    };
-
-    const handleAnswer = ({ fromSocketId, answer }) => {
-      peersRef.current[fromSocketId]?.setRemoteDescription(
-        new RTCSessionDescription(answer)
-      );
-    };
-
-    const handleIceCandidate = ({ fromSocketId, candidate }) => {
-      peersRef.current[fromSocketId]
-        ?.addIceCandidate(new RTCIceCandidate(candidate))
-        .catch((e) => console.error("Erro ao adicionar ICE candidate:", e));
-    };
-
-    const handleUserLeft = ({ socketId }) => {
-      if (peersRef.current[socketId]) {
-        peersRef.current[socketId].close();
-        delete peersRef.current[socketId];
-      }
-      if (isComponentMounted) {
-        setPeers((prev) => {
-          const { [socketId]: _, ...rest } = prev;
-          return rest;
-        });
-        setConnectedUsers((prev) => {
-          const { [socketId]: _, ...rest } = prev;
-          return rest;
-        });
-      }
-    };
-
-    socket.on("all-users-in-voice-channel", handleAllUsers);
-    socket.on("user-joined-voice", handleUserJoined);
-    socket.on("webrtc-offer", handleOffer);
-    socket.on("webrtc-answer", handleAnswer);
-    socket.on("webrtc-ice-candidate", handleIceCandidate);
-    socket.on("user-left-voice", handleUserLeft);
-
-    return () => {
-      isComponentMounted = false;
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => track.stop());
-      }
-      socket.emit("leave-voice-channel", channelId);
-      Object.values(peersRef.current).forEach((peer) => peer.close());
-      peersRef.current = {};
-      socket.off("all-users-in-voice-channel", handleAllUsers);
-      socket.off("user-joined-voice", handleUserJoined);
-      socket.off("webrtc-offer", handleOffer);
-      socket.off("webrtc-answer", handleAnswer);
-      socket.off("webrtc-ice-candidate", handleIceCandidate);
-      socket.off("user-left-voice", handleUserLeft);
-    };
-  }, [channelId, socket]); // <-- CORREÇÃO PRINCIPAL: onDisconnect foi removido das dependências para garantir estabilidade.
-
-  const toggleMute = () => {
-    if (localStreamRef.current) {
-      const audioTracks = localStreamRef.current.getAudioTracks();
-      if (audioTracks.length > 0) {
-        const newEnabledState = !audioTracks[0].enabled;
-        audioTracks.forEach((track) => {
-          track.enabled = newEnabledState;
-        });
-        setIsMuted(!newEnabledState);
-      }
-    }
-  };
-
-  const usersToRender = [
-    { ...currentUser, socketId: socket?.id },
-    ...Object.values(connectedUsers),
-  ];
+  const {
+    usersToRender,
+    peers,
+    isMuted,
+    speaking,
+    toggleMute,
+    handleAudioActivity,
+  } = useVoiceChannel(channelId, onDisconnect); // <-- USA O HOOK AQUI
 
   return (
     <VoiceChannelContainer>
