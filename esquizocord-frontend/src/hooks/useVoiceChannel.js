@@ -39,6 +39,7 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
     let isMounted = true;
 
     const createPeer = (targetSocketId, stream) => {
+      // Evita recriar uma conexão que já existe
       if (peersRef.current[targetSocketId]) {
         return peersRef.current[targetSocketId];
       }
@@ -96,11 +97,18 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
       const usersMap = {};
       users.forEach((user) => {
         usersMap[user.socketId] = user;
-        const peer = createPeer(user.socketId, localStreamRef.current);
-        peer.createOffer().then((offer) => {
-          peer.setLocalDescription(offer);
-          socket.emit("webrtc-offer", { targetSocketId: user.socketId, offer });
-        });
+        // --- CORREÇÃO DE "GLARE" ---
+        // Apenas o utilizador com o ID "menor" inicia a oferta.
+        if (socket.id < user.socketId) {
+          const peer = createPeer(user.socketId, localStreamRef.current);
+          peer.createOffer().then((offer) => {
+            peer.setLocalDescription(offer);
+            socket.emit("webrtc-offer", {
+              targetSocketId: user.socketId,
+              offer,
+            });
+          });
+        }
       });
       setConnectedUsers(usersMap);
     };
@@ -108,11 +116,18 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
     const handleUserJoined = (user) => {
       if (isMounted && localStreamRef.current && user.socketId !== socket.id) {
         setConnectedUsers((prev) => ({ ...prev, [user.socketId]: user }));
-        const peer = createPeer(user.socketId, localStreamRef.current);
-        peer.createOffer().then((offer) => {
-          peer.setLocalDescription(offer);
-          socket.emit("webrtc-offer", { targetSocketId: user.socketId, offer });
-        });
+        // --- CORREÇÃO DE "GLARE" ---
+        // Apenas o utilizador com o ID "menor" inicia a oferta.
+        if (socket.id < user.socketId) {
+          const peer = createPeer(user.socketId, localStreamRef.current);
+          peer.createOffer().then((offer) => {
+            peer.setLocalDescription(offer);
+            socket.emit("webrtc-offer", {
+              targetSocketId: user.socketId,
+              offer,
+            });
+          });
+        }
       }
     };
 
@@ -127,9 +142,10 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
             answer,
           });
         });
+        // Garante que o utilizador que fez a oferta é adicionado à lista para renderização
         setConnectedUsers((prev) => ({
           ...prev,
-          [fromSocketId]: { socketId: fromSocketId },
+          [fromSocketId]: { socketId: fromSocketId, ...offer.user },
         }));
       }
     };
