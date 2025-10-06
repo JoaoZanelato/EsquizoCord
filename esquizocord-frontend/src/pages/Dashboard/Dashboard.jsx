@@ -36,21 +36,13 @@ const Dashboard = () => {
   const [isExploreModalOpen, setIsExploreModalOpen] = useState(false);
   const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false);
   const [viewingProfileId, setViewingProfileId] = useState(null);
-  // --- INÍCIO DA CORREÇÃO ---
-  // O estado agora é inicializado com base na largura da janela para evitar o menu aberto em mobile.
-  const [isChannelListOpen, setIsChannelListOpen] = useState(
-    window.innerWidth > 768
-  );
-  // --- FIM DA CORREÇÃO ---
   const [notifications, setNotifications] = useState([]);
 
-  const dashboardDataRef = useRef(dashboardData);
-  useEffect(() => {
-    dashboardDataRef.current = dashboardData;
-  }, [dashboardData]);
-
   // --- INÍCIO DA CORREÇÃO ---
-  // Adiciona um listener para ajustar o estado do menu se o utilizador redimensionar a janela.
+  // 1. Inicializa o estado como `false` (seguro para o build).
+  const [isChannelListOpen, setIsChannelListOpen] = useState(false);
+
+  // 2. Usa useEffect para verificar a largura da janela APÓS o componente montar.
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth > 768) {
@@ -59,11 +51,19 @@ const Dashboard = () => {
         setIsChannelListOpen(false);
       }
     };
+
+    // Define o estado inicial correto assim que o componente é montado no navegador.
+    handleResize();
+
     window.addEventListener("resize", handleResize);
-    // Limpa o listener quando o componente é desmontado.
     return () => window.removeEventListener("resize", handleResize);
   }, []);
   // --- FIM DA CORREÇÃO ---
+
+  const dashboardDataRef = useRef(dashboardData);
+  useEffect(() => {
+    dashboardDataRef.current = dashboardData;
+  }, [dashboardData]);
 
   const fetchData = useCallback(async (selectChatAfter = null) => {
     try {
@@ -85,6 +85,7 @@ const Dashboard = () => {
     fetchData();
   }, [fetchData]);
 
+  // A lógica de selecionar chat agora é mais simples
   const handleSelectChat = useCallback((chat) => {
     setActiveChat(chat);
     setReplyingTo(null);
@@ -93,7 +94,7 @@ const Dashboard = () => {
         prev.filter((n) => n.senderId !== chat.user.id_usuario)
       );
     }
-    // Fecha o menu em mobile ao selecionar uma conversa.
+    // Em mobile, fecha o menu. Em desktop, não faz nada.
     if (window.innerWidth <= 768) {
       setIsChannelListOpen(false);
     }
@@ -534,7 +535,7 @@ const Dashboard = () => {
     <>
       <DashboardLayout>
         <Backdrop
-          $isOpen={isChannelListOpen}
+          $isOpen={isChannelListOpen && window.innerWidth <= 768}
           onClick={() => setIsChannelListOpen(false)}
         />
 

@@ -8,7 +8,6 @@ export const ChatAreaContainer = styled.main`
   flex-direction: column;
   width: 100%;
 
-  /* Removemos a transição e a transformação, pois o ChatArea não se move mais */
   @media (max-width: 768px) {
     /* Nenhuma regra de transformação necessária aqui */
   }
@@ -25,9 +24,12 @@ export const Header = styled.div`
   height: 50px;
   flex-shrink: 0;
 
-  /* --- EFEITO DE HOVER ADICIONADO --- */
+  /* --- INÍCIO DA CORREÇÃO --- */
+  position: relative; /* Necessário para o z-index funcionar */
+  z-index: 2; /* Garante que o cabeçalho fique acima do conteúdo principal */
+  /* --- FIM DA CORREÇÃO --- */
+
   & > div {
-    /* Aplica o hover apenas ao container do perfil no cabeçalho */
     padding: 4px 8px;
     border-radius: 4px;
     transition: background-color 0.2s;

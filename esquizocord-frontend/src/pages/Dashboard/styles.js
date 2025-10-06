@@ -8,15 +8,13 @@ export const DashboardLayout = styled.div`
   background-color: ${({ theme }) => theme.backgroundPrimary};
 
   @media (max-width: 768px) {
-    /* Garante que o layout não "escape" da tela */
     overflow-x: hidden;
-    position: relative; /* Necessário para o posicionamento do backdrop */
+    position: relative;
   }
 `;
 
-// Estilo para o fundo que aparecerá ao abrir o menu
 export const Backdrop = styled.div`
-  display: none; /* Escondido por padrão */
+  display: none;
 
   @media (max-width: 768px) {
     display: block;
@@ -26,9 +24,9 @@ export const Backdrop = styled.div`
     right: 0;
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
-    z-index: 4; /* Ficará entre o menu de canais e a área de chat */
+    /* --- CORREÇÃO DE Z-INDEX --- */
+    z-index: 4; 
 
-    /* Animação de fade-in/out */
     opacity: ${({ $isOpen }) => ($isOpen ? 1 : 0)};
     pointer-events: ${({ $isOpen }) => ($isOpen ? "auto" : "none")};
     transition: opacity 0.3s ease-in-out;
@@ -44,7 +42,8 @@ export const ServerList = styled.nav`
   align-items: center;
   flex-shrink: 0;
   overflow-y: auto;
-  z-index: 3; /* z-index ajustado */
+  /* --- CORREÇÃO DE Z-INDEX --- */
+  z-index: 3; 
 
   @media (max-width: 768px) {
     position: fixed;
@@ -56,7 +55,7 @@ export const ServerList = styled.nav`
 `;
 
 export const ServerIcon = styled.div`
-  position: relative; /* Adicionado para o badge */
+  position: relative;
   width: 48px;
   height: 48px;
   border-radius: 50%;
