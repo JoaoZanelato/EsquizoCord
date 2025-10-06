@@ -9,7 +9,9 @@ export const ChatAreaContainer = styled.main`
   width: 100%;
 
   @media (max-width: 768px) {
-    /* Nenhuma regra de transformação necessária aqui */
+    /* --- CORREÇÃO AQUI --- */
+    /* Adiciona um padding à esquerda para não ficar por baixo da barra de servidores */
+    padding-left: 72px;
   }
 `;
 
@@ -24,10 +26,8 @@ export const Header = styled.div`
   height: 50px;
   flex-shrink: 0;
 
-  /* --- INÍCIO DA CORREÇÃO --- */
-  position: relative; /* Necessário para o z-index funcionar */
-  z-index: 2; /* Garante que o cabeçalho fique acima do conteúdo principal */
-  /* --- FIM DA CORREÇÃO --- */
+  position: relative;
+  z-index: 2;
 
   & > div {
     padding: 4px 8px;

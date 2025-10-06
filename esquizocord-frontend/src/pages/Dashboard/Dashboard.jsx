@@ -53,7 +53,7 @@ const Dashboard = () => {
         setIsChannelListOpen(false);
       }
     };
-    
+
     // Define o estado inicial corretamente
     handleResize();
 
@@ -61,7 +61,6 @@ const Dashboard = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
   // --- FIM DA CORREÇÃO ---
-
 
   const dashboardDataRef = useRef(dashboardData);
   useEffect(() => {
@@ -88,19 +87,22 @@ const Dashboard = () => {
     fetchData();
   }, [fetchData]);
 
-  const handleSelectChat = useCallback((chat) => {
-    setActiveChat(chat);
-    setReplyingTo(null);
-    if (chat.type === "dm") {
-      setNotifications((prev) =>
-        prev.filter((n) => n.senderId !== chat.user.id_usuario)
-      );
-    }
-    // Em mobile, sempre fecha o menu ao selecionar uma conversa.
-    if (isMobile) {
-      setIsChannelListOpen(false);
-    }
-  }, [isMobile]);
+  const handleSelectChat = useCallback(
+    (chat) => {
+      setActiveChat(chat);
+      setReplyingTo(null);
+      if (chat.type === "dm") {
+        setNotifications((prev) =>
+          prev.filter((n) => n.senderId !== chat.user.id_usuario)
+        );
+      }
+      // Em mobile, sempre fecha o menu ao selecionar uma conversa.
+      if (isMobile) {
+        setIsChannelListOpen(false);
+      }
+    },
+    [isMobile]
+  );
 
   useEffect(() => {
     if (socket) {
@@ -299,7 +301,9 @@ const Dashboard = () => {
       );
     } finally {
       if (isMobile) {
-        setIsChannelListOpen(false);
+        // Em vez de fechar, agora garantimos que a lista de canais abre
+        // para mostrar o conteúdo do grupo selecionado.
+        setIsChannelListOpen(true);
       }
     }
   };
