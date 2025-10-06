@@ -1,8 +1,9 @@
+// src/pages/Dashboard/Dashboard.jsx
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useSocket } from "../../context/SocketContext";
-import { useNotification } from "../../context/NotificationContext/NotificationContext"; // <-- 1. IMPORTAR O HOOK
+import { useNotification } from "../../context/NotificationContext/NotificationContext";
 import apiClient from "../../services/api";
 
 import ChannelList from "../../components/ChannelList/ChannelList";
@@ -19,12 +20,13 @@ import {
   Divider,
   LoadingContainer,
   NotificationBadge,
+  Backdrop,
 } from "./styles";
 
 const Dashboard = () => {
   const { user } = useAuth();
   const socket = useSocket();
-  const { addNotification } = useNotification(); // <-- 2. INICIALIZAR O HOOK
+  const { addNotification } = useNotification();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -34,8 +36,11 @@ const Dashboard = () => {
   const [isExploreModalOpen, setIsExploreModalOpen] = useState(false);
   const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false);
   const [viewingProfileId, setViewingProfileId] = useState(null);
-  const [isChannelListOpen, setIsChannelListOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
+
+  // --- ALTERAÇÃO APLICADA AQUI ---
+  // Inicia o estado como 'true' para o menu estar aberto por defeito no mobile.
+  const [isChannelListOpen, setIsChannelListOpen] = useState(true);
+  // --- FIM DA ALTERAÇÃO ---
 
   const dashboardDataRef = useRef(dashboardData);
   useEffect(() => {
@@ -70,7 +75,7 @@ const Dashboard = () => {
         prev.filter((n) => n.senderId !== chat.user.id_usuario)
       );
     }
-    setIsChannelListOpen(false);
+    setIsChannelListOpen(false); // Fecha o menu após selecionar uma conversa
   }, []);
 
   useEffect(() => {
@@ -254,6 +259,8 @@ const Dashboard = () => {
     } catch (err) {
       console.error("Erro ao carregar detalhes do grupo:", err);
       alert("Não foi possível carregar os detalhes deste servidor.");
+    } finally {
+      setIsChannelListOpen(false); // Fecha o menu de servidores/canais após a seleção
     }
   };
 
@@ -481,7 +488,12 @@ const Dashboard = () => {
   return (
     <>
       <DashboardLayout>
-        <ServerList $isOpen={isChannelListOpen}>
+        <Backdrop
+          $isOpen={isChannelListOpen}
+          onClick={() => setIsChannelListOpen(false)}
+        />
+
+        <ServerList>
           <ServerIcon
             title="Início"
             className={!activeChat || activeChat.type === "dm" ? "active" : ""}
