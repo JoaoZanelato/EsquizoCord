@@ -49,39 +49,38 @@ io.on("connection", (socket) => {
     return socket.disconnect(true);
   }
 
-  const currentUserId = session.user.id_usuario;
+  // --- ALTERAÇÃO 1: Armazene o ID do usuário diretamente no socket ---
+  // Isso torna o socket independente da sessão após a conexão inicial.
+  socket.userId = session.user.id_usuario;
+
   const currentUserInfo = {
-    id_usuario: currentUserId,
+    id_usuario: socket.userId,
     socketId: socket.id,
     nome: session.user.nome,
     foto_perfil: session.user.foto_perfil,
   };
   console.log(
-    `Socket ${socket.id} autenticado como utilizador ${currentUserId}`
+    `Socket ${socket.id} autenticado como utilizador ${socket.userId}`
   );
 
   const onlineUsers = app.get("onlineUsers") || new Set();
-  onlineUsers.add(currentUserId);
+  onlineUsers.add(socket.userId);
   app.set("onlineUsers", onlineUsers);
-  io.emit("user_online", { userId: currentUserId });
+  io.emit("user_online", { userId: socket.userId });
 
   socket.on("join_dm_room", (roomName) => socket.join(roomName));
   socket.on("leave_dm_room", (roomName) => socket.leave(roomName));
   socket.on("join_group_room", (roomName) => socket.join(roomName));
   socket.on("leave_group_room", (roomName) => socket.leave(roomName));
 
-  // --- LÓGICA DE CANAL DE VOZ ATUALIZADA ---
+  // --- LÓGICA DE CANAL DE VOZ (sem alterações aqui) ---
   socket.on("join-voice-channel", (channelId) => {
     socket.join(`voice-${channelId}`);
     if (!voiceChannels[channelId]) {
       voiceChannels[channelId] = {};
     }
-
-    // Envia a lista de utilizadores existentes APENAS para o novo utilizador
     const usersInChannel = Object.values(voiceChannels[channelId]);
     socket.emit("all-users-in-voice-channel", usersInChannel);
-
-    // Adiciona o novo utilizador à lista e informa os outros
     voiceChannels[channelId][socket.id] = currentUserInfo;
     socket.to(`voice-${channelId}`).emit("user-joined-voice", currentUserInfo);
   });
@@ -120,13 +119,19 @@ io.on("connection", (socket) => {
   // --- FIM DA LÓGICA DE CANAL DE VOZ ---
 
   socket.on("disconnect", () => {
-    onlineUsers.delete(currentUserId);
-    app.set("onlineUsers", onlineUsers);
-    io.emit("user_offline", { userId: currentUserId });
-    handleLeaveVoice(); // Reutiliza a lógica de saída ao desconectar
-    console.log(
-      `Cliente ${socket.id} (Utilizador ${currentUserId}) desconectou-se.`
-    );
+    // --- ALTERAÇÃO 2: Use o ID do socket em vez da variável de sessão ---
+    // Agora a limpeza é 100% confiável, mesmo se a sessão foi destruída.
+    if (socket.userId) {
+      onlineUsers.delete(socket.userId);
+      app.set("onlineUsers", onlineUsers);
+      io.emit("user_offline", { userId: socket.userId });
+      handleLeaveVoice(); // Reutiliza a lógica de saída ao desconectar
+      console.log(
+        `Cliente ${socket.id} (Utilizador ${socket.userId}) desconectou-se.`
+      );
+    } else {
+      console.log(`Cliente ${socket.id} (não autenticado) desconectou-se.`);
+    }
   });
 });
 
