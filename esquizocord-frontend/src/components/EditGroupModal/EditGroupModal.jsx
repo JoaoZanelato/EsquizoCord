@@ -1,6 +1,7 @@
 // src/components/EditGroupModal/EditGroupModal.jsx
 import React, { useState, useEffect, useRef } from "react";
 import apiClient from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 import {
   ModalOverlay,
   ModalContent,
@@ -16,7 +17,12 @@ import {
   CancelButton,
   SubmitButton,
 } from "../CreateGroupModal/styles";
-import { ModalActions, DeleteButton, AnalyticsButton } from "./styles"; // <-- Importe o AnalyticsButton
+import {
+  ModalActions,
+  DeleteButton,
+  AnalyticsButton,
+  LeaveButton,
+} from "./styles"; // <-- Importe o LeaveButton
 import ImageCropModal from "../ImageCropModal/ImageCropModal";
 import {
   HiddenFileInput,
@@ -39,6 +45,7 @@ const EditGroupModal = ({
   onGroupDeleted,
   onRoleUpdated,
 }) => {
+  const { user: currentUser } = useAuth();
   const [nome, setNome] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,14 +57,16 @@ const EditGroupModal = ({
   const [fotoRecortadaBlob, setFotoRecortadaBlob] = useState(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const fileInputRef = useRef(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     if (groupDetails) {
-      setNome(groupDetails.Nome || "");
-      setIsPrivate(groupDetails.IsPrivate || false);
-      setFotoPreview(groupDetails.Foto || null);
+      setNome(groupDetails.nome || "");
+      setIsPrivate(groupDetails.is_private || false);
+      setFotoPreview(groupDetails.foto || null);
+      setIsOwner(currentUser.id_usuario === groupDetails.id_criador);
     }
-  }, [groupDetails]);
+  }, [groupDetails, currentUser.id_usuario]);
 
   if (!isOpen) return null;
 
@@ -104,6 +113,21 @@ const EditGroupModal = ({
     }
   };
 
+  const handleLeaveGroup = async () => {
+    if (!window.confirm(`Tem a certeza que deseja sair do servidor "${nome}"?`))
+      return;
+    setIsSubmitting(true);
+    try {
+      await apiClient.delete(`/groups/${groupDetails.id_grupo}/leave`);
+      onGroupDeleted();
+      onClose();
+    } catch (error) {
+      alert(error.response?.data?.message || "Erro ao sair do grupo.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleFileSelect = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       const reader = new FileReader();
@@ -141,6 +165,7 @@ const EditGroupModal = ({
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 required
+                disabled={!isOwner}
               />
             </FormGroup>
             <FormGroup>
@@ -150,10 +175,12 @@ const EditGroupModal = ({
                 onChange={handleFileSelect}
                 accept="image/*"
                 ref={fileInputRef}
+                disabled={!isOwner}
               />
               <CustomFileUploadButton
                 type="button"
                 onClick={() => fileInputRef.current.click()}
+                disabled={!isOwner}
               >
                 <i className="fas fa-camera"></i> Alterar Foto
               </CustomFileUploadButton>
@@ -166,6 +193,7 @@ const EditGroupModal = ({
                 checked={isPrivate}
                 onChange={(e) => setIsPrivate(e.target.checked)}
                 style={{ width: "auto" }}
+                disabled={!isOwner}
               />
               <label htmlFor="edit-group-private">Grupo Privado</label>
             </CheckboxContainer>
@@ -190,18 +218,28 @@ const EditGroupModal = ({
             )}
 
             <ModalActions>
-              <DeleteButton
-                type="button"
-                onClick={handleDelete}
-                disabled={isSubmitting}
-              >
-                Apagar
-              </DeleteButton>
+              {isOwner ? (
+                <DeleteButton
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={isSubmitting}
+                >
+                  Apagar Grupo
+                </DeleteButton>
+              ) : (
+                <LeaveButton
+                  type="button"
+                  onClick={handleLeaveGroup}
+                  disabled={isSubmitting}
+                >
+                  Sair do Grupo
+                </LeaveButton>
+              )}
               <div>
                 <CancelButton type="button" onClick={onClose}>
                   Cancelar
                 </CancelButton>
-                <SubmitButton type="submit" disabled={isSubmitting}>
+                <SubmitButton type="submit" disabled={isSubmitting || !isOwner}>
                   {isSubmitting ? "A Guardar..." : "Guardar"}
                 </SubmitButton>
               </div>

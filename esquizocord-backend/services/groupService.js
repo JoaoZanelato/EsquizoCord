@@ -13,9 +13,9 @@ const PERMISSIONS = {
 // --- Funções de verificação de permissão ---
 async function getUserPermissions(userId, groupId, db) {
   const [rows] = await db.query(
-    `SELECT SUM(c.permissoes) AS total_permissoes 
-         FROM cargos_usuario cu 
-         JOIN cargos c ON cu.id_cargo = c.id_cargo 
+    `SELECT SUM(c.permissoes) AS total_permissoes
+         FROM cargos_usuario cu
+         JOIN cargos c ON cu.id_cargo = c.id_cargo
          WHERE cu.id_usuario = ? AND c.id_grupo = ?`,
     [userId, groupId]
   );
@@ -141,8 +141,8 @@ async function getGroupDetails(groupId, currentUserId, db) {
             (SELECT JSON_ARRAYAGG(JSON_OBJECT('id_cargo', c.id_cargo, 'nome_cargo', c.nome_cargo, 'cor', c.cor, 'icone', c.icone, 'permissoes', c.permissoes))
              FROM cargos_usuario cu JOIN cargos c ON cu.id_cargo = c.id_cargo
              WHERE cu.id_usuario = u.id_usuario AND c.id_grupo = pg.id_grupo) as cargos
-         FROM usuarios u 
-         JOIN participantes_grupo pg ON u.id_usuario = pg.id_usuario 
+         FROM usuarios u
+         JOIN participantes_grupo pg ON u.id_usuario = pg.id_usuario
          WHERE pg.id_grupo = ?`,
     [groupId]
   );
@@ -234,6 +234,30 @@ async function joinGroup(groupId, userId, db) {
     "INSERT INTO participantes_grupo (id_usuario, id_grupo) VALUES (?, ?)",
     [userId, groupId]
   );
+}
+
+async function leaveGroup(groupId, userId, db, io) {
+  const isCreator = await isGroupCreator(userId, groupId, db);
+  if (isCreator) {
+    throw {
+      status: 400,
+      message: "O dono não pode sair do grupo. Você deve apagar o grupo.",
+    };
+  }
+
+  const [result] = await db.query(
+    "DELETE FROM participantes_grupo WHERE id_grupo = ? AND id_usuario = ?",
+    [groupId, userId]
+  );
+
+  if (result.affectedRows > 0) {
+    io.to(`group-${groupId}`).emit("member_left", {
+      groupId: parseInt(groupId),
+      userId: parseInt(userId),
+    });
+  } else {
+    throw { status: 404, message: "Você não é membro deste grupo." };
+  }
 }
 
 // --- Lógica de Canais ---
@@ -334,7 +358,6 @@ async function sendGroupMessage(
 
   io.to(`group-${groupId}`).emit("new_group_message", messageData);
 
-  // --- INÍCIO DA CORREÇÃO ---
   if (type === "texto" && content.includes("@EsquizoIA")) {
     const aiResponseText = await getAiResponse(
       content.replace("@EsquizoIA", "").trim()
@@ -365,7 +388,6 @@ async function sendGroupMessage(
 
     io.to(`group-${groupId}`).emit("new_group_message", aiMessageData);
   }
-  // --- FIM DA CORREÇÃO ---
 
   return messageData;
 }
@@ -491,7 +513,6 @@ async function updateUserRoles(groupId, memberId, userId, roleIds, db) {
   }
 }
 
-// --- INÍCIO DA NOVA FUNÇÃO ---
 async function getGroupAnalytics(groupId, userId, db) {
   const hasPermission =
     (await getUserPermissions(userId, groupId, db)) &
@@ -504,14 +525,14 @@ async function getGroupAnalytics(groupId, userId, db) {
   }
 
   const [general] = await db.query(
-    `SELECT 
+    `SELECT
             (SELECT COUNT(*) FROM participantes_grupo WHERE id_grupo = ?) as memberCount,
             (SELECT COUNT(*) FROM mensagens m JOIN chats c ON m.id_chat = c.id_chat WHERE c.id_grupo = ?) as totalMessages`,
     [groupId, groupId]
   );
 
   const [dailyActivity] = await db.query(
-    `SELECT DATE(data_hora) as date, COUNT(*) as count 
+    `SELECT DATE(data_hora) as date, COUNT(*) as count
          FROM mensagens m
          JOIN chats c ON m.id_chat = c.id_chat
          WHERE c.id_grupo = ? AND m.data_hora >= DATE_SUB(NOW(), INTERVAL 7 DAY)
@@ -538,7 +559,6 @@ async function getGroupAnalytics(groupId, userId, db) {
     topMembers,
   };
 }
-// --- FIM DA NOVA FUNÇÃO ---
 
 module.exports = {
   PERMISSIONS,
@@ -551,6 +571,7 @@ module.exports = {
   deleteGroup,
   searchPublicGroups,
   joinGroup,
+  leaveGroup,
   createChannel,
   deleteChannel,
   getGroupMessages,
@@ -562,5 +583,5 @@ module.exports = {
   updateRole,
   deleteRole,
   updateUserRoles,
-  getGroupAnalytics, // Exportar a nova função
+  getGroupAnalytics,
 };

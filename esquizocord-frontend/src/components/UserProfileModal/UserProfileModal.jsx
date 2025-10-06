@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-// --- 1. IMPORTAR O useTheme ---
 import { useTheme } from "styled-components";
 import { useAuth } from "../../context/AuthContext";
 import apiClient from "../../services/api";
@@ -37,14 +36,12 @@ const UserProfileModal = ({
   activeGroup,
 }) => {
   const { user: currentUser } = useAuth();
-  // --- 2. USAR O HOOK useTheme ---
   const theme = useTheme();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const AI_USER_ID = 1;
 
-  // ... (useEffect e outras funções permanecem iguais)
   useEffect(() => {
     if (!userId) return;
 
@@ -98,6 +95,8 @@ const UserProfileModal = ({
     const { friendship } = profileData;
     const targetUser = profileData.user;
 
+    const canBan = activeGroup && (activeGroup.currentUserPermissions & 2) > 0;
+
     const isMemberOfActiveGroup = activeGroup?.members.some(
       (m) => m.id_usuario === targetUser.id_usuario
     );
@@ -108,6 +107,7 @@ const UserProfileModal = ({
       isMemberOfActiveGroup &&
       !isOwner &&
       onBanMember &&
+      canBan &&
       targetUser.id_usuario !== AI_USER_ID
     ) {
       return (
@@ -228,7 +228,6 @@ const UserProfileModal = ({
                     src={profileData.user.foto_perfil || "/images/logo.png"}
                     onClick={() => setShowImagePreview(true)}
                   />
-                  {/* --- 3. CORREÇÃO DA LÓGICA DE COR --- */}
                   <StatusIndicator
                     color={
                       theme.statusColors[profileData.user.status] ||

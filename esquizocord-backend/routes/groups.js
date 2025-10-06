@@ -173,6 +173,26 @@ router.delete(
     }
   }
 );
+// Adicionada nova rota para sair do grupo
+router.delete(
+  "/:groupId/leave",
+  requireLogin,
+  groupIdValidation,
+  validate,
+  async (req, res, next) => {
+    try {
+      await groupService.leaveGroup(
+        req.params.groupId,
+        req.session.user.id_usuario,
+        req.db,
+        req.app.get("io")
+      );
+      res.status(200).json({ message: "Você saiu do grupo." });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 router.delete(
   "/:groupId/members/:memberId",

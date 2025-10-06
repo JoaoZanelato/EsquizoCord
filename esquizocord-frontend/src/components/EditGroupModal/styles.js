@@ -10,7 +10,7 @@ export const ModalActions = styled.div`
   padding-top: 20px;
   border-top: 1px solid ${({ theme }) => theme.backgroundTertiary};
 `;
-
+export const LeaveButton = styled(DeleteButton)``;
 export const DeleteButton = styled.button`
   background-color: ${({ theme }) => theme.redDanger};
   color: white;
@@ -36,6 +36,6 @@ export const AnalyticsButton = styled(SubmitButton)`
   background-color: ${({ theme }) => theme.greenAccent};
 
   &:hover {
-    background-color: #3caa78; 
+    background-color: #3caa78;
   }
 `;
