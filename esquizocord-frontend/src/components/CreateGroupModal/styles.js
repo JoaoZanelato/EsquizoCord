@@ -1,7 +1,7 @@
 // src/components/CreateGroupModal/styles.js
 import styled from "styled-components";
 
-// --- DEFINIÇÕES GLOBAIS DE MODAL MOVIDAS PARA AQUI ---
+// --- ESTILOS GLOBAIS DE MODAL E FORMULÁRIO CENTRALIZADOS AQUI ---
 export const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -49,7 +49,6 @@ export const Title = styled.h2`
   color: ${({ theme }) => theme.headerPrimary};
   text-align: center;
 `;
-// --- FIM DAS DEFINIÇÕES GLOBAIS ---
 
 export const Form = styled.form`
   display: flex;
@@ -76,20 +75,6 @@ export const Input = styled.input`
   background-color: ${({ theme }) => theme.backgroundTertiary};
   color: ${({ theme }) => theme.textNormal};
   font-size: 16px;
-`;
-
-export const CheckboxContainer = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  label {
-    margin: 0;
-    font-size: 14px;
-    color: ${({ theme }) => theme.textNormal};
-    font-weight: 500;
-    cursor: pointer;
-  }
 `;
 
 export const ModalActions = styled.div`
@@ -129,5 +114,21 @@ export const SubmitButton = styled.button`
   &:disabled {
     background-color: ${({ theme }) => theme.backgroundTertiary};
     cursor: not-allowed;
+  }
+`;
+// --- FIM DOS ESTILOS CENTRALIZADOS ---
+
+// Estilos específicos do CreateGroupModal
+export const CheckboxContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  label {
+    margin: 0;
+    font-size: 14px;
+    color: ${({ theme }) => theme.textNormal};
+    font-weight: 500;
+    cursor: pointer;
   }
 `;

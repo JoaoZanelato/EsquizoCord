@@ -8,6 +8,11 @@ export {
   ModalContent,
   CloseButton,
   Title,
+  Form,
+  FormGroup,
+  Label,
+  Input,
+  SubmitButton,
 } from "../../components/CreateGroupModal/styles";
 
 export const SettingsPageContainer = styled.div`
@@ -30,9 +35,8 @@ export const SettingsCard = styled.div`
   width: 100%;
   max-width: 500px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-
-  max-height: 90vh; /* Define uma altura máxima para o cartão */
-  overflow-y: auto; /* Adiciona a barra de rolagem vertical apenas quando o conteúdo do cartão ultrapassa a altura máxima */
+  max-height: 90vh;
+  overflow-y: auto;
 `;
 
 export const BackLink = styled(Link)`
@@ -53,8 +57,6 @@ export const BackLink = styled(Link)`
     background-color: ${({ theme }) => theme.backgroundTertiary};
   }
 `;
-
-export const Form = styled.form``;
 
 export const ProfilePhotoContainer = styled.div`
   display: flex;
@@ -81,29 +83,6 @@ export const ProfilePhotoContainer = styled.div`
   }
 `;
 
-export const FormGroup = styled.div`
-  margin-bottom: 20px;
-`;
-
-export const Label = styled.label`
-  display: block;
-  color: ${({ theme }) => theme.textMuted};
-  font-weight: bold;
-  font-size: 12px;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-`;
-
-export const Input = styled.input`
-  width: 100%;
-  padding: 10px;
-  border-radius: 4px;
-  border: 1px solid ${({ theme }) => theme.backgroundSecondary};
-  background-color: ${({ theme }) => theme.backgroundSecondary};
-  color: ${({ theme }) => theme.textNormal};
-  font-size: 14px;
-`;
-
 export const Textarea = styled.textarea`
   width: 100%;
   padding: 10px;
@@ -124,21 +103,6 @@ export const Select = styled.select`
   background-color: ${({ theme }) => theme.backgroundSecondary};
   color: ${({ theme }) => theme.textNormal};
   font-size: 14px;
-`;
-
-export const SubmitButton = styled.button`
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 4px;
-  background-color: ${({ theme }) => theme.brandExperiment};
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  &:hover {
-    background-color: ${({ theme }) => theme.brandHover};
-  }
 `;
 
 export const FooterActions = styled.div`

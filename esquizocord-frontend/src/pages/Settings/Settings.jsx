@@ -29,7 +29,6 @@ import {
   ModalOverlay,
   ModalContent,
   CloseButton,
-  SectionDivider,
 } from "./styles";
 
 const Settings = () => {

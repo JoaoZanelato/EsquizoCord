@@ -7,6 +7,14 @@ const { requireLogin } = require("../middlewares/auth");
 const authService = require("../services/authService");
 const dashboardService = require("../services/dashboardService");
 
+// --- ROTA DE STATUS ADICIONADA ---
+/* GET Rota principal para health check. */
+router.get("/", function (req, res, next) {
+  res
+    .status(200)
+    .json({ status: "ok", message: "EsquizoCord API is running!" });
+});
+
 // --- Validation Middlewares ---
 const loginValidation = [
   body("email").isEmail().withMessage("Formato de e-mail inválido."),
@@ -53,11 +61,9 @@ router.post(
   async (req, res, next) => {
     try {
       await authService.registerUser(req.body, req.db);
-      res
-        .status(201)
-        .json({
-          message: "Registo realizado com sucesso! Verifique o seu e-mail.",
-        });
+      res.status(201).json({
+        message: "Registo realizado com sucesso! Verifique o seu e-mail.",
+      });
     } catch (error) {
       next(error);
     }
@@ -126,12 +132,10 @@ router.post(
   async (req, res, next) => {
     try {
       await authService.forgotPassword(req.body.email, req.db);
-      res
-        .status(200)
-        .json({
-          message:
-            "Se existir uma conta com este e-mail, um link de recuperação foi enviado.",
-        });
+      res.status(200).json({
+        message:
+          "Se existir uma conta com este e-mail, um link de recuperação foi enviado.",
+      });
     } catch (error) {
       next(error);
     }

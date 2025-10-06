@@ -7,8 +7,6 @@ import {
   ModalContent,
   CloseButton,
   Title,
-} from "../../pages/Settings/styles";
-import {
   Form,
   FormGroup,
   Label,
