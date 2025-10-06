@@ -39,26 +39,29 @@ const Dashboard = () => {
   const [notifications, setNotifications] = useState([]);
 
   // --- INÍCIO DA CORREÇÃO ---
-  // 1. Inicializa o estado como `false` (seguro para o build).
-  const [isChannelListOpen, setIsChannelListOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isChannelListOpen, setIsChannelListOpen] = useState(!isMobile);
 
-  // 2. Usa useEffect para verificar a largura da janela APÓS o componente montar.
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth > 768) {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      // Se passar de mobile para desktop, abre o menu. Se for o contrário, fecha.
+      if (!mobile) {
         setIsChannelListOpen(true);
       } else {
         setIsChannelListOpen(false);
       }
     };
-
-    // Define o estado inicial correto assim que o componente é montado no navegador.
+    
+    // Define o estado inicial corretamente
     handleResize();
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
   // --- FIM DA CORREÇÃO ---
+
 
   const dashboardDataRef = useRef(dashboardData);
   useEffect(() => {
@@ -85,7 +88,6 @@ const Dashboard = () => {
     fetchData();
   }, [fetchData]);
 
-  // A lógica de selecionar chat agora é mais simples
   const handleSelectChat = useCallback((chat) => {
     setActiveChat(chat);
     setReplyingTo(null);
@@ -94,11 +96,11 @@ const Dashboard = () => {
         prev.filter((n) => n.senderId !== chat.user.id_usuario)
       );
     }
-    // Em mobile, fecha o menu. Em desktop, não faz nada.
-    if (window.innerWidth <= 768) {
+    // Em mobile, sempre fecha o menu ao selecionar uma conversa.
+    if (isMobile) {
       setIsChannelListOpen(false);
     }
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
     if (socket) {
@@ -296,7 +298,7 @@ const Dashboard = () => {
         "error"
       );
     } finally {
-      if (window.innerWidth <= 768) {
+      if (isMobile) {
         setIsChannelListOpen(false);
       }
     }
@@ -417,7 +419,7 @@ const Dashboard = () => {
   const handleSendMessage = (userToMessage) => {
     setActiveChat({ type: "dm", user: userToMessage });
     setViewingProfileId(null);
-    if (window.innerWidth <= 768) {
+    if (isMobile) {
       setIsChannelListOpen(false);
     }
   };
@@ -510,7 +512,7 @@ const Dashboard = () => {
   };
 
   if (loading) {
-    return <LoadingContainer>A carregar o seu universo.</LoadingContainer>;
+    return <LoadingContainer>A carregar o seu universo...</LoadingContainer>;
   }
   if (error) {
     return (
@@ -535,7 +537,7 @@ const Dashboard = () => {
     <>
       <DashboardLayout>
         <Backdrop
-          $isOpen={isChannelListOpen && window.innerWidth <= 768}
+          $isOpen={isChannelListOpen && isMobile}
           onClick={() => setIsChannelListOpen(false)}
         />
 
@@ -634,6 +636,7 @@ const Dashboard = () => {
           onEditMessage={handleEditMessage}
           onMenuClick={() => setIsChannelListOpen((prev) => !prev)}
           onSelectChat={handleSelectChat}
+          isMobile={isMobile} // Passa o estado isMobile para o ChatArea
         />
       </DashboardLayout>
 

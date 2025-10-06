@@ -24,6 +24,7 @@ const ChatArea = ({
   onEditMessage,
   onMenuClick,
   onSelectChat,
+  isMobile,
 }) => {
   const { user: currentUser } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -165,7 +166,9 @@ const ChatArea = ({
     return (
       <ChatAreaContainer>
         <Header>
-          <MobileMenuButton onClick={onMenuClick}>&#9776;</MobileMenuButton>
+          {isMobile && (
+            <MobileMenuButton onClick={onMenuClick}>&#9776;</MobileMenuButton>
+          )}
         </Header>
         <WelcomeMessage>
           <h2>Selecione uma conversa para começar.</h2>
