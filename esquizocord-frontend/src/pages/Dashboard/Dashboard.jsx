@@ -36,11 +36,8 @@ const Dashboard = () => {
   const [isExploreModalOpen, setIsExploreModalOpen] = useState(false);
   const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false);
   const [viewingProfileId, setViewingProfileId] = useState(null);
-
-  // --- ALTERAÇÃO APLICADA AQUI ---
-  // Inicia o estado como 'true' para o menu estar aberto por defeito no mobile.
   const [isChannelListOpen, setIsChannelListOpen] = useState(true);
-  // --- FIM DA ALTERAÇÃO ---
+  const [notifications, setNotifications] = useState([]);
 
   const dashboardDataRef = useRef(dashboardData);
   useEffect(() => {
@@ -75,12 +72,16 @@ const Dashboard = () => {
         prev.filter((n) => n.senderId !== chat.user.id_usuario)
       );
     }
-    setIsChannelListOpen(false); // Fecha o menu após selecionar uma conversa
+    setIsChannelListOpen(false);
   }, []);
 
   useEffect(() => {
     if (socket) {
       const handleNewDM = (msg) => {
+        // --- INÍCIO DA CORREÇÃO ---
+        if (!dashboardDataRef.current) return;
+        // --- FIM DA CORREÇÃO ---
+
         if (
           !activeChat ||
           activeChat.type !== "dm" ||
@@ -101,15 +102,19 @@ const Dashboard = () => {
         }
       };
       const handleNewGroupMessage = (msg) => {
+        // --- INÍCIO DA CORREÇÃO ---
+        if (!dashboardDataRef.current) return;
+        // --- FIM DA CORREÇÃO ---
+
         if (
           !activeChat ||
           activeChat.type !== "group" ||
           activeChat.channelId !== msg.id_chat
         ) {
-          const groupName =
-            dashboardDataRef.current?.groups.find(
-              (g) => g.id_grupo === msg.groupId
-            )?.Nome || "um grupo";
+          const group = dashboardDataRef.current.groups.find(
+            (g) => g.id_grupo === msg.groupId
+          );
+          const groupName = group?.nome || "um grupo"; // Correção de 'Nome' para 'nome'
           const newNotification = {
             id: `group-${msg.groupId}`,
             type: "group",
@@ -150,7 +155,7 @@ const Dashboard = () => {
                 ...currentChat,
                 group: { ...currentChat.group, channels: newChannels },
                 channelId: newChannels[0]?.id_chat,
-                channelName: newChannels[0]?.Nome,
+                channelName: newChannels[0]?.nome,
               };
             }
             return {
@@ -163,7 +168,7 @@ const Dashboard = () => {
 
       const handleMemberKicked = ({ groupId, kickedUserId }) => {
         if (kickedUserId === user.id_usuario) {
-          alert("Você foi banido deste grupo.");
+          addNotification("Você foi banido deste grupo.", "error");
           setDashboardData((prev) => ({
             ...prev,
             groups: prev.groups.filter((g) => g.id_grupo !== groupId),
@@ -228,15 +233,22 @@ const Dashboard = () => {
       socket.on("group_channel_deleted", handleChannelDeleted);
 
       return () => {
+        socket.off("user_status_changed", handleStatusChanged);
+        socket.off("member_kicked", handleMemberKicked);
         socket.off("new_dm", handleNewDM);
         socket.off("new_group_message", handleNewGroupMessage);
         socket.off("friend_request_received", handleFriendRequest);
         socket.off("group_channel_deleted", handleChannelDeleted);
-        socket.off("member_kicked", handleMemberKicked);
-        socket.off("user_status_changed", handleStatusChanged);
       };
     }
-  }, [socket, activeChat, user.id_usuario, fetchData, handleSelectChat]);
+  }, [
+    socket,
+    activeChat,
+    user.id_usuario,
+    fetchData,
+    handleSelectChat,
+    addNotification,
+  ]);
 
   const handleSelectGroup = async (group) => {
     try {
@@ -258,9 +270,12 @@ const Dashboard = () => {
       );
     } catch (err) {
       console.error("Erro ao carregar detalhes do grupo:", err);
-      alert("Não foi possível carregar os detalhes deste servidor.");
+      addNotification(
+        "Não foi possível carregar os detalhes deste servidor.",
+        "error"
+      );
     } finally {
-      setIsChannelListOpen(false); // Fecha o menu de servidores/canais após a seleção
+      setIsChannelListOpen(false);
     }
   };
 
@@ -302,8 +317,9 @@ const Dashboard = () => {
         setTimeout(() => setViewingProfileId(id), 0);
       }
     } catch (error) {
-      alert(
-        error.response?.data?.message || `Erro ao executar a ação: ${action}`
+      addNotification(
+        error.response?.data?.message || `Erro ao executar a ação: ${action}`,
+        "error"
       );
     }
   };
@@ -325,8 +341,9 @@ const Dashboard = () => {
         await apiClient.delete(url);
       }
     } catch (error) {
-      alert(
-        error.response?.data?.message || "Não foi possível apagar a mensagem."
+      addNotification(
+        error.response?.data?.message || "Não foi possível apagar a mensagem.",
+        "error"
       );
     }
   };
@@ -344,8 +361,9 @@ const Dashboard = () => {
         await apiClient.put(url, { content: newContent });
       }
     } catch (error) {
-      alert(
-        error.response?.data?.message || "Não foi possível editar a mensagem."
+      addNotification(
+        error.response?.data?.message || "Não foi possível editar a mensagem.",
+        "error"
       );
     }
   };
@@ -353,7 +371,7 @@ const Dashboard = () => {
   const handleBanMember = async (memberToBan) => {
     if (
       !window.confirm(
-        `Tem a certeza de que deseja banir ${memberToBan.Nome} do grupo? Esta ação é irreversível.`
+        `Tem a certeza de que deseja banir ${memberToBan.nome} do grupo? Esta ação é irreversível.`
       )
     ) {
       return;
@@ -366,8 +384,9 @@ const Dashboard = () => {
         );
       }
     } catch (error) {
-      alert(
-        error.response?.data?.message || "Não foi possível banir o membro."
+      addNotification(
+        error.response?.data?.message || "Não foi possível banir o membro.",
+        "error"
       );
     }
   };
@@ -375,6 +394,7 @@ const Dashboard = () => {
   const handleSendMessage = (userToMessage) => {
     setActiveChat({ type: "dm", user: userToMessage });
     setViewingProfileId(null);
+    setIsChannelListOpen(false);
   };
 
   const handleRoleUpdated = (updatedRole) => {
@@ -418,7 +438,7 @@ const Dashboard = () => {
         ...currentChat,
         group: newGroupData,
         channelId: newChannel.id_chat,
-        channelName: newChannel.Nome,
+        channelName: newChannel.nome,
         channelType: newChannel.tipo,
       };
     });
@@ -436,8 +456,9 @@ const Dashboard = () => {
         );
       }
     } catch (error) {
-      alert(
-        error.response?.data?.message || "Não foi possível apagar o canal."
+      addNotification(
+        error.response?.data?.message || "Não foi possível apagar o canal.",
+        "error"
       );
     }
   };
