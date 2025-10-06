@@ -7,16 +7,20 @@ export const ChannelListContainer = styled.aside`
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  z-index: 2;
+  z-index: 5; /* Z-index mais alto para ficar por cima de tudo */
 
   @media (max-width: 768px) {
     position: fixed;
     top: 0;
     bottom: 0;
     height: 100%;
-    left: ${({ $isOpen }) => ($isOpen ? "72px" : "-100%")};
-    transition: left 0.3s ease-in-out;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+
+    /* Agora o menu desliza a partir da esquerda (depois do ServerList) */
+    left: 72px;
+    transform: ${({ $isOpen }) =>
+      $isOpen ? "translateX(0)" : "translateX(-100%)"};
+    transition: transform 0.3s ease-in-out;
   }
 `;
 

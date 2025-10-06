@@ -6,12 +6,11 @@ export const ChatAreaContainer = styled.main`
   background-color: ${({ theme }) => theme.backgroundPrimary};
   display: flex;
   flex-direction: column;
-  transition: transform 0.3s ease-in-out;
   width: 100%;
 
+  /* Removemos a transição e a transformação, pois o ChatArea não se move mais */
   @media (max-width: 768px) {
-    transform: ${({ $isMenuOpen }) =>
-      $isMenuOpen ? "translateX(calc(72px + 260px))" : "translateX(0)"};
+    /* Nenhuma regra de transformação necessária aqui */
   }
 `;
 
