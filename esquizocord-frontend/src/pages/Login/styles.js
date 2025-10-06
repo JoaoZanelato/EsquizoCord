@@ -1,5 +1,5 @@
 // src/pages/Login/styles.js
-import styled from 'styled-components';
+import styled from "styled-components";
 
 export const LoginPageContainer = styled.div`
   display: flex;
@@ -79,7 +79,7 @@ export const Button = styled.button`
   cursor: pointer;
   font-size: 16px;
   transition: all 0.3s ease;
-  
+
   &:hover {
     background-color: #955ca3;
     transform: translateY(-2px);

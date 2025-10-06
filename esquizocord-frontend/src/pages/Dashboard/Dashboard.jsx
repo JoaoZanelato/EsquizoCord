@@ -78,9 +78,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (socket) {
       const handleNewDM = (msg) => {
-        // --- INÍCIO DA CORREÇÃO ---
         if (!dashboardDataRef.current) return;
-        // --- FIM DA CORREÇÃO ---
 
         if (
           !activeChat ||
@@ -102,9 +100,7 @@ const Dashboard = () => {
         }
       };
       const handleNewGroupMessage = (msg) => {
-        // --- INÍCIO DA CORREÇÃO ---
         if (!dashboardDataRef.current) return;
-        // --- FIM DA CORREÇÃO ---
 
         if (
           !activeChat ||
@@ -114,7 +110,7 @@ const Dashboard = () => {
           const group = dashboardDataRef.current.groups.find(
             (g) => g.id_grupo === msg.groupId
           );
-          const groupName = group?.nome || "um grupo"; // Correção de 'Nome' para 'nome'
+          const groupName = group?.nome || "um grupo";
           const newNotification = {
             id: `group-${msg.groupId}`,
             type: "group",
