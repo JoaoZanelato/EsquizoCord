@@ -1,9 +1,55 @@
 // src/components/CreateGroupModal/styles.js
-import styled from 'styled-components';
+import styled from "styled-components";
 
-// Nota: Estamos reutilizando os componentes de Modal que já criamos.
-// Se eles não estiverem em um local global, você pode copiar os estilos
-// de 'src/pages/Settings/styles.js' para cá.
+// --- DEFINIÇÕES GLOBAIS DE MODAL MOVIDAS PARA AQUI ---
+export const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: ${({ $isOpen }) => ($isOpen ? "flex" : "none")};
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+export const ModalContent = styled.div`
+  background-color: ${({ theme }) => theme.backgroundSecondary};
+  padding: 24px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 440px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+`;
+
+export const CloseButton = styled.button`
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none;
+  border: none;
+  color: ${({ theme }) => theme.textMuted};
+  font-size: 28px;
+  cursor: pointer;
+  line-height: 1;
+
+  &:hover {
+    color: ${({ theme }) => theme.headerPrimary};
+  }
+`;
+
+export const Title = styled.h2`
+  margin-top: 0;
+  margin-bottom: 24px;
+  color: ${({ theme }) => theme.headerPrimary};
+  text-align: center;
+`;
+// --- FIM DAS DEFINIÇÕES GLOBAIS ---
 
 export const Form = styled.form`
   display: flex;
@@ -36,7 +82,7 @@ export const CheckboxContainer = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  
+
   label {
     margin: 0;
     font-size: 14px;
@@ -61,7 +107,7 @@ export const CancelButton = styled.button`
   font-weight: bold;
   background: none;
   color: ${({ theme }) => theme.headerPrimary};
-  
+
   &:hover {
     text-decoration: underline;
   }
