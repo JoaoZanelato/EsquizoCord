@@ -1,8 +1,6 @@
 // src/components/ChannelList/ChannelList.jsx
 import React, { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import styled from "styled-components";
-
 import FriendsList from "../FriendsList/FriendsList";
 import PendingRequests from "../PendingRequests/PendingRequests";
 import AddFriend from "../AddFriend/AddFriend";
@@ -24,8 +22,12 @@ import {
   ManageMemberButton,
   DeleteChannelButton,
   KickMemberButton,
-  AvatarWithStatus, // <-- 2. IMPORTAR NOVOS ESTILOS
-  UserStatusIndicator, // <-- 2. IMPORTAR NOVOS ESTILOS
+  AvatarWithStatus,
+  UserStatusIndicator,
+  HeaderActions,
+  STATUS_COLORS,
+  AddChannelButton,
+  ListHeaderContainer,
 } from "./styles";
 
 const PERMISSIONS = {
@@ -33,33 +35,6 @@ const PERMISSIONS = {
   EXPULSAR_MEMBROS: 2,
   CRIAR_CANAIS: 8,
 };
-
-// --- INÍCIO DA ALTERAÇÃO ---
-const STATUS_COLORS = {
-  online: "#43b581",
-  ausente: "#faa61a",
-  ocupado: "#f04747",
-  invisivel: "#747f8d",
-};
-// --- FIM DA ALTERAÇÃO ---
-
-const ListHeaderContainer = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-right: 8px;
-`;
-
-const AddChannelButton = styled.button`
-  background: none;
-  border: none;
-  color: ${({ theme }) => theme.textMuted};
-  cursor: pointer;
-  font-size: 16px;
-  &:hover {
-    color: ${({ theme }) => theme.headerPrimary};
-  }
-`;
 
 const ChannelList = ({
   data,
@@ -73,6 +48,7 @@ const ChannelList = ({
   $isChannelListOpen,
   onChannelCreated,
   onChannelDeleted,
+  onLeaveGroup,
 }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("friends");
@@ -85,6 +61,10 @@ const ChannelList = ({
 
   const isGroupView = activeChat?.type === "group";
   const groupDetails = isGroupView ? activeChat.group : null;
+  const isOwner = user.id_usuario === groupDetails?.details?.id_criador;
+  const canManageGroup =
+    isGroupView &&
+    (groupDetails.currentUserPermissions & PERMISSIONS.GERIR_CARGOS) > 0;
   const onlineUserIds = data.onlineUserIds || [];
   const AI_USER_ID = 1;
 
@@ -302,16 +282,24 @@ const ChannelList = ({
       <ChannelListContainer $isOpen={$isChannelListOpen}>
         <ChannelHeader>
           <span>{isGroupView ? groupDetails?.details?.nome : "Amigos"}</span>
-          {isGroupView &&
-            (groupDetails.currentUserPermissions & PERMISSIONS.GERIR_CARGOS) >
-              0 && (
+          <HeaderActions>
+            {/* --- LÓGICA DE EXIBIÇÃO DO ÍCONE DE SAIR --- */}
+            {isGroupView && !isOwner && (
+              <i
+                className="fas fa-sign-out-alt"
+                title="Sair do Grupo"
+                onClick={() => onLeaveGroup(groupDetails.details)}
+              ></i>
+            )}
+            {/* --- LÓGICA DO ÍCONE DE CONFIGURAÇÕES --- */}
+            {canManageGroup && (
               <i
                 className="fas fa-cog"
                 title="Configurações do Grupo"
-                style={{ cursor: "pointer" }}
                 onClick={onOpenGroupSettings}
               ></i>
             )}
+          </HeaderActions>
         </ChannelHeader>
 
         {!isGroupView && (

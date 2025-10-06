@@ -1,8 +1,8 @@
-// src/pages/Dashboard/Dashboard.jsx
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useSocket } from "../../context/SocketContext";
+import { useNotification } from "../../context/NotificationContext/NotificationContext"; // <-- 1. IMPORTAR O HOOK
 import apiClient from "../../services/api";
 
 import ChannelList from "../../components/ChannelList/ChannelList";
@@ -24,6 +24,7 @@ import {
 const Dashboard = () => {
   const { user } = useAuth();
   const socket = useSocket();
+  const { addNotification } = useNotification(); // <-- 2. INICIALIZAR O HOOK
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -61,7 +62,6 @@ const Dashboard = () => {
     fetchData();
   }, [fetchData]);
 
-  // --- CORREÇÃO APLICADA AQUI ---
   const handleSelectChat = useCallback((chat) => {
     setActiveChat(chat);
     setReplyingTo(null);
@@ -72,7 +72,6 @@ const Dashboard = () => {
     }
     setIsChannelListOpen(false);
   }, []);
-  // --- FIM DA CORREÇÃO ---
 
   useEffect(() => {
     if (socket) {
@@ -436,6 +435,27 @@ const Dashboard = () => {
     }
   };
 
+  const handleLeaveGroup = async (groupToLeave) => {
+    if (
+      !window.confirm(
+        `Tem a certeza de que deseja sair do servidor "${groupToLeave.nome}"?`
+      )
+    )
+      return;
+
+    try {
+      await apiClient.delete(`/groups/${groupToLeave.id_grupo}/leave`);
+      addNotification(`Você saiu de "${groupToLeave.nome}".`, "success");
+      setActiveChat(null);
+      fetchData();
+    } catch (error) {
+      addNotification(
+        error.response?.data?.message || "Erro ao sair do grupo.",
+        "error"
+      );
+    }
+  };
+
   if (loading) {
     return <LoadingContainer>A carregar o seu universo...</LoadingContainer>;
   }
@@ -486,7 +506,7 @@ const Dashboard = () => {
           {dashboardData.groups.map((group) => (
             <ServerIcon
               key={group.id_grupo}
-              title={group.Nome}
+              title={group.nome}
               className={
                 activeChat?.type === "group" &&
                 activeChat.group.details.id_grupo === group.id_grupo
@@ -543,6 +563,7 @@ const Dashboard = () => {
           $isChannelListOpen={isChannelListOpen}
           onChannelCreated={handleChannelCreated}
           onChannelDeleted={handleChannelDeleted}
+          onLeaveGroup={handleLeaveGroup}
         />
 
         <ChatArea
@@ -595,7 +616,6 @@ const Dashboard = () => {
 
       <UserProfileModal
         userId={viewingProfileId}
-        onlineUserIds={dashboardData.onlineUserIds || []}
         onClose={() => setViewingProfileId(null)}
         onAction={handleFriendAction}
         onBanMember={handleBanMember}

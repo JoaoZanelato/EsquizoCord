@@ -246,3 +246,41 @@ export const DeleteChannelButton = styled.button`
     color: ${({ theme }) => theme.redDanger};
   }
 `;
+export const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+
+  i {
+    cursor: pointer;
+    color: ${({ theme }) => theme.textMuted};
+    transition: color 0.2s;
+
+    &:hover {
+      color: ${({ theme }) => theme.headerPrimary};
+    }
+  }
+`;
+export const STATUS_COLORS = {
+  online: "#43b581",
+  ausente: "#faa61a",
+  ocupado: "#f04747",
+  invisivel: "#747f8d",
+};
+export const ListHeaderContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: 8px;
+`;
+
+export const AddChannelButton = styled.button`
+  background: none;
+  border: none;
+  color: ${({ theme }) => theme.textMuted};
+  cursor: pointer;
+  font-size: 16px;
+  &:hover {
+    color: ${({ theme }) => theme.headerPrimary};
+  }
+`;
