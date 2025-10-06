@@ -23,10 +23,14 @@ const server = http.createServer(app);
  */
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173", // A origem do seu frontend
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
     methods: ["GET", "POST"],
     credentials: true,
   },
+  // --- ADIÇÃO AQUI ---
+  // Mantém a conexão viva em ambientes de hospedagem como o Render
+  pingTimeout: 60000,
+  pingInterval: 25000,
 });
 // Envolve o middleware de sessão para ser compatível com o Socket.IO
 const wrap = (middleware) => (socket, next) =>

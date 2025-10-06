@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+// --- 1. IMPORTAR O useTheme ---
+import { useTheme } from "styled-components";
 import { useAuth } from "../../context/AuthContext";
 import apiClient from "../../services/api";
 import {
@@ -18,8 +20,6 @@ import {
   UserInfo,
   UserName,
   Section,
-  MutualsList,
-  MutualItem,
   ImagePreviewOverlay,
   UserNameContainer,
   RolesContainer,
@@ -37,11 +37,14 @@ const UserProfileModal = ({
   activeGroup,
 }) => {
   const { user: currentUser } = useAuth();
+  // --- 2. USAR O HOOK useTheme ---
+  const theme = useTheme();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const AI_USER_ID = 1;
 
+  // ... (useEffect e outras funções permanecem iguais)
   useEffect(() => {
     if (!userId) return;
 
@@ -225,10 +228,11 @@ const UserProfileModal = ({
                     src={profileData.user.foto_perfil || "/images/logo.png"}
                     onClick={() => setShowImagePreview(true)}
                   />
+                  {/* --- 3. CORREÇÃO DA LÓGICA DE COR --- */}
                   <StatusIndicator
                     color={
-                      currentUser.theme.statusColors[profileData.user.status] ||
-                      currentUser.theme.statusColors.invisivel
+                      theme.statusColors[profileData.user.status] ||
+                      theme.statusColors.invisivel
                     }
                   />
                 </AvatarContainer>
