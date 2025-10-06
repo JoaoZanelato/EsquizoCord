@@ -7,13 +7,14 @@ import {
   ModalContent,
   CloseButton,
   Title,
+} from "../../pages/Settings/styles"; // Esta importação agora está correta porque Settings/styles exporta estes componentes
+import {
   Form,
   FormGroup,
   Label,
   Input,
   CheckboxContainer,
   CancelButton,
-  SubmitButton,
 } from "../CreateGroupModal/styles";
 import {
   ModalActions,
