@@ -47,6 +47,13 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       });
 
+      //Correção chat de voz: log do estado da conexão
+      peer.oniceconnectionstatechange = (event) => {
+        console.log(
+            `Conexão ICE com ${targetSocketId} mudou para: ${peer.iceConnectionState}`
+        );
+    };
+
       stream.getTracks().forEach((track) => peer.addTrack(track, stream));
 
       peer.ontrack = (event) => {
