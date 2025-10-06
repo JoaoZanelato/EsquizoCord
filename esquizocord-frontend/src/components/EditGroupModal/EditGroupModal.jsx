@@ -7,8 +7,6 @@ import {
   ModalContent,
   CloseButton,
   Title,
-} from "../../pages/Settings/styles";
-import {
   Form,
   FormGroup,
   Label,
@@ -17,7 +15,12 @@ import {
   CancelButton,
   SubmitButton,
 } from "../CreateGroupModal/styles";
-import { ModalActions, DeleteButton, AnalyticsButton } from "./styles";
+import {
+  ModalActions,
+  DeleteButton,
+  AnalyticsButton,
+  LeaveButton,
+} from "./styles";
 import ImageCropModal from "../ImageCropModal/ImageCropModal";
 import {
   HiddenFileInput,
@@ -103,6 +106,21 @@ const EditGroupModal = ({
       onClose();
     } catch (error) {
       alert(error.response?.data?.message || "Erro ao apagar o grupo.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!window.confirm(`Tem a certeza que deseja sair do servidor "${nome}"?`))
+      return;
+    setIsSubmitting(true);
+    try {
+      await apiClient.delete(`/groups/${groupDetails.id_grupo}/leave`);
+      onGroupDeleted();
+      onClose();
+    } catch (error) {
+      alert(error.response?.data?.message || "Erro ao sair do grupo.");
     } finally {
       setIsSubmitting(false);
     }
@@ -198,7 +216,7 @@ const EditGroupModal = ({
             )}
 
             <ModalActions>
-              {isOwner && (
+              {isOwner ? (
                 <DeleteButton
                   type="button"
                   onClick={handleDelete}
@@ -206,6 +224,14 @@ const EditGroupModal = ({
                 >
                   Apagar Grupo
                 </DeleteButton>
+              ) : (
+                <LeaveButton
+                  type="button"
+                  onClick={handleLeaveGroup}
+                  disabled={isSubmitting}
+                >
+                  Sair do Grupo
+                </LeaveButton>
               )}
               <div>
                 <CancelButton type="button" onClick={onClose}>
