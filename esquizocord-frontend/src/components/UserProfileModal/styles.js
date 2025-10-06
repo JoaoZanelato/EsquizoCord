@@ -34,8 +34,9 @@ export const StatusIndicator = styled.div`
   height: 20px;
   border-radius: 50%;
   border: 4px solid ${({ theme }) => theme.backgroundSecondary};
-  background-color: ${({ theme, status }) =>
-    theme.statusColors[status] || theme.statusColors.invisivel};
+  /* --- ALTERAÇÃO AQUI --- */
+  /* Agora, simplesmente consome a cor passada via prop */
+  background-color: ${({ color }) => color};
 `;
 
 export const ProfileHeader = styled.div`
