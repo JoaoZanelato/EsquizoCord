@@ -25,7 +25,7 @@ import {
   RolesContainer,
   RoleBadge,
   RoleColorDot,
-  CustomStatus, // <-- 1. IMPORTAR O NOVO ESTILO
+  CustomStatus,
 } from "./styles";
 
 const UserProfileModal = ({
@@ -42,7 +42,6 @@ const UserProfileModal = ({
   const [showImagePreview, setShowImagePreview] = useState(false);
   const AI_USER_ID = 1;
 
-  // ... (useEffect e outras funções permanecem iguais)
   useEffect(() => {
     if (!userId) return;
 
@@ -226,12 +225,10 @@ const UserProfileModal = ({
                     src={profileData.user.foto_perfil || "/images/logo.png"}
                     onClick={() => setShowImagePreview(true)}
                   />
-                  {/* --- 2. ALTERAÇÃO NA LÓGICA DO INDICADOR --- */}
                   <StatusIndicator
                     color={
-                      currentUser.theme?.statusColors?.[
-                        profileData.user.status
-                      ] || "#747f8d"
+                      currentUser.theme.statusColors[profileData.user.status] ||
+                      currentUser.theme.statusColors.invisivel
                     }
                   />
                 </AvatarContainer>
@@ -242,7 +239,6 @@ const UserProfileModal = ({
                         {profileData.user.nome}
                         <span> #{profileData.user.id_usuario}</span>
                       </UserName>
-                      {/* --- 3. ADIÇÃO DO STATUS PERSONALIZADO --- */}
                       {profileData.user.status_personalizado && (
                         <CustomStatus>
                           {profileData.user.status_personalizado}
@@ -253,7 +249,6 @@ const UserProfileModal = ({
                   <ActionsContainer>{renderActionButtons()}</ActionsContainer>
                 </ProfileHeader>
                 <UserInfo>
-                  {/* ... (restante do JSX que renderiza as informações do perfil) */}
                   <Section>
                     <h4>Sobre mim</h4>
                     <p>
