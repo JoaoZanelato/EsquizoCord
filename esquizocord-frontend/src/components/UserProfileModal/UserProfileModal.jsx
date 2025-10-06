@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useTheme } from "styled-components";
 import { useAuth } from "../../context/AuthContext";
 import apiClient from "../../services/api";
 import {
@@ -36,7 +35,6 @@ const UserProfileModal = ({
   activeGroup,
 }) => {
   const { user: currentUser } = useAuth();
-  const theme = useTheme();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showImagePreview, setShowImagePreview] = useState(false);
@@ -228,12 +226,7 @@ const UserProfileModal = ({
                     src={profileData.user.foto_perfil || "/images/logo.png"}
                     onClick={() => setShowImagePreview(true)}
                   />
-                  <StatusIndicator
-                    color={
-                      theme.statusColors[profileData.user.status] ||
-                      theme.statusColors.invisivel
-                    }
-                  />
+                  <StatusIndicator status={profileData.user.status} />
                 </AvatarContainer>
                 <ProfileHeader>
                   <UserNameContainer>
