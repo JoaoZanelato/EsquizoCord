@@ -36,13 +36,34 @@ const Dashboard = () => {
   const [isExploreModalOpen, setIsExploreModalOpen] = useState(false);
   const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false);
   const [viewingProfileId, setViewingProfileId] = useState(null);
-  const [isChannelListOpen, setIsChannelListOpen] = useState(true);
+  // --- INÍCIO DA CORREÇÃO ---
+  // O estado agora é inicializado com base na largura da janela para evitar o menu aberto em mobile.
+  const [isChannelListOpen, setIsChannelListOpen] = useState(
+    window.innerWidth > 768
+  );
+  // --- FIM DA CORREÇÃO ---
   const [notifications, setNotifications] = useState([]);
 
   const dashboardDataRef = useRef(dashboardData);
   useEffect(() => {
     dashboardDataRef.current = dashboardData;
   }, [dashboardData]);
+
+  // --- INÍCIO DA CORREÇÃO ---
+  // Adiciona um listener para ajustar o estado do menu se o utilizador redimensionar a janela.
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setIsChannelListOpen(true);
+      } else {
+        setIsChannelListOpen(false);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    // Limpa o listener quando o componente é desmontado.
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  // --- FIM DA CORREÇÃO ---
 
   const fetchData = useCallback(async (selectChatAfter = null) => {
     try {
@@ -72,7 +93,10 @@ const Dashboard = () => {
         prev.filter((n) => n.senderId !== chat.user.id_usuario)
       );
     }
-    setIsChannelListOpen(false);
+    // Fecha o menu em mobile ao selecionar uma conversa.
+    if (window.innerWidth <= 768) {
+      setIsChannelListOpen(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -271,7 +295,9 @@ const Dashboard = () => {
         "error"
       );
     } finally {
-      setIsChannelListOpen(false);
+      if (window.innerWidth <= 768) {
+        setIsChannelListOpen(false);
+      }
     }
   };
 
@@ -390,7 +416,9 @@ const Dashboard = () => {
   const handleSendMessage = (userToMessage) => {
     setActiveChat({ type: "dm", user: userToMessage });
     setViewingProfileId(null);
-    setIsChannelListOpen(false);
+    if (window.innerWidth <= 768) {
+      setIsChannelListOpen(false);
+    }
   };
 
   const handleRoleUpdated = (updatedRole) => {
@@ -481,7 +509,7 @@ const Dashboard = () => {
   };
 
   if (loading) {
-    return <LoadingContainer>A carregar o seu universo...</LoadingContainer>;
+    return <LoadingContainer>A carregar o seu universo.</LoadingContainer>;
   }
   if (error) {
     return (
