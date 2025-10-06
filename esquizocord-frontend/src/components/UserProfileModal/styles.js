@@ -34,8 +34,6 @@ export const StatusIndicator = styled.div`
   height: 20px;
   border-radius: 50%;
   border: 4px solid ${({ theme }) => theme.backgroundSecondary};
-  /* --- ALTERAÇÃO AQUI --- */
-  /* Agora, simplesmente consome a cor passada via prop */
   background-color: ${({ color }) => color};
 `;
 
@@ -45,6 +43,15 @@ export const ProfileHeader = styled.div`
   padding: 0 16px;
   margin-top: -40px;
   margin-left: 110px;
+
+  /* --- CORREÇÃO PARA MOBILE --- */
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-left: 0;
+    margin-top: 50px;
+    padding: 0 16px 16px 16px;
+  }
 `;
 
 export const UserNameContainer = styled.div`
@@ -55,6 +62,11 @@ export const UserNameContainer = styled.div`
   padding: 8px 12px;
   flex-grow: 1;
   min-width: 0;
+
+  /* --- CORREÇÃO PARA MOBILE --- */
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 `;
 
 export const ActionsContainer = styled.div`
@@ -62,6 +74,15 @@ export const ActionsContainer = styled.div`
   display: flex;
   gap: 10px;
   padding-left: 10px;
+
+  /* --- CORREÇÃO PARA MOBILE --- */
+  @media (max-width: 768px) {
+    margin-left: 0;
+    margin-top: 16px;
+    padding-left: 0;
+    width: 100%;
+    justify-content: center;
+  }
 `;
 
 export const ActionButton = styled.button`
@@ -119,6 +140,11 @@ export const UserInfo = styled.div`
   background-color: ${({ theme }) => theme.backgroundTertiary};
   border-radius: 8px;
   margin-top: 50px;
+
+  /* --- CORREÇÃO PARA MOBILE --- */
+  @media (max-width: 768px) {
+    margin-top: 0;
+  }
 `;
 
 export const UserName = styled.h3`
