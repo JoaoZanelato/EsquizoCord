@@ -34,8 +34,7 @@ export const StatusIndicator = styled.div`
   height: 20px;
   border-radius: 50%;
   border: 4px solid ${({ theme }) => theme.backgroundSecondary};
-  background-color: ${({ theme, $isOnline }) =>
-    $isOnline ? theme.greenAccent : theme.textMuted};
+  background-color: ${({ color }) => color};
 `;
 
 export const ProfileHeader = styled.div`
@@ -223,4 +222,13 @@ export const RoleColorDot = styled.div`
   height: 12px;
   border-radius: 50%;
   background-color: ${(props) => props.color};
+`;
+export const CustomStatus = styled.p`
+  font-size: 14px;
+  color: ${({ theme }) => theme.textNormal};
+  margin: 4px 0 0 0;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;

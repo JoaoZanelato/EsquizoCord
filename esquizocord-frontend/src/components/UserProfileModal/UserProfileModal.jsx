@@ -25,11 +25,11 @@ import {
   RolesContainer,
   RoleBadge,
   RoleColorDot,
+  CustomStatus, // <-- 1. IMPORTAR O NOVO ESTILO
 } from "./styles";
 
 const UserProfileModal = ({
   userId,
-  onlineUserIds,
   onClose,
   onAction,
   onSendMessage,
@@ -42,6 +42,7 @@ const UserProfileModal = ({
   const [showImagePreview, setShowImagePreview] = useState(false);
   const AI_USER_ID = 1;
 
+  // ... (useEffect e outras funções permanecem iguais)
   useEffect(() => {
     if (!userId) return;
 
@@ -105,7 +106,7 @@ const UserProfileModal = ({
       isMemberOfActiveGroup &&
       !isOwner &&
       onBanMember &&
-      targetUser.id_usuario !== AI_USER_ID 
+      targetUser.id_usuario !== AI_USER_ID
     ) {
       return (
         <ActionButton
@@ -194,7 +195,6 @@ const UserProfileModal = ({
     );
   };
 
-  const isUserOnline = (id) => id === AI_USER_ID || onlineUserIds.includes(id);
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("pt-BR", {
       day: "2-digit",
@@ -226,20 +226,34 @@ const UserProfileModal = ({
                     src={profileData.user.foto_perfil || "/images/logo.png"}
                     onClick={() => setShowImagePreview(true)}
                   />
+                  {/* --- 2. ALTERAÇÃO NA LÓGICA DO INDICADOR --- */}
                   <StatusIndicator
-                    $isOnline={isUserOnline(profileData.user.id_usuario)}
+                    color={
+                      currentUser.theme?.statusColors?.[
+                        profileData.user.status
+                      ] || "#747f8d"
+                    }
                   />
                 </AvatarContainer>
                 <ProfileHeader>
                   <UserNameContainer>
-                    <UserName>
-                      {profileData.user.nome}
-                      <span> #{profileData.user.id_usuario}</span>
-                    </UserName>
+                    <div>
+                      <UserName>
+                        {profileData.user.nome}
+                        <span> #{profileData.user.id_usuario}</span>
+                      </UserName>
+                      {/* --- 3. ADIÇÃO DO STATUS PERSONALIZADO --- */}
+                      {profileData.user.status_personalizado && (
+                        <CustomStatus>
+                          {profileData.user.status_personalizado}
+                        </CustomStatus>
+                      )}
+                    </div>
                   </UserNameContainer>
                   <ActionsContainer>{renderActionButtons()}</ActionsContainer>
                 </ProfileHeader>
                 <UserInfo>
+                  {/* ... (restante do JSX que renderiza as informações do perfil) */}
                   <Section>
                     <h4>Sobre mim</h4>
                     <p>
