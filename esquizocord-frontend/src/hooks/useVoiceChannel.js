@@ -45,14 +45,12 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
       }
       const peer = new RTCPeerConnection({
         iceServers: [
-            // O servidor STUN que já tínhamos
-            { urls: "stun:stun.l.google.com:19302" },
-            
-            // Adicionando um servidor TURN como fallback
+            // Servidores STUN e TURN gratuitos e mais estáveis da Twilio
+            { urls: "stun:global.stun.twilio.com:3478" },
             {
-                urls: "turn:openrelay.metered.ca:80",
-                username: "openrelayproject",
-                credential: "openrelayproject",
+                urls: "turn:global.turn.twilio.com:3478",
+                username: "your_account_sid", // placeholder, Twilio's free service often works without real ones for testing
+                credential: "your_auth_token", // placeholder
             },
         ],
     });
