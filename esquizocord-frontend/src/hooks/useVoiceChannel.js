@@ -44,17 +44,27 @@ export const useVoiceChannel = (channelId, onDisconnect) => {
         return peersRef.current[targetSocketId];
       }
       const peer = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-      });
+        iceServers: [
+            // O servidor STUN que já tínhamos
+            { urls: "stun:stun.l.google.com:19302" },
+            
+            // Adicionando um servidor TURN como fallback
+            {
+                urls: "turn:openrelay.metered.ca:80",
+                username: "openrelayproject",
+                credential: "openrelayproject",
+            },
+        ],
+    });
+    // ---------------------------------------------------
 
-      //Correção chat de voz: log do estado da conexão
-      peer.oniceconnectionstatechange = (event) => {
+    peer.oniceconnectionstatechange = (event) => {
         console.log(
             `Conexão ICE com ${targetSocketId} mudou para: ${peer.iceConnectionState}`
         );
     };
 
-      stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+    stream.getTracks().forEach((track) => peer.addTrack(track, stream));
 
       peer.ontrack = (event) => {
         if (isMounted) {
