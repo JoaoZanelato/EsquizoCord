@@ -134,10 +134,6 @@ npm run dev
 
 A aplicação frontend estará acessível em `http://localhost:5173`.
 
-## 🗺️ Roadmap (Próximos Passos)
-
-- **Agente de IA:** Transforme a API Gemini com prompt em um Agente de IA chamado EsquizoAI
-
 ## 📄 Licença
 
 Este projeto está licenciado sob a Licença MIT. Consulte o ficheiro `LICENSE` para mais detalhes.```
